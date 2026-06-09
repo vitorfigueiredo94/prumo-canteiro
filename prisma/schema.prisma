@@ -1,0 +1,335 @@
+// PrumoCanteiro — Prisma Schema
+// Multi-tenant: cada Empresa é isolada. Os dados de cada empresa ficam
+// separados por empresaId em todas as tabelas do domínio de negócio.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────── SaaS Layer ───────────────────────────
+
+model Plano {
+  id             String       @id @default(cuid())
+  nome           String
+  preco          Decimal      @db.Decimal(10, 2)
+  limiteObras    Int?
+  limiteUsuarios Int?
+  recursos       String[]
+  destaque       Boolean      @default(false)
+  assinaturas    Assinatura[]
+  criadoEm      DateTime     @default(now())
+  atualizadoEm  DateTime     @updatedAt
+
+  @@map("planos")
+}
+
+enum StatusAssinatura {
+  ativo
+  trial
+  inadimplente
+  cancelado
+}
+
+model Assinatura {
+  id              String           @id @default(cuid())
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId       String           @unique
+  plano           Plano            @relation(fields: [planoId], references: [id])
+  planoId         String
+  status          StatusAssinatura @default(trial)
+  desde           DateTime         @default(now())
+  proximaCobranca DateTime?
+  criadoEm       DateTime         @default(now())
+  atualizadoEm   DateTime         @updatedAt
+
+  @@map("assinaturas")
+}
+
+// ─────────────────────────── Empresa & Usuários ───────────────────
+
+model Empresa {
+  id           String           @id @default(cuid())
+  nome         String
+  assinatura   Assinatura?
+  usuarios     Usuario[]
+  terrenos     Terreno[]
+  obras        Obra[]
+  funcionarios Funcionario[]
+  notas        NotaFiscal[]
+  pagamentos   Pagamento[]
+  vendas       Venda[]
+  documentos   Documento[]
+  diario       RegistroDiario[]
+  criadoEm    DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+
+  @@map("empresas")
+}
+
+// id = UUID do usuário no Supabase Auth (não gerado pelo Prisma)
+model Usuario {
+  id           String   @id
+  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId    String
+  nome         String
+  email        String   @unique
+  superAdmin   Boolean  @default(false)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("usuarios")
+}
+
+// ─────────────────────────── Terrenos ─────────────────────────────
+
+enum StatusTerreno {
+  disponivel
+  em_obra    @map("em-obra")
+  vendido
+}
+
+model Terreno {
+  id          String        @id @default(cuid())
+  empresa     Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  nome        String
+  numero      String?
+  endereco    String?
+  cidade      String
+  area        Decimal       @db.Decimal(10, 2)
+  status      StatusTerreno @default(disponivel)
+  aquisicao   DateTime?
+  valorCompra Decimal?      @db.Decimal(14, 2)
+  obras       Obra[]
+  vendas      Venda[]
+  documentos  Documento[]
+  criadoEm   DateTime      @default(now())
+  atualizadoEm DateTime     @updatedAt
+
+  @@index([empresaId])
+  @@map("terrenos")
+}
+
+// ─────────────────────────── Obras ────────────────────────────────
+
+enum StatusObra {
+  planejamento
+  em_andamento @map("em-andamento")
+  parada
+  concluida
+}
+
+model Obra {
+  id          String           @id @default(cuid())
+  empresa     Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  terreno     Terreno          @relation(fields: [terrenoId], references: [id])
+  terrenoId   String
+  nome        String
+  status      StatusObra       @default(planejamento)
+  orcamento   Decimal          @db.Decimal(14, 2)
+  inicio      DateTime?
+  prazo       DateTime?
+  progresso   Int              @default(0)
+  responsavel String?
+  alocacoes   Alocacao[]
+  notas       NotaFiscal[]
+  pagamentos  Pagamento[]
+  documentos  Documento[]
+  diario      RegistroDiario[]
+  criadoEm   DateTime         @default(now())
+  atualizadoEm DateTime        @updatedAt
+
+  @@index([empresaId])
+  @@map("obras")
+}
+
+// ─────────────────────────── Funcionários ─────────────────────────
+
+enum TipoFuncionario {
+  diaria
+  mensal
+}
+
+enum StatusFuncionario {
+  ativo
+  inativo
+}
+
+model Funcionario {
+  id          String            @id @default(cuid())
+  empresa     Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  nome        String
+  funcao      String
+  tipo        TipoFuncionario
+  valor       Decimal           @db.Decimal(10, 2)
+  diasMes     Int               @default(22)
+  status      StatusFuncionario @default(ativo)
+  alocacoes   Alocacao[]
+  pagamentos  Pagamento[]
+  criadoEm   DateTime          @default(now())
+  atualizadoEm DateTime         @updatedAt
+
+  @@index([empresaId])
+  @@map("funcionarios")
+}
+
+// N:N entre Funcionario e Obra
+model Alocacao {
+  id            String      @id @default(cuid())
+  funcionario   Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  funcionarioId String
+  obra          Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obraId        String
+  criadoEm     DateTime    @default(now())
+
+  @@unique([funcionarioId, obraId])
+  @@map("alocacoes")
+}
+
+// ─────────────────────────── Notas Fiscais ────────────────────────
+
+enum CategoriaNotaFiscal {
+  material
+  mao_obra     @map("mao-obra")
+  servicos
+  equipamentos
+  outros
+}
+
+enum StatusNotaFiscal {
+  confirmada
+  em_revisao   @map("em-revisao")
+}
+
+model NotaFiscal {
+  id          String              @id @default(cuid())
+  empresa     Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  obra        Obra                @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obraId      String
+  fornecedor  String
+  numero      String?
+  categoria   CategoriaNotaFiscal
+  valor       Decimal             @db.Decimal(14, 2)
+  emissao     DateTime
+  status      StatusNotaFiscal    @default(em_revisao)
+  descricao   String?
+  arquivoUrl  String?
+  criadoEm   DateTime            @default(now())
+  atualizadoEm DateTime           @updatedAt
+
+  @@index([empresaId])
+  @@index([obraId])
+  @@map("notas_fiscais")
+}
+
+// ─────────────────────────── Pagamentos (folha) ───────────────────
+
+model Pagamento {
+  id            String      @id @default(cuid())
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  funcionario   Funcionario @relation(fields: [funcionarioId], references: [id])
+  funcionarioId String
+  obra          Obra        @relation(fields: [obraId], references: [id])
+  obraId        String
+  valor         Decimal     @db.Decimal(14, 2)
+  data          DateTime
+  ref           String?
+  criadoEm     DateTime    @default(now())
+
+  @@index([empresaId])
+  @@map("pagamentos")
+}
+
+// ─────────────────────────── Vendas de Terrenos ───────────────────
+
+model Venda {
+  id          String      @id @default(cuid())
+  empresa     Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId   String
+  terreno     Terreno     @relation(fields: [terrenoId], references: [id])
+  terrenoId   String
+  comprador   String
+  documento   String?
+  contato     String?
+  dataVenda   DateTime
+  valorTotal  Decimal     @db.Decimal(14, 2)
+  entrada     Decimal     @default(0) @db.Decimal(14, 2)
+  parcelas    Parcela[]
+  documentos  Documento[]
+  criadoEm   DateTime    @default(now())
+  atualizadoEm DateTime   @updatedAt
+
+  @@index([empresaId])
+  @@map("vendas")
+}
+
+model Parcela {
+  id         String    @id @default(cuid())
+  venda      Venda     @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  vendaId    String
+  numero     Int
+  vencimento DateTime
+  valor      Decimal   @db.Decimal(14, 2)
+  pago       Boolean   @default(false)
+  dataPag    DateTime?
+  criadoEm  DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("parcelas")
+}
+
+// ─────────────────────────── Documentos (arquivos/fotos) ──────────
+
+enum OwnerTypeDocumento {
+  obra
+  venda
+  terreno
+}
+
+model Documento {
+  id        String             @id @default(cuid())
+  empresa   Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+  ownerType OwnerTypeDocumento
+  obraId    String?
+  obra      Obra?              @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  vendaId   String?
+  venda     Venda?             @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  terrenoId String?
+  terreno   Terreno?           @relation(fields: [terrenoId], references: [id], onDelete: Cascade)
+  nome      String
+  tipo      String
+  tamanho   Int
+  url       String
+  criadoEm DateTime           @default(now())
+
+  @@index([empresaId])
+  @@map("documentos")
+}
+
+// ─────────────────────────── Diário de Obra ───────────────────────
+
+model RegistroDiario {
+  id        String   @id @default(cuid())
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId String
+  obra      Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obraId    String
+  data      DateTime
+  texto     String?
+  fotos     String[]
+  criadoEm DateTime @default(now())
+
+  @@index([obraId])
+  @@map("registros_diario")
+}

@@ -1,26 +1,251 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   PrumoCanteiro — Design System Tokens
+   Fontes carregadas via next/font/google em layout.tsx
+   ───────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Paleta navy ── */
+  --navy-50:  #F2F5FA;
+  --navy-100: #DDE5F0;
+  --navy-200: #B6C5DC;
+  --navy-300: #7E94B5;
+  --navy-400: #4A6388;
+  --navy-500: #1F3D66;
+  --navy-600: #14305A;
+  --navy-700: #0B2545;
+  --navy-800: #07182E;
+  --navy-900: #040E1C;
+
+  /* ── Paleta ouro ── */
+  --gold-50:  #FBF6E9;
+  --gold-100: #F5E9C5;
+  --gold-200: #EAD491;
+  --gold-300: #DCBB5A;
+  --gold-400: #D4A24C;
+  --gold-500: #B5853A;
+  --gold-600: #8E6627;
+  --gold-700: #6B4B1A;
+
+  /* ── Neutros (creme/papel) ── */
+  --ink-50:  #FAFAF7;
+  --ink-100: #F4F3EE;
+  --ink-200: #E8E6DE;
+  --ink-300: #D2CFC3;
+  --ink-400: #A8A498;
+  --ink-500: #76736A;
+  --ink-600: #4D4B45;
+  --ink-700: #2C2B27;
+  --ink-800: #1A1917;
+  --ink-900: #0E0D0C;
+
+  /* ── Semânticos ── */
+  --success-50:  #ECF7EF;
+  --success-500: #2F7D4A;
+  --success-700: #1E5A33;
+  --warning-50:  #FCF4E3;
+  --warning-500: #C68A1C;
+  --warning-700: #8E6011;
+  --danger-50:   #FBEDED;
+  --danger-500:  #B5363C;
+  --danger-700:  #832328;
+  --info-50:     #ECF1F9;
+  --info-500:    #3961AC;
+  --info-700:    #243F73;
+
+  /* ── Superfícies ── */
+  --bg-canvas:  var(--ink-50);
+  --bg-surface: #FFFFFF;
+  --bg-raised:  var(--ink-100);
+  --bg-sunken:  var(--ink-100);
+  --bg-inverse: var(--navy-700);
+
+  /* ── Texto ── */
+  --fg-primary:    var(--ink-800);
+  --fg-secondary:  var(--ink-600);
+  --fg-tertiary:   var(--ink-500);
+  --fg-muted:      var(--ink-400);
+  --fg-disabled:   var(--ink-300);
+  --fg-on-navy:    #FFFFFF;
+  --fg-on-gold:    var(--navy-800);
+  --fg-link:       var(--navy-600);
+  --fg-link-hover: var(--navy-700);
+
+  /* ── Acentos ── */
+  --accent-primary:   var(--navy-700);
+  --accent-secondary: var(--gold-400);
+  --accent-hover:     var(--navy-600);
+  --accent-press:     var(--navy-800);
+
+  /* ── Bordas ── */
+  --border-subtle:  var(--ink-200);
+  --border-default: var(--ink-300);
+  --border-strong:  var(--ink-400);
+  --border-focus:   var(--navy-600);
+  --border-gold:    var(--gold-400);
+
+  /* ── Tipografia — referencia vars injetadas pelo next/font ── */
+  --font-display: var(--font-spectral, "Spectral", Georgia, serif);
+  --font-sans:    var(--font-manrope, "Manrope", "Helvetica Neue", system-ui, sans-serif);
+  --font-mono:    "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+  /* ── Raios ── */
+  --radius-none: 0;
+  --radius-sm:   4px;
+  --radius-md:   6px;
+  --radius-lg:   10px;
+  --radius-xl:   14px;
+  --radius-2xl:  20px;
+  --radius-full: 9999px;
+
+  /* ── Sombras ── */
+  --shadow-xs:        0 1px 2px rgba(7, 24, 46, 0.06);
+  --shadow-sm:        0 1px 3px rgba(7, 24, 46, 0.08), 0 1px 2px rgba(7, 24, 46, 0.04);
+  --shadow-md:        0 4px 12px rgba(7, 24, 46, 0.08), 0 2px 4px rgba(7, 24, 46, 0.04);
+  --shadow-lg:        0 12px 28px rgba(7, 24, 46, 0.12), 0 4px 8px rgba(7, 24, 46, 0.06);
+  --shadow-xl:        0 24px 48px rgba(7, 24, 46, 0.16), 0 8px 16px rgba(7, 24, 46, 0.08);
+  --shadow-gold-glow: 0 0 0 3px rgba(212, 162, 76, 0.25);
+  --shadow-focus:     0 0 0 3px rgba(20, 48, 90, 0.25);
+
+  /* ── Transições ── */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasis: cubic-bezier(0.3, 0, 0, 1);
+  --ease-soft:     cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   140ms;
+  --dur-normal: 220ms;
+  --dur-slow:   320ms;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Tailwind v4 — mapeamento de tokens
+   @theme inline: usa as CSS vars diretamente nas utilities
+   ───────────────────────────────────────────────────────────── */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Navy */
+  --color-navy-50:  var(--navy-50);
+  --color-navy-100: var(--navy-100);
+  --color-navy-200: var(--navy-200);
+  --color-navy-300: var(--navy-300);
+  --color-navy-400: var(--navy-400);
+  --color-navy-500: var(--navy-500);
+  --color-navy-600: var(--navy-600);
+  --color-navy-700: var(--navy-700);
+  --color-navy-800: var(--navy-800);
+  --color-navy-900: var(--navy-900);
+
+  /* Ouro */
+  --color-gold-50:  var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+
+  /* Ink */
+  --color-ink-50:  var(--ink-50);
+  --color-ink-100: var(--ink-100);
+  --color-ink-200: var(--ink-200);
+  --color-ink-300: var(--ink-300);
+  --color-ink-400: var(--ink-400);
+  --color-ink-500: var(--ink-500);
+  --color-ink-600: var(--ink-600);
+  --color-ink-700: var(--ink-700);
+  --color-ink-800: var(--ink-800);
+  --color-ink-900: var(--ink-900);
+
+  /* Semânticos */
+  --color-success-50:  var(--success-50);
+  --color-success-500: var(--success-500);
+  --color-success-700: var(--success-700);
+  --color-warning-50:  var(--warning-50);
+  --color-warning-500: var(--warning-500);
+  --color-warning-700: var(--warning-700);
+  --color-danger-50:   var(--danger-50);
+  --color-danger-500:  var(--danger-500);
+  --color-danger-700:  var(--danger-700);
+  --color-info-50:     var(--info-50);
+  --color-info-500:    var(--info-500);
+  --color-info-700:    var(--info-700);
+
+  /* Canvas / surface */
+  --color-canvas:  var(--ink-50);
+  --color-surface: #FFFFFF;
+  --color-raised:  var(--ink-100);
+
+  /* Fontes */
+  --font-display: var(--font-display);
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-mono);
+
+  /* Raios */
+  --radius-none: var(--radius-none);
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+  --radius-full: var(--radius-full);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ─────────────────────────────────────────────────────────────
+   Keyframes (modais, toasts, spinners)
+   ───────────────────────────────────────────────────────────── */
+
+@keyframes cnt-fade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cnt-pop   { from { opacity: 0; transform: scale(0.98) translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes cnt-toast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cnt-spin  { to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────────────────────────
+   Estilos base
+   ───────────────────────────────────────────────────────────── */
+
+html, body { height: 100%; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:  var(--bg-canvas);
+  color:       var(--fg-primary);
+  font-family: var(--font-sans);
+  font-size:   16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern", "liga", "ss01";
 }
+
+/* Scrollbar */
+*::-webkit-scrollbar         { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track   { background: transparent; }
+*::-webkit-scrollbar-thumb   { background: var(--ink-300); border-radius: 5px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-400); }
+
+/* Focus ring */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* Links */
+a {
+  color: var(--fg-link);
+  text-underline-offset: 2px;
+}
+a:hover { color: var(--fg-link-hover); }
+
+/* Inputs de data usam a fonte do sistema por padrão */
+input[type="date"] { font-family: var(--font-sans); }
+
+/* ─────────────────────────────────────────────────────────────
+   Classes utilitárias de animação
+   ───────────────────────────────────────────────────────────── */
+
+.cnt-fade { animation: cnt-fade 180ms ease; }
+.cnt-pop  { animation: cnt-pop 220ms var(--ease-soft); }
+.cnt-spin { animation: cnt-spin 720ms linear infinite; }
