@@ -17,14 +17,16 @@ export const STATUS_FUNCIONARIO = {
 } as const;
 
 export const STATUS_NF = {
+  pendente:   { label: "Pendente",    color: "var(--warning-700)", bg: "var(--warning-50)" },
   confirmada: { label: "Confirmada",  color: "var(--success-700)", bg: "var(--success-50)" },
-  em_revisao: { label: "Em revisão",  color: "var(--warning-700)", bg: "var(--warning-50)" },
+  em_revisao: { label: "Em revisão",  color: "var(--navy-600)",    bg: "var(--navy-50)"    },
+  cancelada:  { label: "Cancelada",   color: "var(--fg-tertiary)", bg: "var(--ink-100)"    },
 } as const;
 
 export const CATEGORIA_NF = {
-  material:     "Material",
-  mao_obra:     "Mão de obra",
-  servicos:     "Serviços",
-  equipamentos: "Equipamentos",
-  outros:       "Outros",
+  material:     { label: "Material"     },
+  mao_obra:     { label: "Mão de obra"  },
+  servicos:     { label: "Serviços"     },
+  equipamentos: { label: "Equipamentos" },
+  outros:       { label: "Outros"       },
 } as const;
