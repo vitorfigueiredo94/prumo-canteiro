@@ -11,6 +11,7 @@ import {
   ReceiptText,
   Handshake,
   MapPinned,
+  BookOpen,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/notas",         label: "Notas fiscais", icon: ReceiptText },
   { href: "/vendas",        label: "Vendas",        icon: Handshake },
   { href: "/terrenos",      label: "Terrenos",      icon: MapPinned },
+  { href: "/diario",        label: "Diário",        icon: BookOpen },
 ];
 
 interface SidebarProps {

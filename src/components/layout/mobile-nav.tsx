@@ -10,6 +10,7 @@ import {
   ReceiptText,
   Handshake,
   MapPinned,
+  BookOpen,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/notas",        short: "Notas",   icon: ReceiptText },
   { href: "/vendas",       short: "Vendas",  icon: Handshake },
   { href: "/terrenos",     short: "Lotes",   icon: MapPinned },
+  { href: "/diario",       short: "Diário",  icon: BookOpen },
 ];
 
 export function MobileNav() {
