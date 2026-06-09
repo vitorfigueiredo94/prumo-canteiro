@@ -1,77 +1,88 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { DashboardView } from "./dashboard-view";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export const metadata: Metadata = { title: "Dashboard" };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: user.id },
+    select: { empresaId: true, nome: true },
+  });
+  if (!usuario) redirect("/login");
+
+  const eid = usuario.empresaId;
+  const today = new Date();
+  const in7 = new Date(today); in7.setDate(today.getDate() + 7);
+
+  const [
+    obrasAtivas, obrasTotal,
+    funcAtivos,
+    orcamentoAggregate,
+    gastoNotasAggregate,
+    gastoPagsAggregate,
+    receitaAggregate,
+    notasPendentes,
+    parcelasVencendo,
+    parcelasAtrasadas,
+    obrasRaw,
+  ] = await Promise.all([
+    prisma.obra.count({ where: { empresaId: eid, status: "em_andamento" } }),
+    prisma.obra.count({ where: { empresaId: eid } }),
+    prisma.funcionario.count({ where: { empresaId: eid, status: "ativo" } }),
+    prisma.obra.aggregate({ where: { empresaId: eid }, _sum: { orcamento: true } }),
+    prisma.notaFiscal.aggregate({ where: { empresaId: eid, status: "confirmada" }, _sum: { valor: true } }),
+    prisma.pagamentoFuncionario.aggregate({ where: { empresaId: eid }, _sum: { valor: true } }),
+    prisma.parcela.aggregate({ where: { venda: { empresaId: eid }, status: "paga" }, _sum: { valor: true } }),
+    prisma.notaFiscal.findMany({
+      where: { empresaId: eid, status: "pendente" },
+      include: { obra: { select: { id: true, nome: true } } },
+      orderBy: { emitidaEm: "desc" }, take: 5,
+    }),
+    prisma.parcela.findMany({
+      where: { venda: { empresaId: eid }, status: "aberta", vencimento: { gte: today, lte: in7 } },
+      include: { venda: { select: { id: true, nomeComprador: true } } },
+      orderBy: { vencimento: "asc" }, take: 5,
+    }),
+    prisma.parcela.count({ where: { venda: { empresaId: eid }, status: "aberta", vencimento: { lt: today } } }),
+    prisma.obra.findMany({
+      where: { empresaId: eid },
+      include: {
+        notas: { where: { status: "confirmada" }, select: { valor: true } },
+        pagamentos: { select: { valor: true } },
+      },
+    }),
+  ]);
+
+  const orcamento = Number(orcamentoAggregate._sum.orcamento ?? 0);
+  const gastoTotal = Number(gastoNotasAggregate._sum.valor ?? 0) + Number(gastoPagsAggregate._sum.valor ?? 0);
+  const receita = Number(receitaAggregate._sum.valor ?? 0);
+
+  const obrasComEstouro = obrasRaw
+    .filter((o: typeof obrasRaw[0]) => {
+      const gasto = o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
+        + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0);
+      return gasto > Number(o.orcamento);
+    })
+    .map((o: typeof obrasRaw[0]) => ({
+      id: o.id, nome: o.nome, orcamento: Number(o.orcamento),
+      gasto: o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
+        + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0),
+    }));
+
   return (
-    <div style={{ padding: "32px" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 30,
-            fontWeight: 500,
-            color: "var(--fg-primary)",
-            margin: "0 0 4px",
-            letterSpacing: "-0.015em",
-          }}
-        >
-          Visão geral
-        </h1>
-        <p style={{ fontSize: 14, color: "var(--fg-tertiary)", margin: 0 }}>
-          Bem-vindo ao PrumoCanteiro.
-        </p>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {[
-          { label: "Obras ativas", value: "—", color: "var(--navy-700)" },
-          { label: "Orçamento total", value: "—", color: "var(--gold-600)" },
-          { label: "Funcionários ativos", value: "—", color: "var(--success-700)" },
-          { label: "Parcelas a receber", value: "—", color: "var(--info-500)" },
-        ].map((kpi) => (
-          <div
-            key={kpi.label}
-            style={{
-              background: "var(--bg-surface)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-lg)",
-              padding: "20px 24px",
-              boxShadow: "var(--shadow-sm)",
-            }}
-          >
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
-              {kpi.label}
-            </div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 400, color: kpi.color }}>
-              {kpi.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div
-        style={{
-          marginTop: 32,
-          padding: "24px",
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-sm)",
-        }}
-      >
-        <p style={{ fontSize: 14, color: "var(--fg-tertiary)", margin: 0, textAlign: "center" }}>
-          Dashboard completo será implementado na Etapa 10. Use o menu lateral para navegar pelos módulos.
-        </p>
-      </div>
-    </div>
+    <DashboardView
+      nomeUsuario={usuario.nome}
+      kpis={{ obrasAtivas, obrasTotal, funcAtivos, orcamento, gastoTotal, receita, parcelasAtrasadas }}
+      notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
+      parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}
+      obrasComEstouro={obrasComEstouro}
+    />
   );
 }
