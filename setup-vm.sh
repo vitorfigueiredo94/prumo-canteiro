@@ -8,7 +8,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -e
 
-PRUMO_REPO="https://github.com/SEU_USUARIO/prumo-canteiro.git"  # ← alterar
+PRUMO_REPO="https://github.com/vitorfigueiredo94/prumo-canteiro.git"
 PRUMO_DIR="/opt/prumo-canteiro"
 
 echo ""
