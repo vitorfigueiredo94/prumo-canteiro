@@ -26,6 +26,12 @@ ENV DATABASE_URL="file:/tmp/build.db"
 
 RUN npm run build
 
+# Gera DDL SQL do schema — aplicado no runner sem CLI Prisma
+RUN npx prisma migrate diff \
+    --from-empty \
+    --to-schema-datamodel prisma/schema.prisma \
+    --script > /app/init.sql
+
 # ── Runner (imagem final mínima) ───────────────────────────────────────────────
 FROM base AS runner
 RUN apk add --no-cache openssl libc6-compat python3 make g++
@@ -44,20 +50,18 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma schema + client nativo + config
+# Prisma client nativo (sem CLI — schema aplicado via init.sql)
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder /app/node_modules/@prisma/adapter-better-sqlite3 ./node_modules/@prisma/adapter-better-sqlite3
 
-# Prisma CLI (necessário para prisma db push no entrypoint)
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-RUN mkdir -p ./node_modules/.bin && \
-    ln -sf /app/node_modules/prisma/build/index.js ./node_modules/.bin/prisma
+# SQL gerado no build + script de init
+COPY --from=builder /app/init.sql ./init.sql
+COPY docker/init-db.js ./init-db.js
 
-# Script de inicialização: db push + seed + server
+# Script de inicialização: init-db + seed + server
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
 COPY docker/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
