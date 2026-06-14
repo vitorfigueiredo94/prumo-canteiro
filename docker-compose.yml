@@ -1,19 +1,20 @@
 version: "3.8"
 
 # PrumoCanteiro — Produção (Ubuntu VM)
+# Arquitetura: Cloudflare Tunnel → Nginx HTTPS (3001) → Next.js (3000)
 #
 # Uso:
-#   cp .env.example .env && nano .env    # configurar SESSION_SECRET
-#   docker compose up -d --build         # primeira vez
-#   docker compose up -d                 # reiniciar sem recompilar
-#   docker compose down                  # parar
-#   docker compose logs -f app           # logs
-#   docker compose exec app npx prisma db push   # atualizar schema
-#   docker compose exec app npx tsx prisma/seed.ts  # dados demo
+#   ./docker/gen-cert.sh              # gerar cert autoassinado (1x)
+#   cp .env.example .env && nano .env # configurar SESSION_SECRET
+#   docker compose up -d --build      # primeira vez
+#   docker compose up -d              # reiniciar sem recompilar
+#   docker compose down               # parar
+#   docker compose logs -f app        # logs Next.js
+#   docker compose logs -f nginx      # logs Nginx
 
 services:
 
-  # ── Next.js (porta 3001 no host) ─────────────────────────────────────────
+  # ── Next.js (interno, sem exposição direta ao host) ───────────────────────
   app:
     build:
       context: .
@@ -22,15 +23,36 @@ services:
     environment:
       DATABASE_URL: "file:/app/data/prumo.db"
       SESSION_SECRET: ${SESSION_SECRET}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://prumocanteiro.com.br}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       NODE_ENV: production
     volumes:
-      - db_data:/app/data           # SQLite persistente
-      - uploads:/app/public/uploads # uploads (QR codes, fotos, PDFs, áudios)
+      - db_data:/app/data
+      - uploads:/app/public/uploads
+    networks:
+      - internal
+    expose:
+      - "3000"
+
+  # ── Nginx (HTTPS 3001 → HTTP Next.js 3000) ────────────────────────────────
+  # Cloudflare Tunnel conecta em https://localhost:3001 + noTLSVerify: true
+  nginx:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
     ports:
-      - "3001:3000"
+      - "3001:443"
+    volumes:
+      - ./docker/nginx-ssl.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   db_data:
