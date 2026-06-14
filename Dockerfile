@@ -29,7 +29,7 @@ RUN npm run build
 # Gera DDL SQL do schema — aplicado no runner sem CLI Prisma
 RUN npx prisma migrate diff \
     --from-empty \
-    --to-schema-datamodel prisma/schema.prisma \
+    --to-schema prisma/schema.prisma \
     --script > /app/init.sql
 
 # ── Runner (imagem final mínima) ───────────────────────────────────────────────
