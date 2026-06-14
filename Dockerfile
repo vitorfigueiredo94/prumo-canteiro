@@ -52,6 +52,11 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder /app/node_modules/@prisma/adapter-better-sqlite3 ./node_modules/@prisma/adapter-better-sqlite3
 
+# Prisma CLI (necessário para prisma db push no entrypoint)
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+RUN mkdir -p ./node_modules/.bin && \
+    ln -sf /app/node_modules/prisma/build/index.js ./node_modules/.bin/prisma
+
 # Script de inicialização: db push + seed + server
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
 COPY docker/entrypoint.sh ./entrypoint.sh
