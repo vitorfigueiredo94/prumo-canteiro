@@ -1,23 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-
-async function getEmpresaId(): Promise<string> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true },
-  });
-  if (!usuario) redirect("/login");
-  return usuario.empresaId;
-}
 
 const TerrenoSchema = z.object({
   nome: z.string().min(1),
@@ -32,12 +18,8 @@ const TerrenoSchema = z.object({
 
 export type TerrenoFormState = { error?: string } | null;
 
-export async function criarTerreno(
-  _prev: TerrenoFormState,
-  formData: FormData
-): Promise<TerrenoFormState> {
+export async function criarTerreno(_prev: TerrenoFormState, formData: FormData): Promise<TerrenoFormState> {
   const empresaId = await getEmpresaId();
-
   const parsed = TerrenoSchema.safeParse({
     nome: formData.get("nome"),
     numero: formData.get("numero") || undefined,
@@ -48,36 +30,23 @@ export async function criarTerreno(
     aquisicao: formData.get("aquisicao") || undefined,
     valorCompra: formData.get("valorCompra") || undefined,
   });
-
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-
   const { nome, numero, endereco, cidade, area, status, aquisicao, valorCompra } = parsed.data;
-
   await prisma.terreno.create({
     data: {
-      empresaId,
-      nome,
+      empresaId, nome, cidade, area, status,
       numero: numero || null,
       endereco: endereco || null,
-      cidade,
-      area,
-      status: status as any,
       aquisicao: aquisicao ? new Date(aquisicao) : null,
       valorCompra: valorCompra ?? null,
     },
   });
-
   revalidatePath("/terrenos");
   return null;
 }
 
-export async function editarTerreno(
-  id: string,
-  _prev: TerrenoFormState,
-  formData: FormData
-): Promise<TerrenoFormState> {
+export async function editarTerreno(id: string, _prev: TerrenoFormState, formData: FormData): Promise<TerrenoFormState> {
   const empresaId = await getEmpresaId();
-
   const parsed = TerrenoSchema.safeParse({
     nome: formData.get("nome"),
     numero: formData.get("numero") || undefined,
@@ -88,25 +57,18 @@ export async function editarTerreno(
     aquisicao: formData.get("aquisicao") || undefined,
     valorCompra: formData.get("valorCompra") || undefined,
   });
-
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-
   const { nome, numero, endereco, cidade, area, status, aquisicao, valorCompra } = parsed.data;
-
   await prisma.terreno.updateMany({
     where: { id, empresaId },
     data: {
-      nome,
+      nome, cidade, area, status,
       numero: numero || null,
       endereco: endereco || null,
-      cidade,
-      area,
-      status: status as any,
       aquisicao: aquisicao ? new Date(aquisicao) : null,
       valorCompra: valorCompra ?? null,
     },
   });
-
   revalidatePath("/terrenos");
   revalidatePath(`/terrenos/${id}`);
   return null;

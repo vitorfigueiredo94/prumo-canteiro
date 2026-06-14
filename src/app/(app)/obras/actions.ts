@@ -1,19 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-
-async function getEmpresaId(): Promise<string> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const usuario = await prisma.usuario.findUnique({ where: { id: user.id }, select: { empresaId: true } });
-  if (!usuario) redirect("/login");
-  return usuario.empresaId;
-}
 
 const ObraSchema = z.object({
   nome: z.string().min(1),
@@ -44,11 +34,7 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
   const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
   await prisma.obra.create({
     data: {
-      empresaId,
-      terrenoId,
-      nome,
-      orcamento,
-      status: status as any,
+      empresaId, terrenoId, nome, orcamento, status,
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,
@@ -76,7 +62,7 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
   await prisma.obra.updateMany({
     where: { id, empresaId },
     data: {
-      nome, terrenoId, orcamento, status: status as any, progresso,
+      nome, terrenoId, orcamento, status, progresso,
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,

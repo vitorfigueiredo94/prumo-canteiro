@@ -1,0 +1,37 @@
+version: "3.8"
+
+# PrumoCanteiro — Produção (Ubuntu VM)
+#
+# Uso:
+#   cp .env.example .env && nano .env    # configurar SESSION_SECRET
+#   docker compose up -d --build         # primeira vez
+#   docker compose up -d                 # reiniciar sem recompilar
+#   docker compose down                  # parar
+#   docker compose logs -f app           # logs
+#   docker compose exec app npx prisma db push   # atualizar schema
+#   docker compose exec app npx tsx prisma/seed.ts  # dados demo
+
+services:
+
+  # ── Next.js (porta 3001 no host) ─────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "file:/app/data/prumo.db"
+      SESSION_SECRET: ${SESSION_SECRET}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3001}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      NODE_ENV: production
+    volumes:
+      - db_data:/app/data           # SQLite persistente
+      - uploads:/app/public/uploads # uploads (QR codes, fotos, PDFs, áudios)
+    ports:
+      - "3001:3000"
+
+volumes:
+  db_data:
+  uploads:

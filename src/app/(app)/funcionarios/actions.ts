@@ -1,19 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-
-async function getEmpresaId(): Promise<string> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const usuario = await prisma.usuario.findUnique({ where: { id: user.id }, select: { empresaId: true } });
-  if (!usuario) redirect("/login");
-  return usuario.empresaId;
-}
 
 const FuncSchema = z.object({
   nome: z.string().min(1),
@@ -58,9 +48,10 @@ export async function criarFuncionario(_prev: FuncFormState, formData: FormData)
   const { nome, cpf, cargo, telefone, email, salario, admissao, status } = parsed.data;
   await prisma.funcionario.create({
     data: {
-      empresaId, nome, cpf: cpf || null, cargo: cargo || null,
+      empresaId, nome, status,
+      cpf: cpf || null, cargo: cargo || null,
       telefone: telefone || null, email: email || null,
-      salario: salario ?? null, status: status as any,
+      salario: salario ?? null,
       admissao: admissao ? new Date(admissao) : null,
     },
   });
@@ -85,9 +76,10 @@ export async function editarFuncionario(id: string, _prev: FuncFormState, formDa
   await prisma.funcionario.updateMany({
     where: { id, empresaId },
     data: {
-      nome, cpf: cpf || null, cargo: cargo || null,
+      nome, status,
+      cpf: cpf || null, cargo: cargo || null,
       telefone: telefone || null, email: email || null,
-      salario: salario ?? null, status: status as any,
+      salario: salario ?? null,
       admissao: admissao ? new Date(admissao) : null,
     },
   });

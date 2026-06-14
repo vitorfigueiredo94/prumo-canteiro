@@ -1,0 +1,4 @@
+# Normaliza line endings: LF no repositório, checkout automático por OS
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf

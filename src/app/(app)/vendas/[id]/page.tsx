@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VendaDetail } from "./venda-detail";
 
@@ -8,18 +8,11 @@ export const metadata: Metadata = { title: "Extrato de Venda" };
 
 export default async function VendaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true },
-  });
-  if (!usuario) redirect("/login");
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const venda = await prisma.venda.findFirst({
-    where: { id, empresaId: usuario.empresaId },
+    where: { id, empresaId: session.empresaId },
     include: {
       terreno: { select: { id: true, nome: true, cidade: true, numero: true } },
       parcelas: { orderBy: { numero: "asc" } },

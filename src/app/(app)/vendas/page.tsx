@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VendasView } from "./vendas-view";
 
 export const metadata: Metadata = { title: "Vendas" };
 
 export default async function VendasPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true },
-  });
-  if (!usuario) redirect("/login");
+  const eid = session.empresaId;
 
   const [vendas, terrenos] = await Promise.all([
     prisma.venda.findMany({
-      where: { empresaId: usuario.empresaId },
+      where: { empresaId: eid },
       include: {
         terreno: { select: { id: true, nome: true, cidade: true } },
         parcelas: { select: { id: true, status: true, valor: true } },
@@ -27,7 +22,7 @@ export default async function VendasPage() {
       orderBy: { criadoEm: "desc" },
     }),
     prisma.terreno.findMany({
-      where: { empresaId: usuario.empresaId, status: { not: "vendido" } },
+      where: { empresaId: eid, status: { not: "vendido" } },
       select: { id: true, nome: true, cidade: true },
       orderBy: { nome: "asc" },
     }),

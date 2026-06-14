@@ -1,4 +1,4 @@
-// PrumoCanteiro — Prisma Schema
+// PrumoCanteiro — Prisma Schema (SQLite local / PostgreSQL produção)
 // Multi-tenant: cada Empresa é isolada por empresaId em todas as tabelas.
 
 generator client {
@@ -6,9 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
 }
 
 // ─────────────────────────── SaaS Layer ───────────────────────────
@@ -16,10 +14,10 @@ datasource db {
 model Plano {
   id             String       @id @default(cuid())
   nome           String
-  preco          Decimal      @db.Decimal(10, 2)
+  preco          Decimal
   limiteObras    Int?
   limiteUsuarios Int?
-  recursos       String[]
+  recursos       String       @default("[]")
   destaque       Boolean      @default(false)
   assinaturas    Assinatura[]
   criadoEm      DateTime     @default(now())
@@ -28,24 +26,17 @@ model Plano {
   @@map("planos")
 }
 
-enum StatusAssinatura {
-  ativo
-  trial
-  inadimplente
-  cancelado
-}
-
 model Assinatura {
-  id              String           @id @default(cuid())
-  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId       String           @unique
-  plano           Plano            @relation(fields: [planoId], references: [id])
+  id              String   @id @default(cuid())
+  empresa         Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId       String   @unique
+  plano           Plano    @relation(fields: [planoId], references: [id])
   planoId         String
-  status          StatusAssinatura @default(trial)
-  desde           DateTime         @default(now())
+  status          String   @default("trial")
+  desde           DateTime @default(now())
   proximaCobranca DateTime?
-  criadoEm       DateTime         @default(now())
-  atualizadoEm   DateTime         @updatedAt
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
 
   @@map("assinaturas")
 }
@@ -53,7 +44,7 @@ model Assinatura {
 // ─────────────────────────── Empresa & Usuários ───────────────────
 
 model Empresa {
-  id               String                @id @default(cuid())
+  id               String                 @id @default(cuid())
   nome             String
   assinatura       Assinatura?
   usuarios         Usuario[]
@@ -65,20 +56,21 @@ model Empresa {
   vendas           Venda[]
   documentos       Documento[]
   diario           DiarioObra[]
-  criadoEm        DateTime              @default(now())
-  atualizadoEm    DateTime              @updatedAt
+  criadoEm        DateTime               @default(now())
+  atualizadoEm    DateTime               @updatedAt
 
   @@map("empresas")
 }
 
 model Usuario {
-  id           String   @id
-  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  empresaId    String
-  nome         String
-  email        String   @unique
-  superAdmin   Boolean  @default(false)
-  criadoEm    DateTime @default(now())
+  id            String   @id @default(cuid())
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresaId     String
+  nome          String
+  email         String   @unique
+  passwordHash  String?
+  superAdmin    Boolean  @default(false)
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   @@map("usuarios")
@@ -86,42 +78,29 @@ model Usuario {
 
 // ─────────────────────────── Terrenos ─────────────────────────────
 
-enum StatusTerreno {
-  disponivel
-  em_obra    @map("em-obra")
-  vendido
-}
-
 model Terreno {
-  id          String        @id @default(cuid())
-  empresa     Empresa       @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id          String     @id @default(cuid())
+  empresa     Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId   String
   nome        String
   numero      String?
   endereco    String?
   cidade      String
-  area        Decimal       @db.Decimal(10, 2)
-  status      StatusTerreno @default(disponivel)
+  area        Decimal
+  status      String     @default("disponivel")
   aquisicao   DateTime?
-  valorCompra Decimal?      @db.Decimal(14, 2)
+  valorCompra Decimal?
   obras       Obra[]
   vendas      Venda[]
   documentos  Documento[]
-  criadoEm   DateTime      @default(now())
-  atualizadoEm DateTime     @updatedAt
+  criadoEm   DateTime   @default(now())
+  atualizadoEm DateTime  @updatedAt
 
   @@index([empresaId])
   @@map("terrenos")
 }
 
 // ─────────────────────────── Obras ────────────────────────────────
-
-enum StatusObra {
-  planejamento
-  em_andamento @map("em-andamento")
-  parada
-  concluida
-}
 
 model Obra {
   id           String                 @id @default(cuid())
@@ -130,8 +109,8 @@ model Obra {
   terreno      Terreno                @relation(fields: [terrenoId], references: [id])
   terrenoId    String
   nome         String
-  status       StatusObra             @default(planejamento)
-  orcamento    Decimal                @db.Decimal(14, 2)
+  status       String                 @default("planejamento")
+  orcamento    Decimal
   inicio       DateTime?
   prazo        DateTime?
   progresso    Int                    @default(0)
@@ -150,11 +129,6 @@ model Obra {
 
 // ─────────────────────────── Funcionários ─────────────────────────
 
-enum StatusFuncionario {
-  ativo
-  inativo
-}
-
 model Funcionario {
   id           String                 @id @default(cuid())
   empresa      Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
@@ -164,9 +138,9 @@ model Funcionario {
   cpf          String?
   telefone     String?
   email        String?
-  salario      Decimal?               @db.Decimal(10, 2)
+  salario      Decimal?
   admissao     DateTime?
-  status       StatusFuncionario      @default(ativo)
+  status       String                 @default("ativo")
   alocacoes    AlocacaoFuncionario[]
   pagamentos   PagamentoFuncionario[]
   notas        NotaFiscal[]
@@ -201,7 +175,7 @@ model PagamentoFuncionario {
   funcionarioId String
   obra          Obra?       @relation(fields: [obraId], references: [id])
   obraId        String?
-  valor         Decimal     @db.Decimal(14, 2)
+  valor         Decimal
   descricao     String?
   pagoEm        DateTime?
   criadoEm     DateTime    @default(now())
@@ -213,39 +187,24 @@ model PagamentoFuncionario {
 
 // ─────────────────────────── Notas Fiscais ────────────────────────
 
-enum CategoriaNotaFiscal {
-  material
-  mao_obra     @map("mao-obra")
-  servicos
-  equipamentos
-  outros
-}
-
-enum StatusNotaFiscal {
-  pendente
-  em_revisao   @map("em-revisao")
-  confirmada
-  cancelada
-}
-
 model NotaFiscal {
-  id            String              @id @default(cuid())
-  empresa       Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  empresa       Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId     String
-  obra          Obra                @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra          Obra        @relation(fields: [obraId], references: [id], onDelete: Cascade)
   obraId        String
-  funcionario   Funcionario?        @relation(fields: [funcionarioId], references: [id])
+  funcionario   Funcionario? @relation(fields: [funcionarioId], references: [id])
   funcionarioId String?
   fornecedor    String?
   numero        String?
-  categoria     CategoriaNotaFiscal @default(material)
-  valor         Decimal             @db.Decimal(14, 2)
+  categoria     String      @default("material")
+  valor         Decimal
   emitidaEm    DateTime?
-  status        StatusNotaFiscal    @default(pendente)
+  status        String      @default("pendente")
   descricao     String?
   arquivoUrl    String?
-  criadoEm     DateTime            @default(now())
-  atualizadoEm DateTime             @updatedAt
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime     @updatedAt
 
   @@index([empresaId])
   @@index([obraId])
@@ -255,25 +214,25 @@ model NotaFiscal {
 // ─────────────────────────── Vendas de Terrenos ───────────────────
 
 model Venda {
-  id                 String    @id @default(cuid())
-  empresa            Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id                 String      @id @default(cuid())
+  empresa            Empresa     @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId          String
-  terreno            Terreno   @relation(fields: [terrenoId], references: [id])
+  terreno            Terreno     @relation(fields: [terrenoId], references: [id])
   terrenoId          String
   nomeComprador      String
   cpfCnpjComprador   String?
-  telefoneComprador   String?
+  telefoneComprador  String?
   emailComprador     String?
-  valorTotal         Decimal   @db.Decimal(14, 2)
-  entrada            Decimal   @default(0) @db.Decimal(14, 2)
-  numeroParcelas     Int       @default(1)
-  diaVencimento      Int       @default(5)
+  valorTotal         Decimal
+  entrada            Decimal     @default(0)
+  numeroParcelas     Int         @default(1)
+  diaVencimento      Int         @default(5)
   dataContrato       DateTime?
   observacoes        String?
   parcelas           Parcela[]
   documentos         Documento[]
-  criadoEm          DateTime  @default(now())
-  atualizadoEm      DateTime  @updatedAt
+  criadoEm          DateTime    @default(now())
+  atualizadoEm      DateTime    @updatedAt
 
   @@index([empresaId])
   @@map("vendas")
@@ -285,7 +244,7 @@ model Parcela {
   vendaId    String
   numero     Int
   vencimento DateTime?
-  valor      Decimal   @db.Decimal(14, 2)
+  valor      Decimal
   status     String    @default("aberta")
   pagoEm     DateTime?
   criadoEm  DateTime  @default(now())
@@ -297,28 +256,22 @@ model Parcela {
 
 // ─────────────────────────── Documentos ───────────────────────────
 
-enum OwnerTypeDocumento {
-  obra
-  venda
-  terreno
-}
-
 model Documento {
-  id        String             @id @default(cuid())
-  empresa   Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  empresa   Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId String
-  ownerType OwnerTypeDocumento
+  ownerType String
   obraId    String?
-  obra      Obra?              @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obra      Obra?     @relation(fields: [obraId], references: [id], onDelete: Cascade)
   vendaId   String?
-  venda     Venda?             @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  venda     Venda?    @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   terrenoId String?
-  terreno   Terreno?           @relation(fields: [terrenoId], references: [id], onDelete: Cascade)
+  terreno   Terreno?  @relation(fields: [terrenoId], references: [id], onDelete: Cascade)
   nome      String
   tipo      String
   tamanho   Int
   url       String
-  criadoEm DateTime           @default(now())
+  criadoEm DateTime  @default(now())
 
   @@index([empresaId])
   @@map("documentos")
@@ -341,4 +294,117 @@ model DiarioObra {
 
   @@index([obraId])
   @@map("diario_obras")
+}
+
+// ─────────────────────────── Features Avançadas (append-only) ────────
+// IDs referenciam models existentes mas sem @relation para não tocar neles
+
+model QrCodeInsumo {
+  id           String   @id @default(cuid())
+  empresaId    String
+  codigo       String   @unique
+  nome         String
+  tipo         String   @default("insumo")
+  descricao    String?
+  obraId       String?
+  qrImageUrl   String?
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([empresaId])
+  @@map("qrcodes_insumos")
+}
+
+model PortalClienteToken {
+  id        String    @id @default(cuid())
+  empresaId String
+  nome      String
+  tokenHash String    @unique
+  ativo     Boolean   @default(true)
+  expiraEm  DateTime?
+  ultimoUso DateTime?
+  criadoEm DateTime  @default(now())
+
+  @@index([empresaId])
+  @@map("portal_cliente_tokens")
+}
+
+model PredicaoAtraso {
+  id            String   @id @default(cuid())
+  empresaId     String
+  obraId        String
+  riscoPct      Int      @default(0)
+  diasAtraso    Int      @default(0)
+  fatores       String   @default("[]")
+  recomendacoes String   @default("[]")
+  modeloUsado   String   @default("gemini")
+  criadoEm     DateTime @default(now())
+
+  @@index([obraId])
+  @@map("predicoes_atraso")
+}
+
+model TranscricaoAudio {
+  id          String   @id @default(cuid())
+  empresaId   String
+  obraId      String
+  diarioId    String?
+  audioUrl    String
+  transcricao String
+  durSeg      Int?
+  status      String   @default("processado")
+  criadoEm   DateTime @default(now())
+
+  @@index([obraId])
+  @@map("transcricoes_audio")
+}
+
+model CotacaoInsumo {
+  id              String   @id @default(cuid())
+  empresaId       String
+  obraId          String?
+  notaId          String?
+  nome            String
+  pdfUrl          String?
+  insumos         String   @default("[]")
+  webhookUrl      String?
+  webhookStatus   String   @default("pendente")
+  webhookResposta String?
+  criadoEm       DateTime @default(now())
+  atualizadoEm   DateTime @updatedAt
+
+  @@index([empresaId])
+  @@map("cotacoes_insumos")
+}
+
+model MedicaoFoto {
+  id         String   @id @default(cuid())
+  empresaId  String
+  obraId     String
+  fotoUrl    String
+  etapa      String?
+  metadata   String   @default("{}")
+  analiseUrl String?
+  status     String   @default("pendente")
+  criadoEm  DateTime @default(now())
+
+  @@index([obraId])
+  @@map("medicoes_foto")
+}
+
+model RateioNFe {
+  id           String   @id @default(cuid())
+  empresaId    String
+  notaId       String?
+  chaveNFe     String?
+  emitente     String?
+  valorTotal   Decimal  @default(0)
+  itens        String   @default("[]")
+  regras       String   @default("[]")
+  rateioResult String   @default("[]")
+  criadoEm    DateTime @default(now())
+
+  @@index([empresaId])
+  @@map("rateio_nfe")
 }

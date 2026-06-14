@@ -1,23 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DashboardView } from "./dashboard-view";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true, nome: true },
-  });
-  if (!usuario) redirect("/login");
-
-  const eid = usuario.empresaId;
+  const eid = session.empresaId;
   const today = new Date();
   const in7 = new Date(today); in7.setDate(today.getDate() + 7);
 
@@ -78,7 +71,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardView
-      nomeUsuario={usuario.nome}
+      nomeUsuario={session.nome}
       kpis={{ obrasAtivas, obrasTotal, funcAtivos, orcamento, gastoTotal, receita, parcelasAtrasadas }}
       notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
       parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}

@@ -1,10 +1,5 @@
 "use client";
-
-import { createBrowserClient } from "@supabase/ssr";
-
+// Stub vazio — auth migrada para src/lib/auth.ts
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  return { auth: {} };
 }

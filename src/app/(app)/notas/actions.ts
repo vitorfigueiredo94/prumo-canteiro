@@ -1,19 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-
-async function getEmpresaId(): Promise<string> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const usuario = await prisma.usuario.findUnique({ where: { id: user.id }, select: { empresaId: true } });
-  if (!usuario) redirect("/login");
-  return usuario.empresaId;
-}
 
 const NotaSchema = z.object({
   obraId: z.string().min(1),
@@ -41,16 +31,14 @@ export async function criarNota(_prev: NotaFormState, formData: FormData): Promi
     status: formData.get("status") || "pendente",
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-
   const { obraId, categoria, valor, fornecedor, numero, descricao, emitidaEm, status } = parsed.data;
   const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId }, select: { id: true } });
   if (!obra) return { error: "Obra não encontrada." };
-
   await prisma.notaFiscal.create({
     data: {
-      empresaId, obraId, categoria: categoria as any, valor,
+      empresaId, obraId, categoria, valor, status,
       fornecedor: fornecedor || null, numero: numero || null,
-      descricao: descricao || null, status: status as any,
+      descricao: descricao || null,
       emitidaEm: emitidaEm ? new Date(emitidaEm) : null,
     },
   });
@@ -71,14 +59,13 @@ export async function editarNota(id: string, _prev: NotaFormState, formData: For
     status: formData.get("status"),
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-
   const { obraId, categoria, valor, fornecedor, numero, descricao, emitidaEm, status } = parsed.data;
   await prisma.notaFiscal.updateMany({
     where: { id, empresaId },
     data: {
-      obraId, categoria: categoria as any, valor,
+      obraId, categoria, valor, status,
       fornecedor: fornecedor || null, numero: numero || null,
-      descricao: descricao || null, status: status as any,
+      descricao: descricao || null,
       emitidaEm: emitidaEm ? new Date(emitidaEm) : null,
     },
   });
@@ -88,10 +75,7 @@ export async function editarNota(id: string, _prev: NotaFormState, formData: For
 
 export async function atualizarStatusNota(id: string, status: string): Promise<void> {
   const empresaId = await getEmpresaId();
-  await prisma.notaFiscal.updateMany({
-    where: { id, empresaId },
-    data: { status: status as any },
-  });
+  await prisma.notaFiscal.updateMany({ where: { id, empresaId }, data: { status } });
   revalidatePath("/notas");
 }
 
@@ -101,29 +85,20 @@ export async function excluirNota(id: string): Promise<void> {
   revalidatePath("/notas");
 }
 
-/** Parse minimal fields from a NF-e XML string (nfce/nfe namespace). */
 export async function parseNFeXml(_prev: NotaFormState, formData: FormData): Promise<NotaFormState & { parsed?: Record<string, string> }> {
   const file = formData.get("xml") as File | null;
   if (!file || file.size === 0) return { error: "Selecione um arquivo XML." };
-
   const text = await file.text();
-
   const get = (tag: string) => {
     const m = text.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`, "i"));
     return m?.[1]?.trim() ?? "";
   };
-
-  const numero = get("nNF") || get("cNF");
-  const fornecedor = get("xNome");
-  const valor = get("vNF") || get("vProd");
-  const emitidaEm = get("dhEmi") || get("dEmi");
-
   return {
     parsed: {
-      numero,
-      fornecedor,
-      valor,
-      emitidaEm: emitidaEm ? emitidaEm.split("T")[0] : "",
+      numero: get("nNF") || get("cNF"),
+      fornecedor: get("xNome"),
+      valor: get("vNF") || get("vProd"),
+      emitidaEm: (get("dhEmi") || get("dEmi")).split("T")[0] ?? "",
     },
   };
 }

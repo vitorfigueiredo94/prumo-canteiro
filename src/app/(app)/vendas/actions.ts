@@ -1,19 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-
-async function getEmpresaId(): Promise<string> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const usuario = await prisma.usuario.findUnique({ where: { id: user.id }, select: { empresaId: true } });
-  if (!usuario) redirect("/login");
-  return usuario.empresaId;
-}
 
 const VendaSchema = z.object({
   terrenoId: z.string().min(1),
@@ -56,15 +46,13 @@ export async function criarVenda(_prev: VendaFormState, formData: FormData): Pro
 
   const restante = valorTotal - entrada;
   const valorParcela = numeroParcelas > 0 ? restante / numeroParcelas : restante;
-
-  const vencimentos: Date[] = [];
   const base = dataContrato ? new Date(dataContrato) : new Date();
-  for (let i = 1; i <= numeroParcelas; i++) {
+  const vencimentos: Date[] = Array.from({ length: numeroParcelas }, (_, i) => {
     const d = new Date(base);
-    d.setMonth(d.getMonth() + i);
+    d.setMonth(d.getMonth() + i + 1);
     d.setDate(diaVencimento);
-    vencimentos.push(d);
-  }
+    return d;
+  });
 
   await prisma.$transaction(async (tx) => {
     const venda = await tx.venda.create({
@@ -73,8 +61,7 @@ export async function criarVenda(_prev: VendaFormState, formData: FormData): Pro
         cpfCnpjComprador: cpfCnpjComprador || null,
         telefoneComprador: telefoneComprador || null,
         emailComprador: emailComprador || null,
-        valorTotal, entrada,
-        numeroParcelas, diaVencimento,
+        valorTotal, entrada, numeroParcelas, diaVencimento,
         dataContrato: dataContrato ? new Date(dataContrato) : null,
         observacoes: observacoes || null,
       },
@@ -82,11 +69,8 @@ export async function criarVenda(_prev: VendaFormState, formData: FormData): Pro
     if (numeroParcelas > 0 && restante > 0) {
       await tx.parcela.createMany({
         data: vencimentos.map((venc, i) => ({
-          vendaId: venda.id,
-          numero: i + 1,
-          valor: valorParcela,
-          vencimento: venc,
-          status: "aberta",
+          vendaId: venda.id, numero: i + 1,
+          valor: valorParcela, vencimento: venc, status: "aberta",
         })),
       });
     }
@@ -100,28 +84,16 @@ export async function criarVenda(_prev: VendaFormState, formData: FormData): Pro
 
 export async function registrarPagamentoParcela(parcelaId: string, vendaId: string): Promise<void> {
   const empresaId = await getEmpresaId();
-  const parcela = await prisma.parcela.findFirst({
-    where: { id: parcelaId, venda: { empresaId } },
-    select: { id: true },
-  });
+  const parcela = await prisma.parcela.findFirst({ where: { id: parcelaId, venda: { empresaId } }, select: { id: true } });
   if (!parcela) return;
-  await prisma.parcela.update({
-    where: { id: parcelaId },
-    data: { status: "paga", pagoEm: new Date() },
-  });
+  await prisma.parcela.update({ where: { id: parcelaId }, data: { status: "paga", pagoEm: new Date() } });
   revalidatePath(`/vendas/${vendaId}`);
 }
 
 export async function estornarParcela(parcelaId: string, vendaId: string): Promise<void> {
   const empresaId = await getEmpresaId();
-  const parcela = await prisma.parcela.findFirst({
-    where: { id: parcelaId, venda: { empresaId } },
-    select: { id: true },
-  });
+  const parcela = await prisma.parcela.findFirst({ where: { id: parcelaId, venda: { empresaId } }, select: { id: true } });
   if (!parcela) return;
-  await prisma.parcela.update({
-    where: { id: parcelaId },
-    data: { status: "aberta", pagoEm: null },
-  });
+  await prisma.parcela.update({ where: { id: parcelaId }, data: { status: "aberta", pagoEm: null } });
   revalidatePath(`/vendas/${vendaId}`);
 }

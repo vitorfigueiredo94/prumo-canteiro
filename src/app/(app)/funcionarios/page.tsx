@@ -1,24 +1,17 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FuncionariosView } from "./funcionarios-view";
 
 export const metadata: Metadata = { title: "Funcionários" };
 
 export default async function FuncionariosPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true },
-  });
-  if (!usuario) redirect("/login");
+  const session = await getSession();
+  if (!session) redirect("/login");
 
   const funcionarios = await prisma.funcionario.findMany({
-    where: { empresaId: usuario.empresaId },
+    where: { empresaId: session.empresaId },
     include: {
       alocacoes: {
         where: { fim: null },

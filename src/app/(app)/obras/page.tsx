@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ObrasView } from "./obras-view";
 
 export const metadata: Metadata = { title: "Obras" };
 
 export default async function ObrasPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    select: { empresaId: true },
-  });
-  if (!usuario) redirect("/login");
+  const eid = session.empresaId;
 
   const [obras, terrenos] = await Promise.all([
     prisma.obra.findMany({
-      where: { empresaId: usuario.empresaId },
+      where: { empresaId: eid },
       include: {
         terreno: { select: { id: true, nome: true, cidade: true } },
         notas: { select: { id: true, status: true, valor: true, categoria: true } },
@@ -28,7 +23,7 @@ export default async function ObrasPage() {
       orderBy: { criadoEm: "desc" },
     }),
     prisma.terreno.findMany({
-      where: { empresaId: usuario.empresaId },
+      where: { empresaId: eid },
       select: { id: true, nome: true, cidade: true },
       orderBy: { nome: "asc" },
     }),

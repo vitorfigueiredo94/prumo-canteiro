@@ -1,23 +1,19 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-  if (!user) redirect("/login");
-
-  const usuario = await prisma.usuario.findUnique({
-    where: { id: user.id },
-    include: { empresa: { select: { nome: true } } },
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: session.empresaId },
+    select: { nome: true },
   });
 
-  const empresaNome = usuario?.empresa.nome ?? "Minha empresa";
+  const empresaNome = empresa?.nome ?? "Minha empresa";
 
   return (
     <div
@@ -28,12 +24,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         background: "var(--bg-canvas)",
       }}
     >
-      {/* Sidebar — desktop */}
       <div className="hidden lg:flex" style={{ height: "100%" }}>
         <Sidebar empresaNome={empresaNome} />
       </div>
 
-      {/* Conteúdo principal */}
       <div
         style={{
           flex: 1,
@@ -43,18 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           minWidth: 0,
         }}
       >
-        {/* Área de conteúdo com scroll */}
-        <main
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            overflowX: "hidden",
-          }}
-        >
+        <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
           {children}
         </main>
-
-        {/* Mobile bottom nav */}
         <div className="flex lg:hidden">
           <MobileNav />
         </div>

@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { hashPassword, setSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export type RegisterState = { error?: string; success?: boolean } | null;
@@ -12,7 +12,7 @@ export async function registerAction(
 ): Promise<RegisterState> {
   const nome = (formData.get("nome") as string)?.trim();
   const empresa = (formData.get("empresa") as string)?.trim();
-  const email = (formData.get("email") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
   const password = formData.get("password") as string;
   const confirm = formData.get("confirm") as string;
 
@@ -25,41 +25,20 @@ export async function registerAction(
   if (password !== confirm)
     return { error: "As senhas não conferem." };
 
-  const supabase = await createClient();
+  const existing = await prisma.usuario.findUnique({ where: { email } });
+  if (existing) return { error: "Este e-mail já está cadastrado." };
 
-  // 1. Cria usuário no Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { nome } },
-  });
+  const passwordHash = await hashPassword(password);
 
-  if (authError) {
-    if (authError.message.includes("already registered"))
-      return { error: "Este e-mail já está cadastrado." };
-    return { error: authError.message };
-  }
-
-  const userId = authData.user?.id;
-  if (!userId) return { error: "Erro ao criar conta. Tente novamente." };
-
-  // 2. Cria Empresa + Usuario no banco via Prisma
   const plano = await prisma.plano.findFirst({
     where: { nome: "Profissional" },
     select: { id: true },
   });
 
-  const novaEmpresa = await prisma.empresa.create({
-    data: { nome: empresa },
-  });
+  const novaEmpresa = await prisma.empresa.create({ data: { nome: empresa } });
 
-  await prisma.usuario.create({
-    data: {
-      id: userId,
-      empresaId: novaEmpresa.id,
-      nome,
-      email,
-    },
+  const novoUsuario = await prisma.usuario.create({
+    data: { empresaId: novaEmpresa.id, nome, email, passwordHash },
   });
 
   if (plano) {
@@ -72,6 +51,13 @@ export async function registerAction(
       },
     });
   }
+
+  await setSession({
+    userId: novoUsuario.id,
+    empresaId: novaEmpresa.id,
+    nome,
+    email,
+  });
 
   redirect("/dashboard");
 }

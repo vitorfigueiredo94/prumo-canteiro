@@ -1,6 +1,17 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { scryptSync, randomBytes } from "crypto";
+import path from "path";
 
-const prisma = new PrismaClient();
+const dbPath = path.resolve(process.cwd(), "prisma/dev.db");
+const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
+const prisma = new PrismaClient({ adapter });
+
+function hashPwd(pwd: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const key = scryptSync(pwd, salt, 64) as Buffer;
+  return `${salt}:${key.toString("hex")}`;
+}
 
 async function main() {
   // ── Planos ──────────────────────────────────────────────────────────────
@@ -9,11 +20,9 @@ async function main() {
     update: {},
     create: {
       id: "plano-basico",
-      nome: "Básico",
-      preco: 99.0,
-      limiteObras: 5,
-      limiteUsuarios: 2,
-      recursos: ["Obras e terrenos", "Notas fiscais", "Funcionários"],
+      nome: "Básico", preco: 99.0,
+      limiteObras: 5, limiteUsuarios: 2,
+      recursos: JSON.stringify(["Obras e terrenos", "Notas fiscais", "Funcionários"]),
     },
   });
 
@@ -22,12 +31,9 @@ async function main() {
     update: {},
     create: {
       id: "plano-pro",
-      nome: "Profissional",
-      preco: 199.0,
-      limiteObras: 20,
-      limiteUsuarios: 5,
-      destaque: true,
-      recursos: ["Tudo do Básico", "Vendas de terrenos", "Fluxo de caixa", "Relatórios PDF", "Diário de obra"],
+      nome: "Profissional", preco: 199.0,
+      limiteObras: 20, limiteUsuarios: 5, destaque: true,
+      recursos: JSON.stringify(["Tudo do Básico", "Vendas de terrenos", "Fluxo de caixa", "Diário de obra"]),
     },
   });
 
@@ -36,9 +42,8 @@ async function main() {
     update: {},
     create: {
       id: "plano-empresa",
-      nome: "Empresa",
-      preco: 399.0,
-      recursos: ["Tudo do Profissional", "Obras ilimitadas", "Usuários ilimitados", "Suporte prioritário"],
+      nome: "Empresa", preco: 399.0,
+      recursos: JSON.stringify(["Tudo do Profissional", "Obras ilimitadas", "Suporte prioritário"]),
     },
   });
 
@@ -53,10 +58,22 @@ async function main() {
     where: { empresaId: empresa.id },
     update: {},
     create: {
-      empresaId: empresa.id,
-      planoId: planoPro.id,
+      empresaId: empresa.id, planoId: planoPro.id,
       status: "trial",
       proximaCobranca: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // ── Usuário demo ─────────────────────────────────────────────────────────
+  await prisma.usuario.upsert({
+    where: { email: "demo@prumo.com" },
+    update: {},
+    create: {
+      id: "usuario-demo",
+      empresaId: empresa.id,
+      nome: "Usuário Demo",
+      email: "demo@prumo.com",
+      passwordHash: hashPwd("demo123"),
     },
   });
 
@@ -162,23 +179,19 @@ async function main() {
       where: { id: `aloc-${fid}` },
       update: {},
       create: {
-        id: `aloc-${fid}`,
-        funcionarioId: fid,
-        obraId: o1.id,
-        cargo: cargo as string,
+        id: `aloc-${fid}`, funcionarioId: fid as string,
+        obraId: o1.id, cargo: cargo as string,
         inicio: new Date("2024-04-01"),
       },
     });
   }
 
   // ── Notas fiscais ────────────────────────────────────────────────────────
-  const notas = [
-    { id: "nf-1", fornecedor: "Madeiras São João Ltda.", numero: "001234", categoria: "material" as const, valor: 12500.0, emitidaEm: new Date("2024-05-10"), status: "confirmada" as const, descricao: "Madeira para estrutura do telhado" },
-    { id: "nf-2", fornecedor: "Eletro Construções ME", numero: "005678", categoria: "servicos" as const, valor: 8200.0, emitidaEm: new Date("2024-06-05"), status: "confirmada" as const, descricao: "Instalação elétrica fase 1" },
-    { id: "nf-3", fornecedor: "Cimento Forte Distribuidora", numero: undefined, categoria: "material" as const, valor: 5800.0, emitidaEm: new Date("2024-07-20"), status: "pendente" as const, descricao: undefined },
-  ];
-
-  for (const n of notas) {
+  for (const n of [
+    { id: "nf-1", fornecedor: "Madeiras São João Ltda.", numero: "001234", categoria: "material", valor: 12500.0, emitidaEm: new Date("2024-05-10"), status: "confirmada", descricao: "Madeira para estrutura" },
+    { id: "nf-2", fornecedor: "Eletro Construções ME", numero: "005678", categoria: "servicos", valor: 8200.0, emitidaEm: new Date("2024-06-05"), status: "confirmada", descricao: "Instalação elétrica fase 1" },
+    { id: "nf-3", fornecedor: "Cimento Forte", numero: null, categoria: "material", valor: 5800.0, emitidaEm: new Date("2024-07-20"), status: "pendente", descricao: null },
+  ]) {
     await prisma.notaFiscal.upsert({
       where: { id: n.id },
       update: {},
@@ -186,7 +199,7 @@ async function main() {
     });
   }
 
-  // ── Pagamentos funcionários ──────────────────────────────────────────────
+  // ── Pagamentos ──────────────────────────────────────────────────────────
   await prisma.pagamentoFuncionario.upsert({
     where: { id: "pag-1" },
     update: {},
@@ -213,36 +226,34 @@ async function main() {
     },
   });
 
-  // ── Parcelas ─────────────────────────────────────────────────────────────
   for (let i = 0; i < 12; i++) {
-    const venc = new Date(2024, 8 + i, 5);
     await prisma.parcela.upsert({
       where: { id: `parc-${i + 1}` },
       update: {},
       create: {
         id: `parc-${i + 1}`, vendaId: venda.id,
-        numero: i + 1, vencimento: venc, valor: 41666.67,
+        numero: i + 1, vencimento: new Date(2024, 8 + i, 5),
+        valor: 41666.67,
         status: i < 3 ? "paga" : "aberta",
         pagoEm: i < 3 ? new Date(2024, 8 + i, 3) : null,
       },
     });
   }
 
-  // ── Diário de obra ───────────────────────────────────────────────────────
+  // ── Diário ───────────────────────────────────────────────────────────────
   await prisma.diarioObra.upsert({
     where: { id: "diario-1" },
     update: {},
     create: {
       id: "diario-1", empresaId: empresa.id, obraId: o1.id,
       data: new Date("2024-07-15"),
-      conteudo: "Concretagem da laje do primeiro pavimento concluída. Equipe de 8 pessoas. Previsão de desforma em 7 dias.",
-      autor: "Eng. Carlos Mendes",
-      clima: "Ensolarado",
-      equipePresente: 8,
+      conteudo: "Concretagem da laje do primeiro pavimento concluída. Equipe de 8 pessoas.",
+      autor: "Eng. Carlos Mendes", clima: "Ensolarado", equipePresente: 8,
     },
   });
 
-  console.log("✅ Seed concluído — dados demo carregados.");
+  console.log("✅ Seed concluído.");
+  console.log("   Login: demo@prumo.com  /  Senha: demo123");
 }
 
 main()

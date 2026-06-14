@@ -30,8 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — commitar apenas .env.example
+.env
+.env.local
+.env.production
 
 # vercel
 .vercel
@@ -41,3 +43,18 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Banco SQLite (gerado em runtime, nunca commitar)
+prisma/dev.db
+prisma/dev.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
+*.db
+
+# Uploads gerados em runtime
+public/uploads/
+
+# Certificados SSL
+docker/ssl/
+*.key
+*.crt
