@@ -16,7 +16,7 @@ prisma.usuario.count().then(n => { console.log(n); prisma.\$disconnect(); }).cat
 
 if [ "$EXISTE" = "0" ]; then
   echo "[prumo] Executando seed inicial..."
-  node -e "require('./prisma/seed.js')" 2>/dev/null || npx tsx prisma/seed.ts || true
+  node /app/node_modules/tsx/dist/cli.mjs /app/prisma/seed.ts || true
 fi
 
 echo "[prumo] Iniciando servidor Next.js..."
