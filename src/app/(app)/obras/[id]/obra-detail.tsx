@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition, useEffect } from "react";
+import { useState, useCallback, useTransition, useEffect, Fragment } from "react";
 import Link from "next/link";
 import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle, CheckSquare, FolderOpen } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
@@ -41,17 +41,18 @@ interface Obra {
 
 const TABS = [
   { k: "financeiro", l: "Financeiro", Icon: TrendingUp },
+  { k: "checklist", l: "Checklist", Icon: CheckSquare },
   { k: "notas", l: "Notas Fiscais", Icon: Receipt },
   { k: "equipe", l: "Equipe", Icon: Users },
   { k: "diario", l: "Diário", Icon: BookOpen },
-  { k: "checklist", l: "Checklist", Icon: CheckSquare },
   { k: "documentos", l: "Documentos", Icon: FolderOpen },
 ];
 
-const FASE_NOMES: Record<string, string> = {
-  OBRA_INICIO: "Início da Obra",
-  OBRA_MEIO: "Execução",
-  OBRA_FIM: "Entrega",
+const FASE_ORDER = ["OBRA_INICIO", "OBRA_MEIO", "OBRA_FIM"];
+const FASE_LABELS: Record<string, string> = {
+  OBRA_INICIO: "Início da obra",
+  OBRA_MEIO: "Execução (meio)",
+  OBRA_FIM: "Entrega (fim)",
 };
 
 interface ChecklistItem { id: string; descricao: string; concluido: boolean; observacao: string | null; }
@@ -73,63 +74,102 @@ function ChecklistTab({ obraId }: { obraId: string }) {
 
   const toggle = async (itemId: string, current: boolean) => {
     setToggling(itemId);
-    await fetch(`/api/v1/checklist/item/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concluido: !current }),
-    });
+    await fetch(`/api/v1/checklist/item/${itemId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ concluido: !current }) });
     await refresh();
     setToggling(null);
+  };
+
+  const reabrir = async (cl: ChecklistCl) => {
+    for (const item of cl.itens.filter((i) => i.concluido)) {
+      await fetch(`/api/v1/checklist/item/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ concluido: false }) });
+    }
+    await refresh();
   };
 
   if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
   if (!data || data.length === 0) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum checklist criado para esta obra.</p>;
 
-  const totalGeral = data.reduce((s, cl) => s + cl.total, 0);
-  const concluidosGeral = data.reduce((s, cl) => s + cl.concluidos, 0);
+  const sorted = [...data].sort((a, b) => FASE_ORDER.indexOf(a.fase) - FASE_ORDER.indexOf(b.fase));
+  const totalGeral = sorted.reduce((s, cl) => s + cl.total, 0);
+  const concluidosGeral = sorted.reduce((s, cl) => s + cl.concluidos, 0);
   const pctGeral = totalGeral === 0 ? 0 : Math.round((concluidosGeral / totalGeral) * 100);
+  const currentIdx = sorted.findIndex((cl) => cl.porcentagem < 100);
+  const currentPhase = currentIdx >= 0 ? sorted[currentIdx] : sorted[sorted.length - 1];
+  const r = 44, circ = 2 * Math.PI * r;
+  const dashOffset = circ - (pctGeral / 100) * circ;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Resumo geral */}
-      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Progresso geral</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)" }}>{concluidosGeral}/{totalGeral} · {pctGeral}%</span>
+      {/* Header card */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "24px 28px" }}>
+        <h2 style={{ margin: "0 0 22px", fontSize: 17, fontWeight: 600, color: "var(--fg-primary)" }}>Checklist da obra</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 28 }}>
+          <svg width={100} height={100} viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
+            <circle cx={50} cy={50} r={r} fill="none" stroke="var(--ink-100)" strokeWidth={10} />
+            <circle cx={50} cy={50} r={r} fill="none" stroke={pctGeral === 100 ? "#22c55e" : "#1e3a5f"} strokeWidth={10}
+              strokeDasharray={circ} strokeDashoffset={dashOffset} strokeLinecap="round"
+              transform="rotate(-90 50 50)" style={{ transition: "stroke-dashoffset 600ms" }} />
+            <text x={50} y={51} dominantBaseline="middle" textAnchor="middle" fontSize={20} fontWeight={700} fontFamily="sans-serif" fill="#1a1f2e">{pctGeral}%</text>
+          </svg>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "var(--fg-muted)", textTransform: "uppercase" }}>Fase atual</p>
+            <p style={{ margin: "0 0 6px", fontSize: 21, fontFamily: "var(--font-display)", fontWeight: 500, color: "var(--fg-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+              🔑 {FASE_LABELS[currentPhase?.fase ?? ""] ?? currentPhase?.fase}
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--fg-tertiary)" }}>{concluidosGeral} de {totalGeral} itens concluídos · Ciclo de vida da obra</p>
+          </div>
         </div>
-        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
+        {/* Phase stepper */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {sorted.map((cl, i) => {
+            const done = cl.porcentagem === 100;
+            const current = i === (currentIdx >= 0 ? currentIdx : sorted.length - 1);
+            const label = FASE_LABELS[cl.fase] ?? cl.fase;
+            return (
+              <Fragment key={cl.id}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : current ? "#1e3a5f" : "var(--ink-100)", color: done || current ? "#fff" : "var(--fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: done ? "#16a34a" : current ? "#1e3a5f" : "var(--fg-muted)", fontWeight: current ? 600 : 400, whiteSpace: "nowrap" }}>{label}</span>
+                </div>
+                {i < sorted.length - 1 && <div style={{ flex: 1, height: 2, background: done ? "#22c55e" : "var(--ink-100)", marginBottom: 22, marginLeft: 4, marginRight: 4 }} />}
+              </Fragment>
+            );
+          })}
         </div>
       </div>
 
-      {/* Fases */}
-      {data.map((cl) => (
+      {/* Info banner */}
+      {currentIdx > 0 && currentIdx < sorted.length && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "var(--radius-md)", fontSize: 13.5, color: "#92400e" }}>
+          <span style={{ fontSize: 16 }}>ℹ️</span>
+          <span><strong>{FASE_LABELS[sorted[currentIdx - 1].fase]}</strong> concluída. Avance para <strong>{FASE_LABELS[currentPhase.fase]}</strong> marcando os itens abaixo.</span>
+        </div>
+      )}
+
+      {/* Phase sections */}
+      {sorted.map((cl) => (
         <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_NOMES[cl.fase] ?? cl.fase}</span>
-                <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} itens · {cl.porcentagem}%</span>
+          <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_LABELS[cl.fase] ?? cl.fase}</span>
+            <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} concluídos</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: cl.porcentagem === 100 ? "#16a34a" : "#1e3a5f", minWidth: 38, textAlign: "right" }}>{cl.porcentagem}%</span>
+            {cl.porcentagem === 100 && (
+              <button onClick={() => reabrir(cl)} style={{ height: 30, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 12.5 }}>Reabrir</button>
+            )}
+          </div>
+          <div style={{ height: 4, background: "var(--ink-100)" }}>
+            <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "#22c55e" : "#1e3a5f", transition: "width 400ms" }} />
+          </div>
+          {cl.itens.map((item) => (
+            <div key={item.id} onClick={() => toggle(item.id, item.concluido)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", cursor: toggling === item.id ? "wait" : "pointer" }}>
+              <div style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0, background: item.concluido ? "#1e3a5f" : "transparent", border: `2px solid ${item.concluido ? "#1e3a5f" : "var(--border-default)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {item.concluido && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
               </div>
-              <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-                <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "var(--success-500)" : "var(--navy-500)", borderRadius: "var(--radius-full)", transition: "width 400ms" }} />
-              </div>
+              <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
             </div>
-          </div>
-          <div>
-            {cl.itens.map((item, idx) => (
-              <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 20px", cursor: toggling === item.id ? "wait" : "pointer", borderBottom: idx < cl.itens.length - 1 ? "1px solid var(--border-subtle)" : "none", background: item.concluido ? "var(--ink-50)" : "transparent" }}>
-                <input
-                  type="checkbox"
-                  checked={item.concluido}
-                  onChange={() => toggle(item.id, item.concluido)}
-                  disabled={toggling === item.id}
-                  style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--navy-700)", cursor: "pointer", flexShrink: 0 }}
-                />
-                <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
-              </label>
-            ))}
-          </div>
+          ))}
         </div>
       ))}
     </div>
@@ -205,6 +245,14 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
         </div>
       </div>
 
+      {/* KPI cards — always visible */}
+      <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <KPI label="Orçamento" value={fmtBRL(obra.orcamento)} />
+        <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do previsto`} />
+        <KPI label={estouro ? "Estouro" : "Saldo disponível"} value={fmtBRL(Math.abs(saldo))} danger={estouro} sub={estouro ? "acima do orçamento" : undefined} />
+        <KPI label="Execução física" value={`${obra.progresso}%`} sub={obra.notas.filter((n) => n.status === "pendente").length > 0 ? `${obra.notas.filter((n) => n.status === "pendente").length} nota(s) em revisão` : undefined} />
+      </div>
+
       {/* Tabs */}
       <div style={{ padding: "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 0 }}>
         {TABS.map(({ k, l, Icon }) => {
@@ -227,13 +275,6 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
                 <AlertTriangle size={16} /> <strong>Estouro de orçamento:</strong> {fmtBRL(Math.abs(saldo))} acima do previsto
               </div>
             )}
-
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <KPI label="Orçamento" value={fmtBRL(obra.orcamento)} />
-              <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do orçamento`} />
-              <KPI label={estouro ? "Estouro" : "Saldo"} value={fmtBRL(Math.abs(saldo))} danger={estouro} sub={estouro ? "acima do orçamento" : "disponível"} />
-              <KPI label="Progresso físico" value={`${obra.progresso}%`} />
-            </div>
 
             {/* Budget bar */}
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
