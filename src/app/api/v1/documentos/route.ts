@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -53,17 +54,17 @@ export async function POST(req: NextRequest) {
   // URL encodes the full path for the serve route
   const url = `/api/v1/uploads/${session.empresaId}/${ownerType}/${ownerId}/${safeName}`;
 
-  const data: Record<string, unknown> = {
+  const data: Prisma.DocumentoUncheckedCreateInput = {
     empresaId: session.empresaId,
     ownerType,
     nome: file.name,
     tipo: file.type || "application/octet-stream",
     tamanho: file.size,
     url,
+    obraId: ownerType === "obra" ? ownerId : undefined,
+    terrenoId: ownerType === "terreno" ? ownerId : undefined,
+    vendaId: ownerType === "venda" ? ownerId : undefined,
   };
-  if (ownerType === "obra") data.obraId = ownerId;
-  else if (ownerType === "terreno") data.terrenoId = ownerId;
-  else if (ownerType === "venda") data.vendaId = ownerId;
 
   const doc = await prisma.documento.create({ data });
   return NextResponse.json({ documento: doc }, { status: 201 });
