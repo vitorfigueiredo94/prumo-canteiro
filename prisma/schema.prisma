@@ -408,3 +408,65 @@ model RateioNFe {
   @@index([empresaId])
   @@map("rateio_nfe")
 }
+
+// ─────────────────────────── Checklists ──────────────────────────────────
+// Polimórfico: obraId/terrenoId sem @relation (append-only, não toca tabelas existentes)
+
+model ChecklistTemplate {
+  id       String                  @id @default(cuid())
+  tipo     String                  @unique
+  nome     String
+  ordem    Int                     @default(0)
+  itens    ChecklistTemplateItem[]
+  criadoEm DateTime               @default(now())
+
+  @@map("checklist_templates")
+}
+
+model ChecklistTemplateItem {
+  id          String            @id @default(cuid())
+  template    ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId  String
+  descricao   String
+  obrigatorio Boolean           @default(true)
+  ordem       Int               @default(0)
+  criadoEm   DateTime          @default(now())
+
+  @@index([templateId])
+  @@map("checklist_template_itens")
+}
+
+model Checklist {
+  id          String          @id @default(cuid())
+  empresaId   String
+  ownerType   String
+  obraId      String?
+  terrenoId   String?
+  templateId  String
+  fase        String
+  status      String          @default("ativo")
+  itens       ChecklistItem[]
+  criadoEm   DateTime        @default(now())
+  atualizadoEm DateTime      @updatedAt
+
+  @@index([empresaId])
+  @@index([obraId])
+  @@index([terrenoId])
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id             String    @id @default(cuid())
+  checklist      Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  checklistId    String
+  templateItemId String
+  descricao      String
+  concluido      Boolean   @default(false)
+  concluidoEm   DateTime?
+  observacao     String?
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+
+  @@index([checklistId])
+  @@map("checklist_itens")
+}

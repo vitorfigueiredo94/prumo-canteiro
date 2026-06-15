@@ -26,6 +26,17 @@ ENV DATABASE_URL="file:/tmp/build.db"
 
 RUN npm run build
 
+# Compila seed.ts → seed.cjs para rodar no runner sem esbuild/tsx
+RUN node_modules/.bin/esbuild prisma/seed.ts \
+    --bundle \
+    --platform=node \
+    --target=node20 \
+    --format=cjs \
+    --external:@prisma/client \
+    --external:@prisma/adapter-better-sqlite3 \
+    --external:better-sqlite3 \
+    --outfile=/app/prisma/seed.cjs
+
 # Gera DDL SQL do schema — aplicado no runner sem CLI Prisma
 RUN npx prisma migrate diff \
     --from-empty \
@@ -52,13 +63,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Prisma client nativo (sem CLI — schema aplicado via init.sql)
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma/seed.cjs ./prisma/seed.cjs
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder /app/node_modules/@prisma/adapter-better-sqlite3 ./node_modules/@prisma/adapter-better-sqlite3
 
-# SQL gerado no build + script de init
+# SQL gerado no build + migrations incrementais + script de init
 COPY --from=builder /app/init.sql ./init.sql
+COPY docker/migrate.sql ./migrate.sql
 COPY docker/init-db.js ./init-db.js
 
 # Script de inicialização: init-db + seed + server

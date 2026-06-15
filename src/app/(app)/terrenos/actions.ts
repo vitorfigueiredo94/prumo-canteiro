@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { criarChecklistParaTerreno } from "@/features/checklist/service";
 
 const TerrenoSchema = z.object({
   nome: z.string().min(1),
@@ -32,7 +33,7 @@ export async function criarTerreno(_prev: TerrenoFormState, formData: FormData):
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
   const { nome, numero, endereco, cidade, area, status, aquisicao, valorCompra } = parsed.data;
-  await prisma.terreno.create({
+  const terreno = await prisma.terreno.create({
     data: {
       empresaId, nome, cidade, area, status,
       numero: numero || null,
@@ -41,6 +42,7 @@ export async function criarTerreno(_prev: TerrenoFormState, formData: FormData):
       valorCompra: valorCompra ?? null,
     },
   });
+  await criarChecklistParaTerreno(terreno.id, empresaId).catch(() => null);
   revalidatePath("/terrenos");
   return null;
 }

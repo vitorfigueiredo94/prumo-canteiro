@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { criarChecklistParaObra } from "@/features/checklist/service";
 
 const ObraSchema = z.object({
   nome: z.string().min(1),
@@ -32,7 +33,7 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
   const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
-  await prisma.obra.create({
+  const obra = await prisma.obra.create({
     data: {
       empresaId, terrenoId, nome, orcamento, status,
       inicio: inicio ? new Date(inicio) : null,
@@ -41,6 +42,7 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
       progresso,
     },
   });
+  await criarChecklistParaObra(obra.id, empresaId).catch(() => null);
   revalidatePath("/obras");
   return null;
 }

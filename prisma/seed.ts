@@ -350,9 +350,185 @@ async function main() {
     });
   }
 
+  // ── Templates de Checklist ───────────────────────────────────────────────
+  const templateDefs = [
+    { id: "tpl-obra-inicio", tipo: "OBRA_INICIO", nome: "Início da Obra", ordem: 1,
+      itens: ["Alvará de construção emitido","Matrícula do imóvel atualizada","Projetos executivos aprovados","ART/RRT registrada","Tapumes instalados","Água provisória ligada","Luz provisória ligada","EPIs fornecidos a todos os trabalhadores","Placa de obra afixada","Locação e gabarito executados"] },
+    { id: "tpl-obra-meio", tipo: "OBRA_MEIO", nome: "Obra em Andamento", ordem: 2,
+      itens: ["Validação de estacas concluída","Ferragem e espaçadores conferidos","Ensaio de resistência (Fck) realizado","Prumo e nível verificados","Teste de estanqueidade aprovado","Caimento de ralos conferido","Impermeabilização (lâmina d'água) aplicada","Paginação de pisos e revestimentos definida"] },
+    { id: "tpl-obra-fim", tipo: "OBRA_FIM", nome: "Entrega da Obra", ordem: 3,
+      itens: ["Teste de escoamento hidráulico aprovado","Teste elétrico e aterramento aprovado","Pintura e esquadrias finalizadas","Limpeza pós-obra realizada","Habite-se obtido","CND INSS emitida","Averbação na matrícula realizada","Manual do proprietário entregue"] },
+    { id: "tpl-terreno-prep", tipo: "TERRENO_PREPARACAO", nome: "Preparação para Venda", ordem: 1,
+      itens: ["Demarcação e piquetes instalados","Fotos e drone realizados","Matrícula atualizada (verificação de ônus)","IPTU em dia","Certidão de zoneamento obtida"] },
+    { id: "tpl-terreno-analise", tipo: "TERRENO_ANALISE", nome: "Análise Documental", ordem: 2,
+      itens: ["Ficha do comprador preenchida","Análise de crédito realizada","Documentos do comprador verificados"] },
+    { id: "tpl-terreno-proposta", tipo: "TERRENO_PROPOSTA", nome: "Proposta e Contrato", ordem: 3,
+      itens: ["Proposta formal enviada ao comprador","Contrato de compra e venda assinado","Entrada recebida e confirmada"] },
+    { id: "tpl-terreno-pos", tipo: "TERRENO_POS_VENDA", nome: "Pós-Venda", ordem: 4,
+      itens: ["ITBI recolhido","Escritura lavrada em cartório","Registro da escritura na matrícula"] },
+  ];
+
+  const templateIds: Record<string, string> = {};
+  const templateItemIds: Record<string, string[]> = {};
+
+  for (const tpl of templateDefs) {
+    await prisma.checklistTemplate.upsert({
+      where: { id: tpl.id },
+      update: {},
+      create: { id: tpl.id, tipo: tpl.tipo, nome: tpl.nome, ordem: tpl.ordem },
+    });
+    templateIds[tpl.tipo] = tpl.id;
+    templateItemIds[tpl.tipo] = [];
+    for (let i = 0; i < tpl.itens.length; i++) {
+      const itemId = `${tpl.id}-item-${i}`;
+      await prisma.checklistTemplateItem.upsert({
+        where: { id: itemId },
+        update: {},
+        create: { id: itemId, templateId: tpl.id, descricao: tpl.itens[i], obrigatorio: true, ordem: i },
+      });
+      templateItemIds[tpl.tipo].push(itemId);
+    }
+  }
+
+  // ── Checklists das obras demo ────────────────────────────────────────────
+  // o1 (62% progresso) — OBRA_INICIO com 6/10 itens concluídos + OBRA_MEIO criado
+  await prisma.checklist.upsert({
+    where: { id: "cl-o1-inicio" },
+    update: {},
+    create: {
+      id: "cl-o1-inicio", empresaId: empresa.id,
+      ownerType: "obra", obraId: o1.id,
+      templateId: templateIds["OBRA_INICIO"], fase: "OBRA_INICIO", status: "concluido",
+      itens: {
+        create: templateItemIds["OBRA_INICIO"].map((tid, i) => ({
+          id: `cli-o1-inicio-${i}`, templateItemId: tid,
+          descricao: templateDefs[0].itens[i],
+          concluido: true, concluidoEm: new Date("2024-04-15"),
+        })),
+      },
+    },
+  });
+  await prisma.checklist.upsert({
+    where: { id: "cl-o1-meio" },
+    update: {},
+    create: {
+      id: "cl-o1-meio", empresaId: empresa.id,
+      ownerType: "obra", obraId: o1.id,
+      templateId: templateIds["OBRA_MEIO"], fase: "OBRA_MEIO", status: "ativo",
+      itens: {
+        create: templateItemIds["OBRA_MEIO"].map((tid, i) => ({
+          id: `cli-o1-meio-${i}`, templateItemId: tid,
+          descricao: templateDefs[1].itens[i],
+          concluido: i < 5, concluidoEm: i < 5 ? new Date("2024-07-01") : null,
+        })),
+      },
+    },
+  });
+
+  // o3 (85% progresso) — OBRA_INICIO e OBRA_MEIO concluídos, OBRA_FIM em andamento
+  await prisma.checklist.upsert({
+    where: { id: "cl-o3-inicio" },
+    update: {},
+    create: {
+      id: "cl-o3-inicio", empresaId: empresa.id,
+      ownerType: "obra", obraId: o3.id,
+      templateId: templateIds["OBRA_INICIO"], fase: "OBRA_INICIO", status: "concluido",
+      itens: {
+        create: templateItemIds["OBRA_INICIO"].map((tid, i) => ({
+          id: `cli-o3-inicio-${i}`, templateItemId: tid,
+          descricao: templateDefs[0].itens[i],
+          concluido: true, concluidoEm: new Date("2024-03-01"),
+        })),
+      },
+    },
+  });
+  await prisma.checklist.upsert({
+    where: { id: "cl-o3-meio" },
+    update: {},
+    create: {
+      id: "cl-o3-meio", empresaId: empresa.id,
+      ownerType: "obra", obraId: o3.id,
+      templateId: templateIds["OBRA_MEIO"], fase: "OBRA_MEIO", status: "concluido",
+      itens: {
+        create: templateItemIds["OBRA_MEIO"].map((tid, i) => ({
+          id: `cli-o3-meio-${i}`, templateItemId: tid,
+          descricao: templateDefs[1].itens[i],
+          concluido: true, concluidoEm: new Date("2024-06-15"),
+        })),
+      },
+    },
+  });
+  await prisma.checklist.upsert({
+    where: { id: "cl-o3-fim" },
+    update: {},
+    create: {
+      id: "cl-o3-fim", empresaId: empresa.id,
+      ownerType: "obra", obraId: o3.id,
+      templateId: templateIds["OBRA_FIM"], fase: "OBRA_FIM", status: "ativo",
+      itens: {
+        create: templateItemIds["OBRA_FIM"].map((tid, i) => ({
+          id: `cli-o3-fim-${i}`, templateItemId: tid,
+          descricao: templateDefs[2].itens[i],
+          concluido: i < 4, concluidoEm: i < 4 ? new Date("2024-08-20") : null,
+        })),
+      },
+    },
+  });
+
+  // o2 (planejamento) — OBRA_INICIO recém criado, nada marcado
+  await prisma.checklist.upsert({
+    where: { id: "cl-o2-inicio" },
+    update: {},
+    create: {
+      id: "cl-o2-inicio", empresaId: empresa.id,
+      ownerType: "obra", obraId: o2.id,
+      templateId: templateIds["OBRA_INICIO"], fase: "OBRA_INICIO", status: "ativo",
+      itens: {
+        create: templateItemIds["OBRA_INICIO"].map((tid, i) => ({
+          id: `cli-o2-inicio-${i}`, templateItemId: tid,
+          descricao: templateDefs[0].itens[i], concluido: false,
+        })),
+      },
+    },
+  });
+
+  // Terrenos com checklist de venda
+  await prisma.checklist.upsert({
+    where: { id: "cl-t1-prep" },
+    update: {},
+    create: {
+      id: "cl-t1-prep", empresaId: empresa.id,
+      ownerType: "terreno", terrenoId: t1.id,
+      templateId: templateIds["TERRENO_PREPARACAO"], fase: "TERRENO_PREPARACAO", status: "concluido",
+      itens: {
+        create: templateItemIds["TERRENO_PREPARACAO"].map((tid, i) => ({
+          id: `cli-t1-prep-${i}`, templateItemId: tid,
+          descricao: templateDefs[3].itens[i],
+          concluido: true, concluidoEm: new Date("2024-03-20"),
+        })),
+      },
+    },
+  });
+  await prisma.checklist.upsert({
+    where: { id: "cl-t2-prep" },
+    update: {},
+    create: {
+      id: "cl-t2-prep", empresaId: empresa.id,
+      ownerType: "terreno", terrenoId: t2.id,
+      templateId: templateIds["TERRENO_PREPARACAO"], fase: "TERRENO_PREPARACAO", status: "ativo",
+      itens: {
+        create: templateItemIds["TERRENO_PREPARACAO"].map((tid, i) => ({
+          id: `cli-t2-prep-${i}`, templateItemId: tid,
+          descricao: templateDefs[3].itens[i],
+          concluido: i < 3, concluidoEm: i < 3 ? new Date("2024-06-20") : null,
+        })),
+      },
+    },
+  });
+
   console.log("✅ Seed concluído.");
   console.log("   Login demo: demo@prumo.com  /  demo123");
-  console.log("   4 obras | 4 terrenos | 6 funcionários | 8 notas fiscais | 1 venda | 12 parcelas");
+  console.log("   4 obras | 4 terrenos | 6 funcionários | 8 notas fiscais | 1 venda | checklists demo");
 }
 
 main()

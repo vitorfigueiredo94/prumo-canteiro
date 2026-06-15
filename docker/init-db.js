@@ -23,4 +23,12 @@ if (n === 0) {
   console.log('[prumo] DB existente: ' + n + ' tabelas.');
 }
 
+// Aplica migrations incrementais (IF NOT EXISTS — seguro para toda execução)
+const migratePath = path.join(__dirname, 'migrate.sql');
+if (fs.existsSync(migratePath)) {
+  const migrateSql = fs.readFileSync(migratePath, 'utf8');
+  db.exec(migrateSql);
+  console.log('[prumo] Migrations incrementais aplicadas.');
+}
+
 db.close();
