@@ -16,7 +16,7 @@ interface Terreno { id: string; nome: string; cidade: string; }
 interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
-  terreno: Terreno; notas: NotaLite[]; pagamentos: PagLite[];
+  terreno: Terreno | null; notas: NotaLite[]; pagamentos: PagLite[];
 }
 
 const FILTROS = [
@@ -40,7 +40,7 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
 
   const filtered = obras
     .filter((o) => filtro === "todas" || o.status === filtro)
-    .filter((o) => !busca.trim() || o.nome.toLowerCase().includes(busca.toLowerCase()) || o.terreno.nome.toLowerCase().includes(busca.toLowerCase()));
+    .filter((o) => !busca.trim() || o.nome.toLowerCase().includes(busca.toLowerCase()) || (o.terreno?.nome ?? "").toLowerCase().includes(busca.toLowerCase()));
 
   const closeNew = useCallback(() => setShowNew(false), []);
 
@@ -100,7 +100,7 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", marginBottom: 14 }}>
-                      <MapPin size={13} />{o.terreno.nome} · {o.terreno.cidade}
+                      <MapPin size={13} />{o.terreno ? `${o.terreno.nome} · ${o.terreno.cidade}` : "Sem terreno vinculado"}
                     </div>
 
                     {/* Budget bar */}
