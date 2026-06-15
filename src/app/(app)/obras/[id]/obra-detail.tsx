@@ -39,14 +39,7 @@ interface Obra {
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
 }
 
-const TABS = [
-  { k: "financeiro", l: "Financeiro", Icon: TrendingUp },
-  { k: "checklist", l: "Checklist", Icon: CheckSquare },
-  { k: "notas", l: "Notas Fiscais", Icon: Receipt },
-  { k: "equipe", l: "Equipe", Icon: Users },
-  { k: "diario", l: "Diário", Icon: BookOpen },
-  { k: "documentos", l: "Documentos", Icon: FolderOpen },
-];
+// TABS are computed dynamically inside ObraDetail to show counts
 
 const FASE_ORDER = ["OBRA_INICIO", "OBRA_MEIO", "OBRA_FIM"];
 const FASE_LABELS: Record<string, string> = {
@@ -123,17 +116,17 @@ function ChecklistTab({ obraId }: { obraId: string }) {
         <div style={{ display: "flex", alignItems: "center" }}>
           {sorted.map((cl, i) => {
             const done = cl.porcentagem === 100;
-            const current = i === (currentIdx >= 0 ? currentIdx : sorted.length - 1);
+            const cur = i === (currentIdx >= 0 ? currentIdx : sorted.length - 1);
             const label = FASE_LABELS[cl.fase] ?? cl.fase;
             return (
               <Fragment key={cl.id}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : current ? "#1e3a5f" : "var(--ink-100)", color: done || current ? "#fff" : "var(--fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : cur ? "#d97706" : "#e5e7eb", color: done || cur ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, border: done || cur ? "none" : "2px solid #d1d5db" }}>
                     {done ? "✓" : i + 1}
                   </div>
-                  <span style={{ fontSize: 11.5, color: done ? "#16a34a" : current ? "#1e3a5f" : "var(--fg-muted)", fontWeight: current ? 600 : 400, whiteSpace: "nowrap" }}>{label}</span>
+                  <span style={{ fontSize: 11.5, color: done ? "#16a34a" : cur ? "#d97706" : "#9ca3af", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap" }}>{label}</span>
                 </div>
-                {i < sorted.length - 1 && <div style={{ flex: 1, height: 2, background: done ? "#22c55e" : "var(--ink-100)", marginBottom: 22, marginLeft: 4, marginRight: 4 }} />}
+                {i < sorted.length - 1 && <div style={{ flex: 1, height: 2, background: done ? "#22c55e" : "#e5e7eb", marginBottom: 22, marginLeft: 6, marginRight: 6 }} />}
               </Fragment>
             );
           })}
@@ -152,9 +145,18 @@ function ChecklistTab({ obraId }: { obraId: string }) {
       {sorted.map((cl) => (
         <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_LABELS[cl.fase] ?? cl.fase}</span>
-            <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} concluídos</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: cl.porcentagem === 100 ? "#16a34a" : "#1e3a5f", minWidth: 38, textAlign: "right" }}>{cl.porcentagem}%</span>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+              {cl.porcentagem === 100 && (
+                <div style={{ width: 24, height: 24, borderRadius: 4, background: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ color: "#fff", fontSize: 13, fontWeight: 700, lineHeight: 1 }}>✓</span>
+                </div>
+              )}
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_LABELS[cl.fase] ?? cl.fase}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} concluídos</p>
+              </div>
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: cl.porcentagem === 100 ? "#16a34a" : "#1e3a5f" }}>{cl.porcentagem}%</span>
             {cl.porcentagem === 100 && (
               <button onClick={() => reabrir(cl)} style={{ height: 30, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 12.5 }}>Reabrir</button>
             )}
@@ -176,11 +178,11 @@ function ChecklistTab({ obraId }: { obraId: string }) {
   );
 }
 
-const KPI = ({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) => (
-  <div style={{ background: "var(--bg-surface)", border: `1px solid ${danger ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-lg)", padding: "16px 20px", flex: 1, minWidth: 160 }}>
-    <p style={{ margin: "0 0 4px", fontSize: 12, color: "var(--fg-muted)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
-    <p style={{ margin: 0, fontSize: 24, fontFamily: "var(--font-display)", fontWeight: 500, color: danger ? "var(--danger-500)" : "var(--fg-primary)" }}>{value}</p>
-    {sub && <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--fg-tertiary)" }}>{sub}</p>}
+const KPI = ({ label, value, sub, danger, green }: { label: string; value: string; sub?: string; danger?: boolean; green?: boolean }) => (
+  <div style={{ background: "var(--bg-surface)", border: `1px solid ${danger ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-lg)", padding: "18px 22px", flex: 1, minWidth: 160 }}>
+    <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "var(--fg-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
+    <p style={{ margin: 0, fontSize: 26, fontFamily: "var(--font-display)", fontWeight: 500, color: danger ? "var(--danger-500)" : green ? "#16a34a" : "var(--fg-primary)" }}>{value}</p>
+    {sub && <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--fg-tertiary)" }}>{sub}</p>}
   </div>
 );
 
@@ -188,6 +190,15 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   const [tab, setTab] = useState("financeiro");
   const [showEdit, setShowEdit] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const TABS = [
+    { k: "financeiro", l: "Financeiro", Icon: TrendingUp },
+    { k: "checklist", l: "Checklist", Icon: CheckSquare },
+    { k: "notas", l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
+    { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
+    { k: "diario", l: "Diário", Icon: BookOpen },
+    { k: "documentos", l: "Documentos", Icon: FolderOpen },
+  ];
 
   const st = STATUS_OBRA[obra.status as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
 
@@ -219,28 +230,35 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   return (
     <>
       {/* Topbar */}
-      <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
-        <Link href="/obras" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, color: "var(--fg-tertiary)", textDecoration: "none", marginBottom: 12 }}>
-          <ArrowLeft size={14} /> Obras
-        </Link>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ padding: "16px 32px 0", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
+        {/* Row 1: breadcrumb + title + Nova nota */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 10 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-              <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>{obra.nome}</h1>
-              <Badge label={st.label} color={st.color} bg={st.bg} dot />
-            </div>
-            <div style={{ display: "flex", gap: 18, fontSize: 13.5, color: "var(--fg-tertiary)", flexWrap: "wrap" }}>
-              {obra.terreno ? (
-                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} /><Link href={`/terrenos/${obra.terreno.id}`} style={{ color: "var(--navy-700)", textDecoration: "none" }}>{obra.terreno.nome}</Link> · {obra.terreno.cidade}</span>
-              ) : (
-                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} />Sem terreno vinculado</span>
-              )}
-              {obra.responsavel && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><UserRound size={13} />{obra.responsavel}</span>}
-              {(obra.inicio || obra.prazo) && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Calendar size={13} />{fmtDate(obra.inicio)} → {fmtDate(obra.prazo)}</span>}
-            </div>
+            <Link href="/obras" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", textDecoration: "none", marginBottom: 4 }}>
+              <ArrowLeft size={13} /> Obras
+            </Link>
+            <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{obra.nome}</h1>
           </div>
-          <button onClick={() => setShowEdit(true)} style={{ height: 38, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Edit2 size={14} /> Editar obra
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
+            <button onClick={() => setTab("notas")} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <Receipt size={15} /> + Nova nota
+            </button>
+          </div>
+        </div>
+        {/* Row 2: status + metadata + Editar/Relatório */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, paddingBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 18, fontSize: 13.5, color: "var(--fg-tertiary)", flexWrap: "wrap", alignItems: "center" }}>
+            <Badge label={st.label} color={st.color} bg={st.bg} dot />
+            {obra.terreno ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} /><Link href={`/terrenos/${obra.terreno.id}`} style={{ color: "var(--navy-700)", textDecoration: "none" }}>{obra.terreno.nome}</Link> · {obra.terreno.cidade}</span>
+            ) : (
+              <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} />Sem terreno vinculado</span>
+            )}
+            {obra.responsavel && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><UserRound size={13} />{obra.responsavel}</span>}
+            {(obra.inicio || obra.prazo) && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Calendar size={13} />{fmtDate(obra.inicio)} → {fmtDate(obra.prazo)}</span>}
+          </div>
+          <button onClick={() => setShowEdit(true)} style={{ height: 34, padding: "0 13px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Edit2 size={13} /> Editar obra
           </button>
         </div>
       </div>
@@ -249,7 +267,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
       <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 16, flexWrap: "wrap" }}>
         <KPI label="Orçamento" value={fmtBRL(obra.orcamento)} />
         <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do previsto`} />
-        <KPI label={estouro ? "Estouro" : "Saldo disponível"} value={fmtBRL(Math.abs(saldo))} danger={estouro} sub={estouro ? "acima do orçamento" : undefined} />
+        <KPI label={estouro ? "Estouro" : "Saldo disponível"} value={fmtBRL(Math.abs(saldo))} danger={estouro} green={!estouro} sub={estouro ? "acima do orçamento" : undefined} />
         <KPI label="Execução física" value={`${obra.progresso}%`} sub={obra.notas.filter((n) => n.status === "pendente").length > 0 ? `${obra.notas.filter((n) => n.status === "pendente").length} nota(s) em revisão` : undefined} />
       </div>
 
