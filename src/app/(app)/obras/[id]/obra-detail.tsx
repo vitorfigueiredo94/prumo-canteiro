@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle } from "lucide-react";
+import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle, CheckSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObraForm } from "../obra-form";
 import { editarObra, confirmarNota, excluirNota } from "../actions";
@@ -43,7 +43,96 @@ const TABS = [
   { k: "notas", l: "Notas Fiscais", Icon: Receipt },
   { k: "equipe", l: "Equipe", Icon: Users },
   { k: "diario", l: "Diário", Icon: BookOpen },
+  { k: "checklist", l: "Checklist", Icon: CheckSquare },
 ];
+
+const FASE_NOMES: Record<string, string> = {
+  OBRA_INICIO: "Início da Obra",
+  OBRA_MEIO: "Execução",
+  OBRA_FIM: "Entrega",
+};
+
+interface ChecklistItem { id: string; descricao: string; concluido: boolean; observacao: string | null; }
+interface ChecklistCl { id: string; fase: string; total: number; concluidos: number; porcentagem: number; itens: ChecklistItem[]; }
+
+function ChecklistTab({ obraId }: { obraId: string }) {
+  const [data, setData] = useState<ChecklistCl[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const res = await fetch(`/api/v1/checklist/obra/${obraId}`);
+    const json = await res.json();
+    setData(json.checklists ?? []);
+    setLoading(false);
+  }, [obraId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const toggle = async (itemId: string, current: boolean) => {
+    setToggling(itemId);
+    await fetch(`/api/v1/checklist/item/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concluido: !current }),
+    });
+    await refresh();
+    setToggling(null);
+  };
+
+  if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
+  if (!data || data.length === 0) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum checklist criado para esta obra.</p>;
+
+  const totalGeral = data.reduce((s, cl) => s + cl.total, 0);
+  const concluidosGeral = data.reduce((s, cl) => s + cl.concluidos, 0);
+  const pctGeral = totalGeral === 0 ? 0 : Math.round((concluidosGeral / totalGeral) * 100);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Resumo geral */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Progresso geral</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)" }}>{concluidosGeral}/{totalGeral} · {pctGeral}%</span>
+        </div>
+        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
+        </div>
+      </div>
+
+      {/* Fases */}
+      {data.map((cl) => (
+        <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_NOMES[cl.fase] ?? cl.fase}</span>
+                <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} itens · {cl.porcentagem}%</span>
+              </div>
+              <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+                <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "var(--success-500)" : "var(--navy-500)", borderRadius: "var(--radius-full)", transition: "width 400ms" }} />
+              </div>
+            </div>
+          </div>
+          <div>
+            {cl.itens.map((item, idx) => (
+              <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 20px", cursor: toggling === item.id ? "wait" : "pointer", borderBottom: idx < cl.itens.length - 1 ? "1px solid var(--border-subtle)" : "none", background: item.concluido ? "var(--ink-50)" : "transparent" }}>
+                <input
+                  type="checkbox"
+                  checked={item.concluido}
+                  onChange={() => toggle(item.id, item.concluido)}
+                  disabled={toggling === item.id}
+                  style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--navy-700)", cursor: "pointer", flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const KPI = ({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) => (
   <div style={{ background: "var(--bg-surface)", border: `1px solid ${danger ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-lg)", padding: "16px 20px", flex: 1, minWidth: 160 }}>
@@ -287,6 +376,9 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
             )}
           </div>
         )}
+
+        {/* ── CHECKLIST ── */}
+        {tab === "checklist" && <ChecklistTab obraId={obra.id} />}
       </div>
 
       {showEdit && (
