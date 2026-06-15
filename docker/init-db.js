@@ -16,7 +16,7 @@ const { n } = db
   .get();
 
 if (n === 0) {
-  const sql = fs.readFileSync(path.join(__dirname, '..', 'init.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf8');
   db.exec(sql);
   console.log('[prumo] Schema aplicado — tabelas criadas.');
 } else {
