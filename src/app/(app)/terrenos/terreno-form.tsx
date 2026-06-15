@@ -110,30 +110,8 @@ export function TerrenoForm({ onClose, action, initial, isEdit = false }: Terren
       title={isEdit ? "Editar terreno" : "Novo terreno"}
       subtitle={isEdit ? "Altere os dados do terreno." : "Cadastre um terreno no banco de terras."}
       onClose={onClose}
-      footer={
-        <>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              height: 40,
-              padding: "0 16px",
-              border: "1px solid var(--border-default)",
-              borderRadius: "var(--radius-md)",
-              background: "transparent",
-              color: "var(--fg-secondary)",
-              cursor: "pointer",
-              fontFamily: "var(--font-sans)",
-              fontSize: 14,
-            }}
-          >
-            Cancelar
-          </button>
-          <SubmitButton label={isEdit ? "Salvar alterações" : "Cadastrar terreno"} />
-        </>
-      }
     >
-      <form id="terreno-form" action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <FieldLabel>Nome do terreno *</FieldLabel>
           <input name="nome" required defaultValue={initial?.nome} placeholder="Ex.: Lote 01 — Residencial Pinheiros" style={fieldStyle} onFocus={focus} onBlur={blur} />
@@ -203,6 +181,12 @@ export function TerrenoForm({ onClose, action, initial, isEdit = false }: Terren
             {state.error}
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
+            Cancelar
+          </button>
+          <SubmitButton label={isEdit ? "Salvar alterações" : "Cadastrar terreno"} />
+        </div>
       </form>
     </Modal>
   );

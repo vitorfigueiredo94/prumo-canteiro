@@ -52,14 +52,6 @@ export function VendaForm({ onClose, action, terrenos }: VendaFormProps) {
       title="Registrar venda"
       subtitle="Vincule o terreno ao comprador e gere o parcelamento."
       onClose={onClose}
-      footer={
-        <>
-          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
-            Cancelar
-          </button>
-          <SubmitBtn />
-        </>
-      }
     >
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Select label="Terreno *" name="terrenoId" options={terrenoOpts} placeholder="Selecione o terreno" fullWidth required />
@@ -103,6 +95,12 @@ export function VendaForm({ onClose, action, terrenos }: VendaFormProps) {
             <AlertCircle size={15} />{state.error}
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
+            Cancelar
+          </button>
+          <SubmitBtn />
+        </div>
       </form>
     </Modal>
   );

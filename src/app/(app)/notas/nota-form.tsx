@@ -90,14 +90,6 @@ export function NotaForm({ onClose, action, obras, initial, isEdit = false }: No
       title={isEdit ? "Editar NF" : "Lançar NF"}
       subtitle={isEdit ? "Atualize os dados da nota fiscal." : "Registre manualmente ou importe via XML."}
       onClose={onClose}
-      footer={
-        <>
-          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
-            Cancelar
-          </button>
-          <SubmitBtn label={isEdit ? "Salvar" : "Lançar nota"} />
-        </>
-      }
     >
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {!isEdit && (
@@ -150,6 +142,12 @@ export function NotaForm({ onClose, action, obras, initial, isEdit = false }: No
             <AlertCircle size={15} />{state.error}
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
+            Cancelar
+          </button>
+          <SubmitBtn label={isEdit ? "Salvar" : "Lançar nota"} />
+        </div>
       </form>
     </Modal>
   );

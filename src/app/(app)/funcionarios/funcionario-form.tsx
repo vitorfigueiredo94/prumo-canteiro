@@ -61,14 +61,6 @@ export function FuncionarioForm({ onClose, action, initial, isEdit = false }: Fu
       title={isEdit ? "Editar funcionário" : "Novo funcionário"}
       subtitle={isEdit ? "Atualize os dados do funcionário." : "Adicione um funcionário à equipe."}
       onClose={onClose}
-      footer={
-        <>
-          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
-            Cancelar
-          </button>
-          <SubmitBtn label={isEdit ? "Salvar" : "Cadastrar"} />
-        </>
-      }
     >
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 14 }}>
@@ -117,6 +109,12 @@ export function FuncionarioForm({ onClose, action, initial, isEdit = false }: Fu
             <AlertCircle size={15} />{state.error}
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
+            Cancelar
+          </button>
+          <SubmitBtn label={isEdit ? "Salvar" : "Cadastrar"} />
+        </div>
       </form>
     </Modal>
   );
