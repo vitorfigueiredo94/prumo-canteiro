@@ -9,7 +9,7 @@ import type { ObraFormState } from "./actions";
 
 interface Terreno { id: string; nome: string; cidade: string; }
 interface ObraInitial {
-  id: string; nome: string; terrenoId: string; orcamento: number;
+  id: string; nome: string; terrenoId: string | null; orcamento: number;
   status: string; inicio: string | null; prazo: string | null;
   responsavel: string | null; progresso: number;
 }
@@ -65,7 +65,7 @@ export function ObraForm({ onClose, action, terrenos, initial, isEdit = false }:
   return (
     <Modal
       title={isEdit ? "Editar obra" : "Nova obra"}
-      subtitle={isEdit ? "Altere os dados da obra." : "Cadastre e vincule a um terreno."}
+      subtitle={isEdit ? "Altere os dados da obra." : "Cadastre e vincule a um terreno (opcional)."}
       onClose={onClose}
       footer={
         <>
@@ -82,7 +82,7 @@ export function ObraForm({ onClose, action, terrenos, initial, isEdit = false }:
           <input name="nome" required defaultValue={initial?.nome} placeholder="Ex.: Residência Aurora" style={fs} onFocus={fv} onBlur={fb} />
         </div>
 
-        <Select label="Terreno *" name="terrenoId" options={terrenoOpts} defaultValue={initial?.terrenoId} placeholder="Selecione o terreno" fullWidth required />
+        <Select label="Terreno (opcional)" name="terrenoId" options={terrenoOpts} defaultValue={initial?.terrenoId ?? ""} placeholder="Sem terreno vinculado" fullWidth />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

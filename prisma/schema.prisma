@@ -106,8 +106,8 @@ model Obra {
   id           String                 @id @default(cuid())
   empresa      Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   empresaId    String
-  terreno      Terreno                @relation(fields: [terrenoId], references: [id])
-  terrenoId    String
+  terreno      Terreno?               @relation(fields: [terrenoId], references: [id])
+  terrenoId    String?
   nome         String
   status       String                 @default("planejamento")
   orcamento    Decimal

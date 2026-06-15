@@ -8,7 +8,7 @@ import { criarChecklistParaObra } from "@/features/checklist/service";
 
 const ObraSchema = z.object({
   nome: z.string().min(1),
-  terrenoId: z.string().min(1),
+  terrenoId: z.string().optional(),
   orcamento: z.coerce.number().positive(),
   status: z.enum(["planejamento", "em_andamento", "parada", "concluida"]),
   inicio: z.string().optional(),
@@ -35,7 +35,8 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
   const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
   const obra = await prisma.obra.create({
     data: {
-      empresaId, terrenoId, nome, orcamento, status,
+      empresaId, nome, orcamento, status,
+      terrenoId: terrenoId || null,
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,
@@ -64,7 +65,8 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
   await prisma.obra.updateMany({
     where: { id, empresaId },
     data: {
-      nome, terrenoId, orcamento, status, progresso,
+      nome, orcamento, status, progresso,
+      terrenoId: terrenoId || null,
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,
