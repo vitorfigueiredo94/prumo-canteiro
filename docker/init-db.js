@@ -64,4 +64,11 @@ if (terrenoCol && terrenoCol.notnull === 1) {
   console.log('[prumo] Migração aplicada: obras.terrenoId agora nullable.');
 }
 
+// Migration: diario_obras.fotoUrl
+const diarioInfo = db.prepare("PRAGMA table_info('diario_obras')").all();
+if (!diarioInfo.find(c => c.name === 'fotoUrl')) {
+  db.exec('ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl" TEXT;');
+  console.log('[prumo] Migração aplicada: diario_obras.fotoUrl adicionado.');
+}
+
 db.close();

@@ -57,5 +57,4 @@ CREATE TABLE IF NOT EXISTS "checklist_itens" (
 CREATE INDEX IF NOT EXISTS "checklist_itens_checklistId_idx"
   ON "checklist_itens"("checklistId");
 
--- Migration: fotoUrl no Diário de Obra
-ALTER TABLE "diario_obras" ADD COLUMN IF NOT EXISTS "fotoUrl" TEXT;
+-- Migration: fotoUrl no Diário de Obra (aplicada via init-db.js com PRAGMA check)
