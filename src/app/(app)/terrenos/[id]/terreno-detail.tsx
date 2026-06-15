@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { MapPinned, Image as ImageIcon, Pencil, Building2, ChevronRight, FolderOpen } from "lucide-react";
+import { MapPinned, Image as ImageIcon, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "../terreno-form";
 import { editarTerreno } from "../actions";
@@ -57,6 +57,85 @@ const tabBtn = (active: boolean): React.CSSProperties => ({
   marginBottom: -1,
 });
 
+const FASE_TERRENO: Record<string, string> = {
+  TERRENO_PREPARACAO: "Preparação",
+  TERRENO_ANALISE: "Análise Documental",
+  TERRENO_PROPOSTA: "Proposta",
+  TERRENO_POS_VENDA: "Pós-venda",
+};
+
+interface ChecklistItem { id: string; descricao: string; concluido: boolean; }
+interface ChecklistCl { id: string; fase: string; total: number; concluidos: number; porcentagem: number; itens: ChecklistItem[]; }
+
+function ChecklistTab({ terrenoId }: { terrenoId: string }) {
+  const [data, setData] = useState<ChecklistCl[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const res = await fetch(`/api/v1/checklist/terreno/${terrenoId}`);
+    const json = await res.json();
+    setData(json.checklists ?? []);
+    setLoading(false);
+  }, [terrenoId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const toggle = async (itemId: string, current: boolean) => {
+    setToggling(itemId);
+    await fetch(`/api/v1/checklist/item/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concluido: !current }),
+    });
+    await refresh();
+    setToggling(null);
+  };
+
+  if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
+  if (!data || data.length === 0) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum checklist criado para este terreno.</p>;
+
+  const totalGeral = data.reduce((s, cl) => s + cl.total, 0);
+  const concluidosGeral = data.reduce((s, cl) => s + cl.concluidos, 0);
+  const pctGeral = totalGeral === 0 ? 0 : Math.round((concluidosGeral / totalGeral) * 100);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Progresso geral</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)" }}>{concluidosGeral}/{totalGeral} · {pctGeral}%</span>
+        </div>
+        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
+        </div>
+      </div>
+
+      {data.map((cl) => (
+        <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_TERRENO[cl.fase] ?? cl.fase}</span>
+              <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} · {cl.porcentagem}%</span>
+            </div>
+            <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+              <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "var(--success-500)" : "var(--navy-500)", borderRadius: "var(--radius-full)", transition: "width 400ms" }} />
+            </div>
+          </div>
+          <div>
+            {cl.itens.map((item, idx) => (
+              <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 20px", cursor: toggling === item.id ? "wait" : "pointer", borderBottom: idx < cl.itens.length - 1 ? "1px solid var(--border-subtle)" : "none", background: item.concluido ? "var(--ink-50)" : "transparent" }}>
+                <input type="checkbox" checked={item.concluido} onChange={() => toggle(item.id, item.concluido)} disabled={toggling === item.id} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--navy-700)", cursor: "pointer", flexShrink: 0 }} />
+                <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DetGrid({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ background: "var(--ink-50)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>
@@ -71,7 +150,7 @@ function DetGrid({ label, value }: { label: string; value: string }) {
 }
 
 export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
-  const [tab, setTab] = useState<"geral" | "documentos">("geral");
+  const [tab, setTab] = useState<"geral" | "documentos" | "checklist">("geral");
   const [editing, setEditing] = useState(false);
 
   const statusInfo = STATUS_TERRENO[terreno.status as keyof typeof STATUS_TERRENO] ?? STATUS_TERRENO.disponivel;
@@ -151,6 +230,9 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
           <button style={tabBtn(tab === "documentos")} onClick={() => setTab("documentos")}>
             <FolderOpen size={15} /> Documentos
           </button>
+          <button style={tabBtn(tab === "checklist")} onClick={() => setTab("checklist")}>
+            <CheckSquare size={15} /> Checklist
+          </button>
         </div>
       </div>
 
@@ -222,6 +304,8 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
             </div>
           </div>
         )}
+
+        {tab === "checklist" && <ChecklistTab terrenoId={terreno.id} />}
 
         {tab === "documentos" && (
           <div style={{ maxWidth: 720 }}>
