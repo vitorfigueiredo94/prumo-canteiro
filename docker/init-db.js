@@ -31,4 +31,37 @@ if (fs.existsSync(migratePath)) {
   console.log('[prumo] Migrations incrementais aplicadas.');
 }
 
+// Migration: obras.terrenoId NOT NULL → nullable (SQLite não suporta ALTER COLUMN)
+const obrasInfo = db.prepare("PRAGMA table_info('obras')").all();
+const terrenoCol = obrasInfo.find(c => c.name === 'terrenoId');
+if (terrenoCol && terrenoCol.notnull === 1) {
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+    BEGIN TRANSACTION;
+    CREATE TABLE "obras_new" (
+      "id"          TEXT    NOT NULL PRIMARY KEY,
+      "empresaId"   TEXT    NOT NULL,
+      "terrenoId"   TEXT,
+      "nome"        TEXT    NOT NULL,
+      "status"      TEXT    NOT NULL DEFAULT 'planejamento',
+      "orcamento"   DECIMAL NOT NULL,
+      "inicio"      DATETIME,
+      "prazo"       DATETIME,
+      "progresso"   INTEGER NOT NULL DEFAULT 0,
+      "responsavel" TEXT,
+      "criadoEm"   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "obras_new_empresaId_fkey"
+        FOREIGN KEY ("empresaId") REFERENCES "empresas"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    INSERT INTO "obras_new" SELECT * FROM "obras";
+    DROP TABLE "obras";
+    ALTER TABLE "obras_new" RENAME TO "obras";
+    CREATE INDEX IF NOT EXISTS "obras_empresaId_idx" ON "obras"("empresaId");
+    COMMIT;
+    PRAGMA foreign_keys = ON;
+  `);
+  console.log('[prumo] Migração aplicada: obras.terrenoId agora nullable.');
+}
+
 db.close();
