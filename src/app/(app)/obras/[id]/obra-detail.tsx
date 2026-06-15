@@ -34,7 +34,7 @@ interface DiarioEntry {
 interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
-  terreno: Terreno & { numero: string | null };
+  terreno: (Terreno & { numero: string | null }) | null;
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
 }
 
@@ -99,7 +99,11 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
               <Badge label={st.label} color={st.color} bg={st.bg} dot />
             </div>
             <div style={{ display: "flex", gap: 18, fontSize: 13.5, color: "var(--fg-tertiary)", flexWrap: "wrap" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} /><Link href={`/terrenos/${obra.terreno.id}`} style={{ color: "var(--navy-700)", textDecoration: "none" }}>{obra.terreno.nome}</Link> · {obra.terreno.cidade}</span>
+              {obra.terreno ? (
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} /><Link href={`/terrenos/${obra.terreno.id}`} style={{ color: "var(--navy-700)", textDecoration: "none" }}>{obra.terreno.nome}</Link> · {obra.terreno.cidade}</span>
+              ) : (
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} />Sem terreno vinculado</span>
+              )}
               {obra.responsavel && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><UserRound size={13} />{obra.responsavel}</span>}
               {(obra.inicio || obra.prazo) && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Calendar size={13} />{fmtDate(obra.inicio)} → {fmtDate(obra.prazo)}</span>}
             </div>
@@ -291,7 +295,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
           terrenos={terrenos}
           onClose={closeEdit}
           isEdit
-          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno.id, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, progresso: obra.progresso }}
+          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, progresso: obra.progresso }}
         />
       )}
     </>
