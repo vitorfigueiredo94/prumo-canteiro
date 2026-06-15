@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useTransition, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle, CheckSquare } from "lucide-react";
+import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle, CheckSquare, FolderOpen } from "lucide-react";
+import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { ObraForm } from "../obra-form";
 import { editarObra, confirmarNota, excluirNota } from "../actions";
@@ -44,6 +45,7 @@ const TABS = [
   { k: "equipe", l: "Equipe", Icon: Users },
   { k: "diario", l: "Diário", Icon: BookOpen },
   { k: "checklist", l: "Checklist", Icon: CheckSquare },
+  { k: "documentos", l: "Documentos", Icon: FolderOpen },
 ];
 
 const FASE_NOMES: Record<string, string> = {
@@ -379,6 +381,9 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
 
         {/* ── CHECKLIST ── */}
         {tab === "checklist" && <ChecklistTab obraId={obra.id} />}
+
+        {/* ── DOCUMENTOS ── */}
+        {tab === "documentos" && <DocumentosTab ownerType="obra" ownerId={obra.id} />}
       </div>
 
       {showEdit && (

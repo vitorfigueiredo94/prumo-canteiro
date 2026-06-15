@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { MapPinned, Image as ImageIcon, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare } from "lucide-react";
+import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "../terreno-form";
 import { editarTerreno } from "../actions";
@@ -308,30 +309,7 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
         {tab === "checklist" && <ChecklistTab terrenoId={terreno.id} />}
 
         {tab === "documentos" && (
-          <div style={{ maxWidth: 720 }}>
-            <div
-              style={{
-                width: "100%",
-                border: "2px dashed var(--border-default)",
-                borderRadius: "var(--radius-lg)",
-                background: "var(--ink-50)",
-                padding: "40px 24px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
-                textAlign: "center",
-              }}
-            >
-              <span style={{ width: 46, height: 46, borderRadius: "var(--radius-lg)", background: "var(--navy-50)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--navy-600)" }}>
-                <FolderOpen size={24} />
-              </span>
-              <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)", margin: 0 }}>Upload de documentos</p>
-              <p style={{ fontSize: 13, color: "var(--fg-tertiary)", margin: 0 }}>
-                Upload para Supabase Storage será ativado na Etapa 7.
-              </p>
-            </div>
-          </div>
+          <DocumentosTab ownerType="terreno" ownerId={terreno.id} />
         )}
       </div>
 
