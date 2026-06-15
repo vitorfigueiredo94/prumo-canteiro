@@ -29,7 +29,7 @@ interface Alocacao {
 }
 
 interface DiarioEntry {
-  id: string; data: string | null; conteudo: string; autor: string | null;
+  id: string; data: string | null; conteudo: string; autor: string | null; fotoUrl: string | null;
 }
 
 interface Obra {
@@ -373,6 +373,12 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
                     {d.autor && <span>{d.autor}</span>}
                   </div>
                   <p style={{ margin: 0, fontSize: 14.5, color: "var(--fg-primary)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{d.conteudo}</p>
+                  {d.fotoUrl && (
+                    <a href={d.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 12, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", maxWidth: 440 }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={d.fotoUrl} alt="Foto da obra" style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block" }} />
+                    </a>
+                  )}
                 </div>
               ))
             )}

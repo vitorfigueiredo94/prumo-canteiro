@@ -5,6 +5,11 @@ import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
+
+const FOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 const EntradaSchema = z.object({
   obraId: z.string().min(1),
@@ -37,11 +42,28 @@ export async function criarEntrada(_prev: DiarioFormState, formData: FormData): 
   });
   if (!obra) return { error: "Obra não encontrada." };
 
+  // Handle optional photo upload
+  let fotoUrl: string | null = null;
+  const foto = formData.get("foto") as File | null;
+  if (foto && foto.size > 0) {
+    if (!FOTO_TYPES.includes(foto.type)) return { error: "Foto deve ser JPEG, PNG, WebP ou GIF." };
+    if (foto.size > 8 * 1024 * 1024) return { error: "Foto maior que 8 MB." };
+    const ext = path.extname(foto.name).toLowerCase() || ".jpg";
+    const safeName = `${randomUUID()}${ext}`;
+    const dbUrl = process.env.DATABASE_URL || "file:/app/data/prumo.db";
+    const dataDir = path.dirname(dbUrl.replace(/^file:/, ""));
+    const dir = path.join(dataDir, "uploads", session.empresaId, "diario");
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, safeName), Buffer.from(await foto.arrayBuffer()));
+    fotoUrl = `/api/v1/uploads/${session.empresaId}/diario/${safeName}`;
+  }
+
   await prisma.diarioObra.create({
     data: {
       obraId,
       empresaId: session.empresaId,
       conteudo,
+      fotoUrl,
       autor: session.nome,
       data: data ? new Date(data) : new Date(),
       clima: clima || null,

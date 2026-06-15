@@ -22,30 +22,29 @@ export async function GET(
   if (!session) return new NextResponse("Não autenticado", { status: 401 });
 
   const { path: segments } = await params;
-  // Expected: [empresaId, ownerType, ownerId, filename]
-  if (segments.length !== 4) return new NextResponse("Not found", { status: 404 });
-
-  const [empresaId, ownerType, ownerId, filename] = segments;
-
-  // Multi-tenancy: ensure user belongs to this empresa
-  if (empresaId !== session.empresaId) return new NextResponse("Proibido", { status: 403 });
+  if (!segments || segments.length < 2) return new NextResponse("Not found", { status: 404 });
 
   // Prevent path traversal
-  const safeName = path.basename(filename);
+  if (segments.some((s) => s.includes(".."))) return new NextResponse("Bad request", { status: 400 });
+
+  const [empresaId, ...rest] = segments;
+  if (empresaId !== session.empresaId) return new NextResponse("Proibido", { status: 403 });
+
   const dbUrl = process.env.DATABASE_URL || "file:/app/data/prumo.db";
   const dataDir = path.dirname(dbUrl.replace(/^file:/, ""));
-  const filePath = path.join(dataDir, "uploads", empresaId, ownerType, ownerId, safeName);
+  const filePath = path.join(dataDir, "uploads", empresaId, ...rest);
 
   const buffer = await readFile(filePath).catch(() => null);
   if (!buffer) return new NextResponse("Not found", { status: 404 });
 
-  const ext = path.extname(safeName).toLowerCase();
+  const ext = path.extname(rest[rest.length - 1] ?? "").toLowerCase();
   const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
+  const filename = rest[rest.length - 1] ?? "file";
 
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `inline; filename="${safeName}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "private, max-age=3600",
     },
   });

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useActionState, useTransition } from "react";
+import { useState, useCallback, useActionState, useTransition, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { Plus, BookOpen, Trash2, AlertCircle, Check, Search, Printer } from "lucide-react";
+import { Plus, BookOpen, Trash2, AlertCircle, Check, Search, Printer, Camera } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { criarEntrada, excluirEntrada } from "./actions";
@@ -12,7 +12,7 @@ import type { DiarioFormState } from "./actions";
 interface ObraLite { id: string; nome: string; }
 interface Entrada {
   id: string; data: string | null; conteudo: string; autor: string | null;
-  clima: string | null; equipePresente: number | null;
+  clima: string | null; equipePresente: number | null; fotoUrl: string | null;
   obra: ObraLite;
 }
 
@@ -43,13 +43,19 @@ function NovaEntradaModal({ obras, onClose }: { obras: ObraLite[]; onClose: () =
     if (!r) onClose();
     return r;
   }, null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
 
   const obraOpts = obras.map((o) => ({ value: o.id, label: o.nome }));
 
+  const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) setPreview(URL.createObjectURL(f));
+    else setPreview(null);
+  };
+
   return (
-    <Modal title="Nova entrada no diário" subtitle="Registre o progresso da obra no dia." onClose={onClose}
-      footer={<><button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>Cancelar</button><SubmitBtn /></>}
-    >
+    <Modal title="Nova entrada no diário" subtitle="Registre o progresso da obra no dia." onClose={onClose}>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Select label="Obra *" name="obraId" options={obraOpts} placeholder="Selecione a obra" fullWidth required />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -61,11 +67,30 @@ function NovaEntradaModal({ obras, onClose }: { obras: ObraLite[]; onClose: () =
           {lbl("Relato do dia *")}
           <textarea name="conteudo" required placeholder="Descreva o que foi realizado hoje…" rows={5} style={{ ...fs, height: "auto", padding: "10px 12px", resize: "vertical" }} onFocus={fv} onBlur={fb} />
         </div>
+        {/* Foto */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {lbl("Foto da obra (opcional)")}
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 36, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--ink-50)", cursor: "pointer", fontSize: 13.5, color: "var(--fg-secondary)", width: "fit-content" }}>
+            <Camera size={15} /> {preview ? "Trocar foto" : "Selecionar foto"}
+            <input ref={fotoRef} type="file" name="foto" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: "none" }} onChange={handleFoto} />
+          </label>
+          {preview && (
+            <div style={{ position: "relative", width: "100%", maxHeight: 200, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview} alt="Prévia" style={{ width: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} />
+              <button type="button" onClick={() => { setPreview(null); if (fotoRef.current) fotoRef.current.value = ""; }} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+          )}
+        </div>
         {state?.error && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--danger-500)", background: "var(--danger-50)", border: "1px solid rgba(181,54,60,0.25)", borderRadius: "var(--radius-md)", padding: "9px 12px" }}>
             <AlertCircle size={15} />{state.error}
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+          <button type="button" onClick={onClose} style={{ height: 40, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>Cancelar</button>
+          <SubmitBtn />
+        </div>
       </form>
     </Modal>
   );
@@ -130,8 +155,14 @@ export function DiarioView({ entradas, obras }: { entradas: Entrada[]; obras: Ob
                 <Trash2 size={13} />
               </button>
             </div>
-            <div style={{ padding: "16px 20px" }}>
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
               <p style={{ margin: 0, fontSize: 14.5, color: "var(--fg-primary)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{e.conteudo}</p>
+              {e.fotoUrl && (
+                <a href={e.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "block", borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", maxWidth: 480 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={e.fotoUrl} alt="Foto da obra" style={{ width: "100%", maxHeight: 300, objectFit: "cover", display: "block" }} />
+                </a>
+              )}
             </div>
           </div>
         ))}
