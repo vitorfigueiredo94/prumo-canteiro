@@ -11,6 +11,7 @@ interface KPIs {
 interface NotaPendente { id: string; fornecedor: string | null; valor: number; emitidaEm: string | null; obra: { id: string; nome: string }; }
 interface ParcelaVencendo { id: string; valor: number; vencimento: string | null; venda: { id: string; nomeComprador: string }; }
 interface ObraEstouro { id: string; nome: string; orcamento: number; gasto: number; }
+interface ObraFin { id: string; nome: string; status: string; orcamento: number; progresso: number; gasto: number; }
 interface FuncRaw { id: string; nome: string; cargo: string | null; salario: number; }
 
 // avatar helpers
@@ -50,15 +51,17 @@ function Donut({ pct, size = 120 }: { pct: number; size?: number }) {
   );
 }
 
-export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVencendo, obrasComEstouro, funcAtivosRaw, gastosPorCategoria }: {
+export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVencendo, obrasComEstouro, obrasFinanceiro, funcAtivosRaw, gastosPorCategoria }: {
   nomeUsuario: string;
   kpis: KPIs;
   notasPendentes: NotaPendente[];
   parcelasVencendo: ParcelaVencendo[];
   obrasComEstouro: ObraEstouro[];
+  obrasFinanceiro: ObraFin[];
   funcAtivosRaw: FuncRaw[];
   gastosPorCategoria: Record<string, number>;
 }) {
+  const obrasAtivas = obrasFinanceiro.filter((o) => o.status !== "concluida").slice(0, 4);
   const saldo = kpis.orcamento - kpis.gastoTotal;
   const pctGasto = kpis.orcamento > 0 ? Math.round((kpis.gastoTotal / kpis.orcamento) * 100) : 0;
 
@@ -141,24 +144,37 @@ export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVence
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20, alignItems: "start" }}>
           {/* Left column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* NFs pendentes */}
+            {/* Obras em andamento */}
             <div style={cardStyle}>
               <div style={cardHead}>
-                <h3 style={cardTitle}>NFs pendentes</h3>
-                <Link href="/notas" style={{ fontSize: 13, color: "var(--navy-700)", textDecoration: "none", fontWeight: 600 }}>Ver todas →</Link>
+                <h3 style={cardTitle}>Obras em andamento</h3>
+                <Link href="/obras" style={{ fontSize: 13, color: "var(--navy-700)", textDecoration: "none", fontWeight: 600 }}>Ver todas →</Link>
               </div>
-              {notasPendentes.length === 0 ? (
-                <p style={{ padding: "24px 20px", textAlign: "center", color: "var(--fg-tertiary)", fontSize: 14, margin: 0 }}>Nenhuma NF pendente.</p>
+              {obrasAtivas.length === 0 ? (
+                <p style={{ padding: "24px 20px", textAlign: "center", color: "var(--fg-tertiary)", fontSize: 14, margin: 0 }}>Nenhuma obra em andamento.</p>
               ) : (
-                notasPendentes.map((n) => (
-                  <div key={n.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--fg-primary)" }}>{n.fornecedor ?? "Fornecedor"}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>{n.obra.nome} · {fmtDate(n.emitidaEm)}</p>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 15, fontFamily: "var(--font-display)", color: "var(--fg-primary)" }}>{fmtBRL(n.valor)}</p>
-                  </div>
-                ))
+                <div style={{ padding: "12px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                  {obrasAtivas.map((o) => {
+                    const estouro = o.gasto > o.orcamento;
+                    const pct = o.orcamento > 0 ? Math.min(Math.round((o.gasto / o.orcamento) * 100), 100) : 0;
+                    return (
+                      <Link key={o.id} href={`/obras/${o.id}`} style={{ textDecoration: "none" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{o.nome}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{o.progresso}% executado</div>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: estouro ? "var(--danger-500)" : "var(--fg-secondary)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                            {fmtBRLshort(o.gasto)} <span style={{ color: "var(--fg-muted)", fontWeight: 400 }}>/ {fmtBRLshort(o.orcamento)}</span>
+                          </span>
+                        </div>
+                        <div style={{ height: 7, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: estouro ? "var(--danger-500)" : pct > 80 ? "#d97706" : "#1e3a5f", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
             </div>
 

@@ -70,17 +70,15 @@ export default async function DashboardPage() {
   const gastoTotal = Number(gastoNotasAggregate._sum.valor ?? 0) + Number(gastoPagsAggregate._sum.valor ?? 0);
   const receita = Number(receitaAggregate._sum.valor ?? 0);
 
-  const obrasComEstouro = obrasRaw
-    .filter((o: typeof obrasRaw[0]) => {
-      const gasto = o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
-        + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0);
-      return gasto > Number(o.orcamento);
-    })
-    .map((o: typeof obrasRaw[0]) => ({
-      id: o.id, nome: o.nome, orcamento: Number(o.orcamento),
-      gasto: o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
-        + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0),
-    }));
+  const obrasFinanceiro = obrasRaw.map((o: typeof obrasRaw[0]) => {
+    const gasto = o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
+      + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0);
+    return { id: o.id, nome: o.nome, status: o.status, orcamento: Number(o.orcamento), progresso: o.progresso, gasto };
+  });
+
+  const obrasComEstouro = obrasFinanceiro
+    .filter((o) => o.gasto > o.orcamento)
+    .map((o) => ({ id: o.id, nome: o.nome, orcamento: o.orcamento, gasto: o.gasto }));
 
   const catMap: Record<string, number> = {};
   for (const row of notasPorCategoria) {
@@ -94,6 +92,7 @@ export default async function DashboardPage() {
       notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
       parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}
       obrasComEstouro={obrasComEstouro}
+      obrasFinanceiro={obrasFinanceiro}
       funcAtivosRaw={funcAtivosRaw.map((f: typeof funcAtivosRaw[0]) => ({ id: f.id, nome: f.nome, cargo: f.cargo, salario: Number(f.salario ?? 0) }))}
       gastosPorCategoria={catMap}
     />
