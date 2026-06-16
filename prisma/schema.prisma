@@ -471,3 +471,60 @@ model ChecklistItem {
   @@index([checklistId])
   @@map("checklist_itens")
 }
+
+// ─────────────────────────── Garantia & Assistência Técnica ──────────────────
+// Append-only: sem @relation nas tabelas existentes
+
+model GarantiaComponente {
+  id                String   @id @default(cuid())
+  empresaId         String
+  codigo            String
+  nome              String
+  prazoLegalMeses   Int
+  prazoContratMeses Int
+  marcoInicial      String   @default("entrega_chaves")
+  baseLegal         String?
+  ativo             Boolean  @default(true)
+  criadoEm         DateTime @default(now())
+
+  @@unique([empresaId, codigo])
+  @@index([empresaId])
+  @@map("garantia_componentes")
+}
+
+model ChamadoAssistencia {
+  id                String    @id @default(cuid())
+  empresaId         String
+  vendaId           String
+  componenteId      String
+  descricao         String
+  status            String    @default("aberto")
+  dataEntregaChaves DateTime?
+  parecerStatus     String?
+  parecerTexto      String?
+  parecerGeradoEm  DateTime?
+  criadoEm         DateTime  @default(now())
+  atualizadoEm     DateTime  @updatedAt
+
+  @@index([empresaId])
+  @@index([vendaId])
+  @@map("chamados_assistencia")
+}
+
+// ─────────────────────────── Cobrança Automatizada ───────────────────────────
+
+model CobrancaLog {
+  id        String   @id @default(cuid())
+  empresaId String
+  parcelaId String
+  tipo      String
+  canal     String   @default("whatsapp")
+  status    String   @default("pendente")
+  payload   String?
+  resposta  String?
+  criadoEm DateTime @default(now())
+
+  @@index([empresaId])
+  @@index([parcelaId])
+  @@map("cobranca_logs")
+}

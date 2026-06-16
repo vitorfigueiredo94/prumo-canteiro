@@ -12,6 +12,7 @@ import {
   Handshake,
   MapPinned,
   BookOpen,
+  Wrench,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/vendas",        label: "Vendas",        icon: Handshake },
   { href: "/terrenos",      label: "Terrenos",      icon: MapPinned },
   { href: "/diario",        label: "Diário",        icon: BookOpen },
+  { href: "/assistencia",   label: "Pós-obra",      icon: Wrench },
 ];
 
 interface SidebarProps {
