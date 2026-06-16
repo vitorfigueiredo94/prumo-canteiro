@@ -58,3 +58,51 @@ CREATE INDEX IF NOT EXISTS "checklist_itens_checklistId_idx"
   ON "checklist_itens"("checklistId");
 
 -- Migration: fotoUrl no Diário de Obra (aplicada via init-db.js com PRAGMA check)
+
+-- Migration: Assistência Técnica Pós-Obra (v0.8)
+CREATE TABLE IF NOT EXISTS "garantia_componentes" (
+  "id"                TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"         TEXT     NOT NULL,
+  "codigo"            TEXT     NOT NULL,
+  "nome"              TEXT     NOT NULL,
+  "prazoLegalMeses"   INTEGER  NOT NULL,
+  "prazoContratMeses" INTEGER  NOT NULL,
+  "marcoInicial"      TEXT     NOT NULL DEFAULT 'entrega_chaves',
+  "baseLegal"         TEXT,
+  "ativo"             BOOLEAN  NOT NULL DEFAULT 1,
+  "criadoEm"         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "garantia_componentes_empresaId_codigo_key" UNIQUE ("empresaId", "codigo")
+);
+CREATE INDEX IF NOT EXISTS "garantia_componentes_empresaId_idx" ON "garantia_componentes"("empresaId");
+
+CREATE TABLE IF NOT EXISTS "chamados_assistencia" (
+  "id"                TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"         TEXT     NOT NULL,
+  "vendaId"           TEXT     NOT NULL,
+  "componenteId"      TEXT     NOT NULL,
+  "descricao"         TEXT     NOT NULL,
+  "status"            TEXT     NOT NULL DEFAULT 'aberto',
+  "dataEntregaChaves" DATETIME,
+  "parecerStatus"     TEXT,
+  "parecerTexto"      TEXT,
+  "parecerGeradoEm"  DATETIME,
+  "criadoEm"         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "chamados_assistencia_empresaId_idx" ON "chamados_assistencia"("empresaId");
+CREATE INDEX IF NOT EXISTS "chamados_assistencia_vendaId_idx"   ON "chamados_assistencia"("vendaId");
+
+-- Migration: Robô de Cobrança (v0.8)
+CREATE TABLE IF NOT EXISTS "cobranca_logs" (
+  "id"        TEXT     NOT NULL PRIMARY KEY,
+  "empresaId" TEXT     NOT NULL,
+  "parcelaId" TEXT     NOT NULL,
+  "tipo"      TEXT     NOT NULL,
+  "canal"     TEXT     NOT NULL DEFAULT 'whatsapp',
+  "status"    TEXT     NOT NULL DEFAULT 'pendente',
+  "payload"   TEXT,
+  "resposta"  TEXT,
+  "criadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "cobranca_logs_empresaId_idx" ON "cobranca_logs"("empresaId");
+CREATE INDEX IF NOT EXISTS "cobranca_logs_parcelaId_idx" ON "cobranca_logs"("parcelaId");
