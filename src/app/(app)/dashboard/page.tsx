@@ -25,6 +25,8 @@ export default async function DashboardPage() {
     parcelasVencendo,
     parcelasAtrasadas,
     obrasRaw,
+    funcAtivosRaw,
+    notasPorCategoria,
   ] = await Promise.all([
     prisma.obra.count({ where: { empresaId: eid, status: "em_andamento" } }),
     prisma.obra.count({ where: { empresaId: eid } }),
@@ -51,6 +53,17 @@ export default async function DashboardPage() {
         pagamentos: { select: { valor: true } },
       },
     }),
+    prisma.funcionario.findMany({
+      where: { empresaId: eid, status: "ativo" },
+      select: { id: true, nome: true, cargo: true, salario: true },
+      orderBy: { salario: "desc" },
+      take: 5,
+    }),
+    prisma.notaFiscal.groupBy({
+      by: ["categoria"],
+      where: { empresaId: eid, status: "confirmada" },
+      _sum: { valor: true },
+    }),
   ]);
 
   const orcamento = Number(orcamentoAggregate._sum.orcamento ?? 0);
@@ -69,6 +82,11 @@ export default async function DashboardPage() {
         + o.pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0),
     }));
 
+  const catMap: Record<string, number> = {};
+  for (const row of notasPorCategoria) {
+    catMap[row.categoria] = Number((row._sum as any).valor ?? 0);
+  }
+
   return (
     <DashboardView
       nomeUsuario={session.nome}
@@ -76,6 +94,8 @@ export default async function DashboardPage() {
       notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
       parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}
       obrasComEstouro={obrasComEstouro}
+      funcAtivosRaw={funcAtivosRaw.map((f: typeof funcAtivosRaw[0]) => ({ id: f.id, nome: f.nome, cargo: f.cargo, salario: Number(f.salario ?? 0) }))}
+      gastosPorCategoria={catMap}
     />
   );
 }

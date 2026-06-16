@@ -2,21 +2,24 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, UserRound, Calendar, ChevronRight, Search } from "lucide-react";
+import { Plus, MapPin, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObraForm } from "./obra-form";
 import { criarObra } from "./actions";
 import { STATUS_OBRA } from "@/lib/status";
-import { fmtBRL, fmtDate } from "@/lib/format";
+import { fmtBRLshort } from "@/lib/format";
 
-interface NotaLite { id: string; status: string; valor: number; categoria: string; }
+interface NotaLite { id: string; status: string; valor: number; }
 interface PagLite { id: string; valor: number; }
 interface Terreno { id: string; nome: string; cidade: string; }
 
 interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
-  terreno: Terreno | null; notas: NotaLite[]; pagamentos: PagLite[];
+  terreno: Terreno | null;
+  notas: NotaLite[];
+  pagamentos: PagLite[];
+  alocacoes: { id: string }[];
 }
 
 const FILTROS = [
@@ -27,10 +30,14 @@ const FILTROS = [
   { k: "concluida", l: "Concluídas" },
 ];
 
-function computeRealizado(notas: NotaLite[], pags: PagLite[]) {
+function computeFinanceiro(notas: NotaLite[], pags: PagLite[], orcamento: number) {
   const gastoNotas = notas.filter((n) => n.status === "confirmada").reduce((s, n) => s + n.valor, 0);
   const gastoFunc = pags.reduce((s, p) => s + p.valor, 0);
-  return gastoNotas + gastoFunc;
+  const realizado = gastoNotas + gastoFunc;
+  const saldo = orcamento - realizado;
+  const estouro = saldo < 0;
+  const pct = orcamento > 0 ? Math.min(Math.round((realizado / orcamento) * 100), 100) : 0;
+  return { realizado, saldo, estouro, pct };
 }
 
 export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terreno[] }) {
@@ -87,46 +94,61 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: 18 }}>
             {filtered.map((o) => {
               const st = STATUS_OBRA[o.status as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
-              const realizado = computeRealizado(o.notas, o.pagamentos);
-              const pct = o.orcamento > 0 ? Math.min(Math.round((realizado / o.orcamento) * 100), 100) : 0;
-              const estouro = realizado > o.orcamento;
+              const { realizado, saldo, estouro, pct } = computeFinanceiro(o.notas, o.pagamentos, o.orcamento);
+              const equipe = o.alocacoes.length;
 
               return (
-                <Link key={o.id} href={`/obras/${o.id}`} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xs)", overflow: "hidden", display: "flex", flexDirection: "column", textDecoration: "none" }}>
-                  <div style={{ padding: "18px 20px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
+                <Link key={o.id} href={`/obras/${o.id}`} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xs)", overflow: "hidden", display: "flex", flexDirection: "column", textDecoration: "none", transition: "box-shadow 140ms, border-color 140ms" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-xs)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-subtle)"; }}
+                >
+                  <div style={{ padding: "18px 20px 16px" }}>
+                    {/* Name + status */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 4 }}>
                       <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, color: "var(--fg-primary)" }}>{o.nome}</h3>
                       <Badge label={st.label} color={st.color} bg={st.bg} dot />
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", marginBottom: 14 }}>
+                    {/* Location */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", marginBottom: 16 }}>
                       <MapPin size={13} />{o.terreno ? `${o.terreno.nome} · ${o.terreno.cidade}` : "Sem terreno vinculado"}
                     </div>
 
-                    {/* Budget bar */}
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--fg-tertiary)", marginBottom: 5 }}>
-                        <span>Realizado: {fmtBRL(realizado)}</span>
-                        <span style={{ color: estouro ? "var(--danger-500)" : undefined }}>{pct}%</span>
-                      </div>
-                      <div style={{ height: 8, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden" }}>
-                        <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: estouro ? "var(--danger-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--fg-tertiary)", marginTop: 4 }}>
-                        <span>Orçamento: {fmtBRL(o.orcamento)}</span>
-                        <span>Física: {o.progresso}%</span>
-                      </div>
+                    {/* Execução física — amber */}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--fg-tertiary)", marginBottom: 6 }}>
+                      <span>Execução física</span>
+                      <span style={{ fontWeight: 600, color: "var(--fg-secondary)" }}>{o.progresso}%</span>
+                    </div>
+                    <div style={{ height: 7, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ width: `${Math.min(o.progresso, 100)}%`, height: "100%", background: "#d4a24c", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
                     </div>
 
-                    <div style={{ display: "flex", gap: 14, fontSize: 12.5, color: "var(--fg-tertiary)", flexWrap: "wrap" }}>
-                      {o.responsavel && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><UserRound size={12} />{o.responsavel}</span>}
-                      {(o.inicio || o.prazo) && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={12} />{fmtDate(o.inicio)} → {fmtDate(o.prazo)}</span>}
+                    {/* Orçamento consumido — navy */}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--fg-tertiary)", marginBottom: 6 }}>
+                      <span>Orçamento consumido</span>
+                      <span style={{ fontWeight: 600, color: estouro ? "var(--danger-500)" : "var(--fg-secondary)" }}>{pct}%</span>
+                    </div>
+                    <div style={{ height: 7, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden" }}>
+                      <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: estouro ? "var(--danger-500)" : "#1e3a5f", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
                     </div>
                   </div>
 
-                  <div style={{ padding: "10px 20px", borderTop: "1px solid var(--border-subtle)", background: "var(--ink-50)", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
-                    <span style={{ fontSize: 13, color: "var(--navy-700)", fontWeight: 600 }}>Ver detalhes</span>
-                    <ChevronRight size={15} style={{ color: "var(--fg-muted)" }} />
+                  {/* Footer: REALIZADO | SALDO | EQUIPE */}
+                  <div style={{ display: "flex", borderTop: "1px solid var(--border-subtle)", background: "var(--ink-50)", marginTop: "auto" }}>
+                    <div style={{ flex: 1, padding: "11px 16px" }}>
+                      <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Realizado</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--fg-primary)", fontVariantNumeric: "tabular-nums" }}>{fmtBRLshort(realizado)}</div>
+                    </div>
+                    <div style={{ width: 1, background: "var(--border-subtle)" }} />
+                    <div style={{ flex: 1, padding: "11px 16px" }}>
+                      <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{estouro ? "Estouro" : "Saldo"}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: estouro ? "var(--danger-500)" : "#16a34a", fontVariantNumeric: "tabular-nums" }}>{fmtBRLshort(Math.abs(saldo))}</div>
+                    </div>
+                    <div style={{ width: 1, background: "var(--border-subtle)" }} />
+                    <div style={{ flex: 1, padding: "11px 16px" }}>
+                      <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Equipe</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--fg-primary)" }}>{equipe}</div>
+                    </div>
                   </div>
                 </Link>
               );

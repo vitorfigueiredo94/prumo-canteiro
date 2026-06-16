@@ -1,15 +1,103 @@
 "use client";
 
-import { useState, useCallback, useTransition, useEffect, Fragment } from "react";
+import { useState, useCallback, useTransition, useEffect, Fragment, useActionState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users, BookOpen, AlertTriangle, CheckSquare, FolderOpen } from "lucide-react";
+import {
+  ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users,
+  BookOpen, AlertTriangle, CheckSquare, FolderOpen, Package, Wrench, Truck,
+  HardHat, MoreHorizontal, Plus, Trash2,
+} from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { ObraForm } from "../obra-form";
-import { editarObra, confirmarNota, excluirNota } from "../actions";
+import { NotaForm } from "../../notas/nota-form";
+import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
+import { criarEntrada, excluirEntrada } from "../../diario/actions";
 import { STATUS_OBRA, STATUS_NF, CATEGORIA_NF } from "@/lib/status";
 import { fmtBRL, fmtDate } from "@/lib/format";
 
+// ─── date helpers ──────────────────────────────────────────────────────────────
+const MESES = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+function fmtDiarioDate(dateStr: string | null) {
+  if (!dateStr) return { day: "?", mon: "" };
+  const dt = new Date(dateStr.includes("T") ? dateStr : dateStr + "T12:00:00");
+  return { day: String(dt.getDate()), mon: MESES[dt.getMonth()] + "/" + String(dt.getFullYear()).slice(2) };
+}
+
+// ─── avatar helpers ────────────────────────────────────────────────────────────
+const AV_COLORS = ["#1e3a5f", "#b45309", "#6d28d9", "#047857", "#b91c1c", "#0369a1"];
+function avatarBg(name: string) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return AV_COLORS[h % AV_COLORS.length];
+}
+function avatarInitials(name: string) {
+  const p = name.trim().split(/\s+/);
+  return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
+}
+
+// ─── category metadata ─────────────────────────────────────────────────────────
+const CAT_META: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
+  material:     { label: "Material",     Icon: Package,        color: "#1e3a5f" },
+  mao_obra:     { label: "Mão de obra",  Icon: HardHat,        color: "#b45309" },
+  servicos:     { label: "Serviços",     Icon: Wrench,         color: "#6d28d9" },
+  equipamentos: { label: "Equipamentos", Icon: Truck,          color: "#047857" },
+  outros:       { label: "Outros",       Icon: MoreHorizontal, color: "#6b7280" },
+};
+
+// ─── table helpers ─────────────────────────────────────────────────────────────
+const Th = ({ children, right }: { children?: React.ReactNode; right?: boolean }) => (
+  <th style={{ padding: "10px 14px", fontSize: 11.5, fontWeight: 700, color: "var(--fg-tertiary)", textTransform: "uppercase" as const, letterSpacing: "0.06em", background: "var(--ink-50)", borderBottom: "1px solid var(--border-subtle)", whiteSpace: "nowrap" as const, textAlign: right ? "right" : "left" as const }}>
+    {children}
+  </th>
+);
+const Td = ({ children, right, mono }: { children?: React.ReactNode; right?: boolean; mono?: boolean }) => (
+  <td style={{ padding: "12px 14px", fontSize: 14, color: "var(--fg-primary)", borderBottom: "1px solid var(--border-subtle)", verticalAlign: "middle", textAlign: right ? "right" : "left" as const, fontVariantNumeric: mono ? "tabular-nums" : undefined }}>
+    {children}
+  </td>
+);
+
+// ─── Diário inline form ────────────────────────────────────────────────────────
+function DiarioInlineForm({ obraId, onDone }: { obraId: string; onDone: () => void }) {
+  const [state, formAction] = useActionState(
+    async (_prev: { error?: string } | null, fd: FormData) => {
+      const r = await criarEntrada(_prev, fd);
+      if (!r) onDone();
+      return r;
+    },
+    null
+  );
+  const inp: React.CSSProperties = {
+    height: 38, padding: "0 10px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)",
+    background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, width: "100%", outline: "none",
+  };
+  return (
+    <form action={formAction} style={{ padding: "16px 20px", background: "var(--ink-50)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)", marginBottom: 16 }}>
+      <input type="hidden" name="obraId" value={obraId} />
+      <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Data</label>
+          <input name="data" type="date" style={inp} defaultValue={new Date().toISOString().split("T")[0]} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Conteúdo *</label>
+          <input name="conteudo" required placeholder="Descreva o que aconteceu hoje na obra…" style={inp} />
+        </div>
+      </div>
+      {state?.error && <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--danger-500)" }}>{state.error}</p>}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button type="button" onClick={onDone} style={{ height: 36, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5 }}>
+          Cancelar
+        </button>
+        <button type="submit" style={{ height: 36, padding: "0 16px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          Salvar registro
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ─── interfaces ────────────────────────────────────────────────────────────────
 interface Terreno { id: string; nome: string; cidade: string; }
 
 interface Nota {
@@ -39,8 +127,7 @@ interface Obra {
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
 }
 
-// TABS are computed dynamically inside ObraDetail to show counts
-
+// ─── checklist tab (unchanged) ─────────────────────────────────────────────────
 const FASE_ORDER = ["OBRA_INICIO", "OBRA_MEIO", "OBRA_FIM"];
 const FASE_LABELS: Record<string, string> = {
   OBRA_INICIO: "Início da obra",
@@ -55,6 +142,7 @@ function ChecklistTab({ obraId }: { obraId: string }) {
   const [data, setData] = useState<ChecklistCl[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [advancing, setAdvancing] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/v1/checklist/obra/${obraId}`);
@@ -79,21 +167,35 @@ function ChecklistTab({ obraId }: { obraId: string }) {
     await refresh();
   };
 
+  const avancarFase = async () => {
+    setAdvancing(true);
+    await fetch(`/api/v1/checklist/obra/${obraId}/fase`, { method: "POST" });
+    await refresh();
+    setAdvancing(false);
+  };
+
   if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
   if (!data || data.length === 0) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum checklist criado para esta obra.</p>;
 
   const sorted = [...data].sort((a, b) => FASE_ORDER.indexOf(a.fase) - FASE_ORDER.indexOf(b.fase));
+  const clByFase: Record<string, ChecklistCl> = {};
+  for (const cl of sorted) clByFase[cl.fase] = cl;
+
   const totalGeral = sorted.reduce((s, cl) => s + cl.total, 0);
   const concluidosGeral = sorted.reduce((s, cl) => s + cl.concluidos, 0);
   const pctGeral = totalGeral === 0 ? 0 : Math.round((concluidosGeral / totalGeral) * 100);
-  const currentIdx = sorted.findIndex((cl) => cl.porcentagem < 100);
-  const currentPhase = currentIdx >= 0 ? sorted[currentIdx] : sorted[sorted.length - 1];
+
+  const lastCreated = sorted.at(-1)!;
+  const lastCreatedIdx = FASE_ORDER.indexOf(lastCreated.fase);
+  const canAdvance = lastCreated.porcentagem === 100 && lastCreatedIdx < FASE_ORDER.length - 1;
+  const nextFaseKey = canAdvance ? FASE_ORDER[lastCreatedIdx + 1] : null;
+  const currentPhase = sorted.find((cl) => cl.porcentagem < 100) ?? lastCreated;
+
   const r = 44, circ = 2 * Math.PI * r;
   const dashOffset = circ - (pctGeral / 100) * circ;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Header card */}
       <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "24px 28px" }}>
         <h2 style={{ margin: "0 0 22px", fontSize: 17, fontWeight: 600, color: "var(--fg-primary)" }}>Checklist da obra</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 28, marginBottom: 28 }}>
@@ -112,36 +214,47 @@ function ChecklistTab({ obraId }: { obraId: string }) {
             <p style={{ margin: 0, fontSize: 13, color: "var(--fg-tertiary)" }}>{concluidosGeral} de {totalGeral} itens concluídos · Ciclo de vida da obra</p>
           </div>
         </div>
-        {/* Phase stepper */}
+
         <div style={{ display: "flex", alignItems: "center" }}>
-          {sorted.map((cl, i) => {
-            const done = cl.porcentagem === 100;
-            const cur = i === (currentIdx >= 0 ? currentIdx : sorted.length - 1);
-            const label = FASE_LABELS[cl.fase] ?? cl.fase;
+          {FASE_ORDER.map((fase, i) => {
+            const cl = clByFase[fase];
+            const done = !!cl && cl.porcentagem === 100;
+            const cur = !!cl && cl.porcentagem < 100;
+            const locked = !cl;
+            const label = FASE_LABELS[fase] ?? fase;
+            const prevDone = i > 0 && !!clByFase[FASE_ORDER[i - 1]] && clByFase[FASE_ORDER[i - 1]].porcentagem === 100;
             return (
-              <Fragment key={cl.id}>
+              <Fragment key={fase}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : cur ? "#d97706" : "#e5e7eb", color: done || cur ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, border: done || cur ? "none" : "2px solid #d1d5db" }}>
-                    {done ? "✓" : i + 1}
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : cur ? "#d97706" : "#f3f4f6", color: done || cur ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: locked ? 11 : 12, fontWeight: 700, border: locked ? "2px solid #e5e7eb" : "none" }}>
+                    {done ? "✓" : locked ? "○" : i + 1}
                   </div>
                   <span style={{ fontSize: 11.5, color: done ? "#16a34a" : cur ? "#d97706" : "#9ca3af", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap" }}>{label}</span>
                 </div>
-                {i < sorted.length - 1 && <div style={{ flex: 1, height: 2, background: done ? "#22c55e" : "#e5e7eb", marginBottom: 22, marginLeft: 6, marginRight: 6 }} />}
+                {i < FASE_ORDER.length - 1 && (
+                  <div style={{ flex: 1, height: 2, background: prevDone || done ? "#22c55e" : "#e5e7eb", marginBottom: 22, marginLeft: 6, marginRight: 6 }} />
+                )}
               </Fragment>
             );
           })}
         </div>
+
+        {canAdvance && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <button
+              onClick={avancarFase}
+              disabled={advancing}
+              style={{ height: 40, padding: "0 20px", background: "#d97706", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: advancing ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 8, opacity: advancing ? 0.7 : 1 }}
+            >
+              {advancing ? "Abrindo próxima fase…" : `▶ Avançar para ${FASE_LABELS[nextFaseKey!]}`}
+            </button>
+            <span style={{ fontSize: 13, color: "var(--fg-muted)" }}>
+              &quot;{FASE_LABELS[lastCreated.fase]}&quot; concluída — clique para abrir os itens da próxima etapa.
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Info banner */}
-      {currentIdx > 0 && currentIdx < sorted.length && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "var(--radius-md)", fontSize: 13.5, color: "#92400e" }}>
-          <span style={{ fontSize: 16 }}>ℹ️</span>
-          <span><strong>{FASE_LABELS[sorted[currentIdx - 1].fase]}</strong> concluída. Avance para <strong>{FASE_LABELS[currentPhase.fase]}</strong> marcando os itens abaixo.</span>
-        </div>
-      )}
-
-      {/* Phase sections */}
       {sorted.map((cl) => (
         <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -178,6 +291,7 @@ function ChecklistTab({ obraId }: { obraId: string }) {
   );
 }
 
+// ─── KPI card ─────────────────────────────────────────────────────────────────
 const KPI = ({ label, value, sub, danger, green }: { label: string; value: string; sub?: string; danger?: boolean; green?: boolean }) => (
   <div style={{ background: "var(--bg-surface)", border: `1px solid ${danger ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-lg)", padding: "18px 22px", flex: 1, minWidth: 160 }}>
     <p style={{ margin: "0 0 6px", fontSize: 11.5, color: "var(--fg-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</p>
@@ -186,52 +300,60 @@ const KPI = ({ label, value, sub, danger, green }: { label: string; value: strin
   </div>
 );
 
+// ─── main component ────────────────────────────────────────────────────────────
 export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[] }) {
   const [tab, setTab] = useState("financeiro");
   const [showEdit, setShowEdit] = useState(false);
+  const [showNotaForm, setShowNotaForm] = useState(false);
+  const [showDiarioForm, setShowDiarioForm] = useState(false);
+  const [diarioEntries, setDiarioEntries] = useState(obra.diario);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => { setDiarioEntries(obra.diario); }, [obra.diario]);
 
   const TABS = [
     { k: "financeiro", l: "Financeiro", Icon: TrendingUp },
     { k: "checklist", l: "Checklist", Icon: CheckSquare },
     { k: "notas", l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
     { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
-    { k: "diario", l: "Diário", Icon: BookOpen },
+    { k: "diario", l: diarioEntries.length > 0 ? `Diário (${diarioEntries.length})` : "Diário", Icon: BookOpen },
     { k: "documentos", l: "Documentos", Icon: FolderOpen },
   ];
 
   const st = STATUS_OBRA[obra.status as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
 
+  // financial computations
   const gastoNotas = obra.notas.filter((n) => n.status === "confirmada").reduce((s, n) => s + n.valor, 0);
   const gastoFunc = obra.pagamentos.reduce((s, p) => s + p.valor, 0);
+  const gastoRevisao = obra.notas.filter((n) => n.status !== "confirmada" && n.status !== "cancelada").reduce((s, n) => s + n.valor, 0);
   const realizado = gastoNotas + gastoFunc;
   const saldo = obra.orcamento - realizado;
   const estouro = saldo < 0;
   const pct = obra.orcamento > 0 ? Math.min(Math.round((realizado / obra.orcamento) * 100), 100) : 0;
+  const pctRevisao = obra.orcamento > 0 ? Math.min(Math.round((gastoRevisao / obra.orcamento) * 100), 100 - pct) : 0;
 
-  const porCategoria: Record<string, number> = {};
+  // category breakdown (confirmed NFs only)
+  const catValues: Record<string, number> = {};
   obra.notas.filter((n) => n.status === "confirmada").forEach((n) => {
-    porCategoria[n.categoria] = (porCategoria[n.categoria] ?? 0) + n.valor;
+    catValues[n.categoria] = (catValues[n.categoria] ?? 0) + n.valor;
   });
 
-  const editAction = useCallback(
-    (prev: any, fd: FormData) => editarObra(obra.id, prev, fd),
-    [obra.id]
-  );
-
+  const editAction = useCallback((prev: any, fd: FormData) => editarObra(obra.id, prev, fd), [obra.id]);
   const closeEdit = useCallback(() => setShowEdit(false), []);
 
-  const handleConfirmar = (notaId: string) =>
-    startTransition(() => confirmarNota(notaId, obra.id));
-
-  const handleExcluir = (notaId: string) =>
-    startTransition(() => excluirNota(notaId, obra.id));
+  const handleConfirmar = (notaId: string) => startTransition(() => confirmarNota(notaId, obra.id));
+  const handleExcluirNota = (notaId: string) => startTransition(() => excluirNota(notaId, obra.id));
+  const handleExcluirEntrada = (id: string) => {
+    startTransition(async () => {
+      await excluirEntrada(id);
+      setDiarioEntries((prev) => prev.filter((e) => e.id !== id));
+    });
+  };
 
   return (
     <>
       {/* Topbar */}
       <div style={{ padding: "16px 32px 0", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
-        {/* Row 1: breadcrumb + title + Nova nota */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 10 }}>
           <div>
             <Link href="/obras" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", textDecoration: "none", marginBottom: 4 }}>
@@ -240,12 +362,11 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
             <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{obra.nome}</h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
-            <button onClick={() => setTab("notas")} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <button onClick={() => { setShowNotaForm(true); setTab("notas"); }} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
               <Receipt size={15} /> + Nova nota
             </button>
           </div>
         </div>
-        {/* Row 2: status + metadata + Editar/Relatório */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, paddingBottom: 14, flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 18, fontSize: 13.5, color: "var(--fg-tertiary)", flexWrap: "wrap", alignItems: "center" }}>
             <Badge label={st.label} color={st.color} bg={st.bg} dot />
@@ -263,7 +384,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
         </div>
       </div>
 
-      {/* KPI cards — always visible */}
+      {/* KPI cards */}
       <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 16, flexWrap: "wrap" }}>
         <KPI label="Orçamento" value={fmtBRL(obra.orcamento)} />
         <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do previsto`} />
@@ -272,11 +393,11 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
       </div>
 
       {/* Tabs */}
-      <div style={{ padding: "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 0 }}>
+      <div style={{ padding: "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 0, overflowX: "auto" }}>
         {TABS.map(({ k, l, Icon }) => {
           const on = tab === k;
           return (
-            <button key={k} onClick={() => setTab(k)} style={{ height: 46, padding: "0 18px", border: "none", borderBottom: `2px solid ${on ? "var(--navy-700)" : "transparent"}`, background: "transparent", color: on ? "var(--navy-700)" : "var(--fg-tertiary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: on ? 600 : 400, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <button key={k} onClick={() => setTab(k)} style={{ height: 46, padding: "0 18px", border: "none", borderBottom: `2px solid ${on ? "var(--navy-700)" : "transparent"}`, background: "transparent", color: on ? "var(--navy-700)" : "var(--fg-tertiary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: on ? 600 : 400, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }}>
               <Icon size={15} /> {l}
             </button>
           );
@@ -285,161 +406,257 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
 
       {/* Content */}
       <div style={{ padding: "28px 32px" }}>
+
         {/* ── FINANCEIRO ── */}
         {tab === "financeiro" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {estouro && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "var(--danger-50)", border: "1px solid rgba(181,54,60,0.3)", borderRadius: "var(--radius-md)", color: "var(--danger-500)", fontSize: 13.5 }}>
-                <AlertTriangle size={16} /> <strong>Estouro de orçamento:</strong> {fmtBRL(Math.abs(saldo))} acima do previsto
-              </div>
-            )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+            {/* Left: Previsto × Realizado */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
+              <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Previsto × Realizado</p>
 
-            {/* Budget bar */}
-            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
-              <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Execução orçamentária</p>
-              <div style={{ height: 12, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden", marginBottom: 8 }}>
-                <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: estouro ? "var(--danger-500)" : pct > 80 ? "var(--gold-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 700ms" }} />
+              {estouro && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 13px", background: "var(--danger-50)", border: "1px solid rgba(181,54,60,0.3)", borderRadius: "var(--radius-md)", color: "var(--danger-500)", fontSize: 13, marginBottom: 14 }}>
+                  <AlertTriangle size={14} /> Estouro de orçamento: {fmtBRL(Math.abs(saldo))} acima do previsto
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, marginBottom: 8 }}>
+                <span style={{ color: "var(--fg-tertiary)" }}>Consumido</span>
+                <span style={{ fontWeight: 700, color: estouro ? "var(--danger-500)" : "var(--fg-primary)" }}>{pct}%</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--fg-tertiary)" }}>
-                <span>NF confirmadas: {fmtBRL(gastoNotas)}</span>
-                <span>Pagamentos: {fmtBRL(gastoFunc)}</span>
+              {/* Bicolor bar: navy = confirmed+pagamentos, amber = em revisão */}
+              <div style={{ height: 14, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden", marginBottom: 20 }}>
+                <div style={{ display: "flex", height: "100%" }}>
+                  <div style={{ width: `${pct}%`, background: estouro ? "var(--danger-500)" : "#1e3a5f", transition: "width 700ms" }} />
+                  {pctRevisao > 0 && <div style={{ width: `${pctRevisao}%`, background: "#d97706", transition: "width 700ms" }} />}
+                </div>
+              </div>
+
+              {/* Line items */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {[
+                  { label: "Material e insumos", value: gastoNotas },
+                  { label: "Mão de obra (folha)", value: gastoFunc },
+                  { label: "Notas em revisão", value: gastoRevisao },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "11px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <span style={{ color: "var(--fg-secondary)" }}>{label}</span>
+                    <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(value)}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, paddingTop: 13 }}>
+                  <span style={{ fontWeight: 700 }}>{estouro ? "Estouro de orçamento" : "Saldo restante"}</span>
+                  <span style={{ fontWeight: 700, color: estouro ? "var(--danger-500)" : "#16a34a", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(Math.abs(saldo))}</span>
+                </div>
               </div>
             </div>
 
-            {/* Por categoria */}
-            {Object.keys(porCategoria).length > 0 && (
-              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
-                <p style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Gastos por categoria (NFs confirmadas)</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {Object.entries(porCategoria).sort((a, b) => b[1] - a[1]).map(([cat, val]) => {
-                    const catLabel = CATEGORIA_NF[cat as keyof typeof CATEGORIA_NF]?.label ?? cat;
+            {/* Right: Gasto por categoria */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
+              <p style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Gasto por categoria</p>
+              {Object.keys(catValues).length === 0 ? (
+                <p style={{ fontSize: 14, color: "var(--fg-tertiary)" }}>Nenhuma NF confirmada ainda.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {Object.entries(catValues).sort((a, b) => b[1] - a[1]).map(([cat, val]) => {
+                    const meta = CAT_META[cat] ?? CAT_META.outros;
                     const pctCat = realizado > 0 ? Math.round((val / realizado) * 100) : 0;
                     return (
                       <div key={cat}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--fg-secondary)", marginBottom: 4 }}>
-                          <span>{catLabel}</span>
-                          <span>{fmtBRL(val)} ({pctCat}%)</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
+                          <span style={{ width: 28, height: 28, borderRadius: 6, background: `${meta.color}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <meta.Icon size={14} style={{ color: meta.color }} />
+                          </span>
+                          <span style={{ flex: 1, fontSize: 14, color: "var(--fg-secondary)" }}>{meta.label}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(val)}</span>
+                          <span style={{ fontSize: 12.5, color: "var(--fg-tertiary)", minWidth: 32, textAlign: "right" }}>{pctCat}%</span>
                         </div>
                         <div style={{ height: 6, borderRadius: "var(--radius-full)", background: "var(--ink-100)" }}>
-                          <div style={{ width: `${pctCat}%`, height: "100%", background: "var(--navy-500)", borderRadius: "var(--radius-full)" }} />
+                          <div style={{ width: `${pctCat}%`, height: "100%", background: meta.color, borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {/* ── NOTAS FISCAIS ── */}
         {tab === "notas" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => setShowNotaForm(true)} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                <Plus size={15} /> Nova nota fiscal
+              </button>
+            </div>
             {obra.notas.length === 0 ? (
               <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhuma NF vinculada a esta obra.</p>
             ) : (
-              obra.notas.map((n) => {
-                const st2 = STATUS_NF[n.status as keyof typeof STATUS_NF] ?? STATUS_NF.pendente;
-                const catLabel = CATEGORIA_NF[n.categoria as keyof typeof CATEGORIA_NF]?.label ?? n.categoria;
-                return (
-                  <div key={n.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                        <Badge label={st2.label} color={st2.color} bg={st2.bg} />
-                        <span style={{ fontSize: 13, color: "var(--fg-tertiary)" }}>{catLabel}</span>
-                        {n.numero && <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>NF-e {n.numero}</span>}
-                      </div>
-                      <p style={{ margin: 0, fontSize: 14, color: "var(--fg-primary)", fontWeight: 500 }}>{n.fornecedor ?? "Fornecedor não informado"}</p>
-                      {n.descricao && <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--fg-tertiary)" }}>{n.descricao}</p>}
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>{fmtDate(n.emitidaEm)}</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ margin: "0 0 8px", fontSize: 20, fontFamily: "var(--font-display)", fontWeight: 500, color: "var(--fg-primary)" }}>{fmtBRL(n.valor)}</p>
-                      {n.status === "pendente" && (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button onClick={() => handleConfirmar(n.id)} disabled={isPending} style={{ height: 30, padding: "0 12px", background: "var(--success-500)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
-                            Confirmar
-                          </button>
-                          <button onClick={() => handleExcluir(n.id)} disabled={isPending} style={{ height: 30, padding: "0 12px", background: "var(--danger-50)", color: "var(--danger-500)", border: "1px solid rgba(181,54,60,0.3)", borderRadius: "var(--radius-md)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
-                            Excluir
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <Th>Fornecedor</Th>
+                        <Th>Categoria</Th>
+                        <Th>Nº</Th>
+                        <Th>Emissão</Th>
+                        <Th right>Valor</Th>
+                        <Th>Status</Th>
+                        <Th right></Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...obra.notas].sort((a, b) => (b.emitidaEm ?? "").localeCompare(a.emitidaEm ?? "")).map((n) => {
+                        const st2 = STATUS_NF[n.status as keyof typeof STATUS_NF] ?? STATUS_NF.pendente;
+                        const meta = CAT_META[n.categoria] ?? CAT_META.outros;
+                        const isPendente = n.status === "pendente" || n.status === "em_revisao";
+                        return (
+                          <tr key={n.id}>
+                            <Td>
+                              <div style={{ fontWeight: 600 }}>{n.fornecedor ?? "—"}</div>
+                              {n.descricao && <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{n.descricao}</div>}
+                            </Td>
+                            <Td>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                <meta.Icon size={14} style={{ color: meta.color }} />
+                                <span style={{ fontSize: 13, color: "var(--fg-secondary)" }}>{meta.label}</span>
+                              </span>
+                            </Td>
+                            <Td mono>{n.numero ?? "—"}</Td>
+                            <Td>{fmtDate(n.emitidaEm)}</Td>
+                            <Td right mono><strong>{fmtBRL(n.valor)}</strong></Td>
+                            <Td><Badge label={st2.label} color={st2.color} bg={st2.bg} dot /></Td>
+                            <Td right>
+                              {isPendente ? (
+                                <div style={{ display: "inline-flex", gap: 6 }}>
+                                  <button onClick={() => handleConfirmar(n.id)} disabled={isPending} style={{ height: 32, padding: "0 12px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                    ✓ Confirmar
+                                  </button>
+                                  <button onClick={() => handleExcluirNota(n.id)} disabled={isPending} style={{ width: 32, height: 32, border: "1px solid rgba(181,54,60,0.3)", borderRadius: "var(--radius-md)", background: "var(--danger-50)", color: "var(--danger-500)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button onClick={() => handleExcluirNota(n.id)} disabled={isPending} style={{ width: 32, height: 32, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </Td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
         )}
 
         {/* ── EQUIPE ── */}
         {tab === "equipe" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {obra.alocacoes.length > 0 && (
-              <div>
-                <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, color: "var(--fg-secondary)" }}>Alocações</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {obra.alocacoes.map((a) => (
-                    <div key={a.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <p style={{ margin: 0, fontSize: 14.5, fontWeight: 500, color: "var(--fg-primary)" }}>{a.funcionario.nome}</p>
-                        <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--fg-tertiary)" }}>{a.cargo ?? a.funcionario.cargo ?? "—"}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+            {/* Left: Equipe alocada */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 22px" }}>
+              <p style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Equipe alocada</p>
+              {obra.alocacoes.length === 0 ? (
+                <p style={{ fontSize: 14, color: "var(--fg-tertiary)", padding: "20px 0" }}>Nenhum funcionário alocado ainda.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {obra.alocacoes.map((a, i) => (
+                    <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < obra.alocacoes.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", background: avatarBg(a.funcionario.nome), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                        {avatarInitials(a.funcionario.nome)}
                       </div>
-                      <p style={{ margin: 0, fontSize: 13, color: "var(--fg-muted)" }}>{fmtDate(a.inicio)} → {a.fim ? fmtDate(a.fim) : "em andamento"}</p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{a.funcionario.nome}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{a.cargo ?? a.funcionario.cargo ?? "—"}</div>
+                      </div>
+                      <Link href={`/funcionarios/${a.funcionario.id}`} style={{ height: 32, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                        Pagar
+                      </Link>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {obra.pagamentos.length > 0 && (
-              <div>
-                <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600, color: "var(--fg-secondary)" }}>Pagamentos a funcionários</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {obra.pagamentos.map((p) => (
-                    <div key={p.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <p style={{ margin: 0, fontSize: 14.5, fontWeight: 500, color: "var(--fg-primary)" }}>{p.funcionario?.nome ?? "—"}</p>
-                        {p.descricao && <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--fg-tertiary)" }}>{p.descricao}</p>}
+            {/* Right: Pagamentos lançados */}
+            <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 22px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Pagamentos lançados</p>
+                <Link href="/funcionarios" style={{ fontSize: 13.5, fontWeight: 600, color: "var(--navy-700)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Plus size={14} /> Novo
+                </Link>
+              </div>
+              {obra.pagamentos.length === 0 ? (
+                <p style={{ fontSize: 14, color: "var(--fg-tertiary)", padding: "20px 0" }}>Nenhum pagamento registrado.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {obra.pagamentos.map((p, i) => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 0", borderBottom: i < obra.pagamentos.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-primary)" }}>{p.funcionario?.nome ?? "—"}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>
+                          {p.descricao ? `${p.descricao} · ` : ""}{fmtDate(p.pagoEm)}
+                        </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <p style={{ margin: "0 0 2px", fontSize: 16, fontFamily: "var(--font-display)", color: "var(--fg-primary)" }}>{fmtBRL(p.valor)}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: "var(--fg-muted)" }}>{fmtDate(p.pagoEm)}</p>
-                      </div>
+                      <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(p.valor)}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {obra.alocacoes.length === 0 && obra.pagamentos.length === 0 && (
-              <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum funcionário alocado ainda.</p>
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {/* ── DIÁRIO ── */}
         {tab === "diario" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {obra.diario.length === 0 ? (
-              <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum registro no diário ainda.</p>
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
+            <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Diário de obra</p>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <span style={{ fontSize: 13.5, color: "var(--fg-tertiary)" }}>{diarioEntries.length} registro(s)</span>
+              <button onClick={() => setShowDiarioForm(true)} style={{ height: 36, padding: "0 16px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Plus size={14} /> Novo registro
+              </button>
+            </div>
+
+            {showDiarioForm && (
+              <DiarioInlineForm obraId={obra.id} onDone={() => setShowDiarioForm(false)} />
+            )}
+
+            {diarioEntries.length === 0 ? (
+              <p style={{ textAlign: "center", padding: "30px 0", color: "var(--fg-tertiary)", fontSize: 14 }}>Nenhum registro no diário ainda.</p>
             ) : (
-              obra.diario.map((d) => (
-                <div key={d.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "16px 20px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "var(--fg-muted)" }}>
-                    <span>{fmtDate(d.data)}</span>
-                    {d.autor && <span>{d.autor}</span>}
-                  </div>
-                  <p style={{ margin: 0, fontSize: 14.5, color: "var(--fg-primary)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{d.conteudo}</p>
-                  {d.fotoUrl && (
-                    <a href={d.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 12, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", maxWidth: 440 }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={d.fotoUrl} alt="Foto da obra" style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block" }} />
-                    </a>
-                  )}
-                </div>
-              ))
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {[...diarioEntries].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? "")).map((d, i) => {
+                  const { day, mon } = fmtDiarioDate(d.data);
+                  return (
+                    <div key={d.id} style={{ display: "flex", gap: 16, padding: "14px 0", borderBottom: i < diarioEntries.length - 1 ? "1px solid var(--border-subtle)" : "none", alignItems: "flex-start" }}>
+                      <div style={{ width: 44, textAlign: "center", flexShrink: 0 }}>
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", lineHeight: 1 }}>{day}</div>
+                        <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{mon}</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: 14, color: "var(--fg-secondary)", lineHeight: 1.6 }}>{d.conteudo}</p>
+                        {d.fotoUrl && (
+                          <a href={d.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 10, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", maxWidth: 360 }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={d.fotoUrl} alt="Foto da obra" style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
+                          </a>
+                        )}
+                      </div>
+                      <button onClick={() => handleExcluirEntrada(d.id)} disabled={isPending} style={{ width: 30, height: 30, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)", flexShrink: 0 }} title="Excluir registro">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}
@@ -451,6 +668,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
         {tab === "documentos" && <DocumentosTab ownerType="obra" ownerId={obra.id} />}
       </div>
 
+      {/* Modals */}
       {showEdit && (
         <ObraForm
           action={editAction}
@@ -458,6 +676,14 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
           onClose={closeEdit}
           isEdit
           initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, progresso: obra.progresso }}
+        />
+      )}
+      {showNotaForm && (
+        <NotaForm
+          action={criarNotaParaObra}
+          obras={[{ id: obra.id, nome: obra.nome }]}
+          initial={{ id: "", obraId: obra.id, categoria: "material", valor: 0, fornecedor: null, numero: null, descricao: null, emitidaEm: null, status: "pendente" }}
+          onClose={() => setShowNotaForm(false)}
         />
       )}
     </>

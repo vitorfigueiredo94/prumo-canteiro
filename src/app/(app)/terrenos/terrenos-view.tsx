@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, ArrowRight, Building2, Search } from "lucide-react";
+import { Plus, MapPin, ArrowRight, Building2, Search, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "./terreno-form";
 import { criarTerreno } from "./actions";
@@ -247,7 +247,10 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
                             <Building2 size={15} />
                             {o.nome}
                           </span>
-                          <Badge label={obraStatus.label} color={obraStatus.color} bg={obraStatus.bg} />
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <Badge label={obraStatus.label} color={obraStatus.color} bg={obraStatus.bg} />
+                            <ChevronRight size={14} style={{ color: "var(--fg-muted)" }} />
+                          </span>
                         </Link>
                       );
                     })}

@@ -19,6 +19,7 @@ export default async function ObrasPage() {
         terreno: { select: { id: true, nome: true, cidade: true } },
         notas: { select: { id: true, status: true, valor: true, categoria: true } },
         pagamentos: { select: { id: true, valor: true } },
+        alocacoes: { select: { id: true } },
       },
       orderBy: { criadoEm: "desc" },
     }),

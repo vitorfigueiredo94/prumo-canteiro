@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Fragment } from "react";
 import Link from "next/link";
 import { MapPinned, Image as ImageIcon, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
@@ -58,6 +58,7 @@ const tabBtn = (active: boolean): React.CSSProperties => ({
   marginBottom: -1,
 });
 
+const FASE_TERRENO_ORDER = ["TERRENO_PREPARACAO", "TERRENO_ANALISE", "TERRENO_PROPOSTA", "TERRENO_POS_VENDA"];
 const FASE_TERRENO: Record<string, string> = {
   TERRENO_PREPARACAO: "Preparação",
   TERRENO_ANALISE: "Análise Documental",
@@ -72,6 +73,7 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
   const [data, setData] = useState<ChecklistCl[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [advancing, setAdvancing] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/v1/checklist/terreno/${terrenoId}`);
@@ -93,34 +95,94 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
     setToggling(null);
   };
 
+  const avancarFase = async () => {
+    setAdvancing(true);
+    await fetch(`/api/v1/checklist/terreno/${terrenoId}/fase`, { method: "POST" });
+    await refresh();
+    setAdvancing(false);
+  };
+
   if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
   if (!data || data.length === 0) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhum checklist criado para este terreno.</p>;
 
-  const totalGeral = data.reduce((s, cl) => s + cl.total, 0);
-  const concluidosGeral = data.reduce((s, cl) => s + cl.concluidos, 0);
+  const sorted = [...data].sort((a, b) => FASE_TERRENO_ORDER.indexOf(a.fase) - FASE_TERRENO_ORDER.indexOf(b.fase));
+  const clByFase: Record<string, ChecklistCl> = {};
+  for (const cl of sorted) clByFase[cl.fase] = cl;
+
+  const totalGeral = sorted.reduce((s, cl) => s + cl.total, 0);
+  const concluidosGeral = sorted.reduce((s, cl) => s + cl.concluidos, 0);
   const pctGeral = totalGeral === 0 ? 0 : Math.round((concluidosGeral / totalGeral) * 100);
+
+  const lastCreated = sorted.at(-1)!;
+  const lastCreatedIdx = FASE_TERRENO_ORDER.indexOf(lastCreated.fase);
+  const canAdvance = lastCreated.porcentagem === 100 && lastCreatedIdx < FASE_TERRENO_ORDER.length - 1;
+  const nextFaseKey = canAdvance ? FASE_TERRENO_ORDER[lastCreatedIdx + 1] : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
-      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px" }}>
+      {/* Header com stepper */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
+        {/* Barra de progresso geral */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-secondary)" }}>Progresso geral</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)" }}>{concluidosGeral}/{totalGeral} · {pctGeral}%</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "#16a34a" : "var(--navy-700)" }}>{concluidosGeral}/{totalGeral} · {pctGeral}%</span>
         </div>
-        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "var(--success-500)" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
+        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden", marginBottom: 24 }}>
+          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "#22c55e" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
         </div>
+
+        {/* Stepper — always shows all 4 phases */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {FASE_TERRENO_ORDER.map((fase, i) => {
+            const cl = clByFase[fase];
+            const done = !!cl && cl.porcentagem === 100;
+            const cur = !!cl && cl.porcentagem < 100;
+            const locked = !cl;
+            const label = FASE_TERRENO[fase] ?? fase;
+            const prevDone = i > 0 && !!clByFase[FASE_TERRENO_ORDER[i - 1]] && clByFase[FASE_TERRENO_ORDER[i - 1]].porcentagem === 100;
+            return (
+              <Fragment key={fase}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: done ? "#22c55e" : cur ? "#d97706" : "#f3f4f6", color: done || cur ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, border: locked ? "2px solid #e5e7eb" : "none" }}>
+                    {done ? "✓" : locked ? "○" : i + 1}
+                  </div>
+                  <span style={{ fontSize: 10.5, color: done ? "#16a34a" : cur ? "#d97706" : "#9ca3af", fontWeight: cur ? 600 : 400, whiteSpace: "nowrap", textAlign: "center" }}>{label}</span>
+                </div>
+                {i < FASE_TERRENO_ORDER.length - 1 && (
+                  <div style={{ flex: 1, height: 2, background: prevDone || done ? "#22c55e" : "#e5e7eb", marginBottom: 22, marginLeft: 4, marginRight: 4 }} />
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
+
+        {/* Advance button */}
+        {canAdvance && (
+          <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <button
+              onClick={avancarFase}
+              disabled={advancing}
+              style={{ height: 38, padding: "0 18px", background: "#d97706", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, cursor: advancing ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 7, opacity: advancing ? 0.7 : 1 }}
+            >
+              {advancing ? "Abrindo próxima fase…" : `▶ Avançar para ${FASE_TERRENO[nextFaseKey!]}`}
+            </button>
+            <span style={{ fontSize: 13, color: "var(--fg-muted)" }}>
+              &quot;{FASE_TERRENO[lastCreated.fase]}&quot; concluída — clique para abrir a próxima etapa.
+            </span>
+          </div>
+        )}
       </div>
 
-      {data.map((cl) => (
+      {/* Phase sections — only created phases */}
+      {sorted.map((cl) => (
         <div key={cl.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{FASE_TERRENO[cl.fase] ?? cl.fase}</span>
-              <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>{cl.concluidos}/{cl.total} · {cl.porcentagem}%</span>
+              <span style={{ fontSize: 12.5, color: cl.porcentagem === 100 ? "#16a34a" : "var(--fg-muted)", fontWeight: cl.porcentagem === 100 ? 700 : 400 }}>{cl.concluidos}/{cl.total} · {cl.porcentagem}%</span>
             </div>
             <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-              <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "var(--success-500)" : "var(--navy-500)", borderRadius: "var(--radius-full)", transition: "width 400ms" }} />
+              <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "#22c55e" : "var(--navy-500)", borderRadius: "var(--radius-full)", transition: "width 400ms" }} />
             </div>
           </div>
           <div>

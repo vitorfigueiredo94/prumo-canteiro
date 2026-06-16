@@ -6,7 +6,7 @@ export function fmtBRL(value: number | string | null | undefined): string {
 export function fmtBRLshort(value: number | string | null | undefined): string {
   const n = Number(value ?? 0);
   if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1).replace(".", ",")}M`;
-  if (n >= 1_000) return `R$ ${(n / 1_000).toFixed(0)}K`;
+  if (n >= 1_000) return `R$ ${(n / 1_000).toFixed(0)} mil`;
   return fmtBRL(n);
 }
 

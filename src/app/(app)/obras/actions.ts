@@ -93,3 +93,43 @@ export async function excluirNota(notaId: string, obraId: string): Promise<void>
   revalidatePath(`/obras/${obraId}`);
   revalidatePath("/notas");
 }
+
+const NotaSchemaInline = z.object({
+  obraId: z.string().min(1),
+  categoria: z.enum(["material", "mao_obra", "servicos", "equipamentos", "outros"]),
+  valor: z.coerce.number().positive(),
+  fornecedor: z.string().optional(),
+  numero: z.string().optional(),
+  descricao: z.string().optional(),
+  emitidaEm: z.string().optional(),
+  status: z.enum(["pendente", "em_revisao", "confirmada", "cancelada"]).default("pendente"),
+});
+
+export async function criarNotaParaObra(_prev: { error?: string } | null, formData: FormData): Promise<{ error?: string } | null> {
+  const empresaId = await getEmpresaId();
+  const parsed = NotaSchemaInline.safeParse({
+    obraId: formData.get("obraId"),
+    categoria: formData.get("categoria"),
+    valor: formData.get("valor"),
+    fornecedor: formData.get("fornecedor") || undefined,
+    numero: formData.get("numero") || undefined,
+    descricao: formData.get("descricao") || undefined,
+    emitidaEm: formData.get("emitidaEm") || undefined,
+    status: formData.get("status") || "pendente",
+  });
+  if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
+  const { obraId, categoria, valor, fornecedor, numero, descricao, emitidaEm, status } = parsed.data;
+  const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId }, select: { id: true } });
+  if (!obra) return { error: "Obra não encontrada." };
+  await prisma.notaFiscal.create({
+    data: {
+      empresaId, obraId, categoria, valor, status,
+      fornecedor: fornecedor || null, numero: numero || null,
+      descricao: descricao || null,
+      emitidaEm: emitidaEm ? new Date(emitidaEm) : null,
+    },
+  });
+  revalidatePath(`/obras/${obraId}`);
+  revalidatePath("/notas");
+  return null;
+}
