@@ -124,6 +124,10 @@ function PagamentoModal({ funcionarioId, obras, onClose }: { funcionarioId: stri
   );
 }
 
+const AV_COLORS = ["#1e3a5f","#b45309","#6d28d9","#047857","#b91c1c","#0369a1"];
+function avatarBg(name: string) { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff; return AV_COLORS[h % AV_COLORS.length]; }
+function avatarInitials(name: string) { const p = name.trim().split(/\s+/); return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase(); }
+
 export function FuncionarioDetail({ funcionario: f, obras }: { funcionario: Funcionario; obras: ObraLite[] }) {
   const [tab, setTab] = useState("alocacoes");
   const [showEdit, setShowEdit] = useState(false);
@@ -153,12 +157,15 @@ export function FuncionarioDetail({ funcionario: f, obras }: { funcionario: Func
           <ArrowLeft size={14} /> Funcionários
         </Link>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-              <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>{f.nome}</h1>
-              <Badge label={st.label} color={st.color} bg={st.bg} dot />
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <span style={{ width: 48, height: 48, borderRadius: "50%", background: avatarBg(f.nome), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 500, flexShrink: 0 }}>{avatarInitials(f.nome)}</span>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>{f.nome}</h1>
+                <Badge label={st.label} color={st.color} bg={st.bg} dot />
+              </div>
+              {f.cargo && <p style={{ margin: 0, fontSize: 14, color: "var(--fg-tertiary)" }}>{f.cargo}</p>}
             </div>
-            {f.cargo && <p style={{ margin: 0, fontSize: 14, color: "var(--fg-tertiary)" }}>{f.cargo}</p>}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setShowAloc(true)} style={{ height: 38, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}><Plus size={14} /> Alocar</button>
