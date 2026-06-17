@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { assertFileType, FileTypeError } from "@/lib/file-guard";
 
 function uploadsPath(empresaId: string, ownerType: string, ownerId: string): string {
   const dbUrl = process.env.DATABASE_URL || "file:/app/data/prumo.db";
@@ -41,8 +42,26 @@ export async function POST(req: NextRequest) {
   if (!file || !ownerType || !ownerId) {
     return NextResponse.json({ error: "Parâmetros inválidos" }, { status: 400 });
   }
+
+  // Allowlist para ownerType — previne path traversal
+  const ALLOWED_OWNER_TYPES = new Set(["obra", "terreno", "venda"]);
+  if (!ALLOWED_OWNER_TYPES.has(ownerType)) {
+    return NextResponse.json({ error: "ownerType inválido" }, { status: 400 });
+  }
+  // Sanidade do ownerId — apenas caracteres de cuid (alfanumérico + hífen)
+  if (!/^[a-zA-Z0-9_-]{1,40}$/.test(ownerId)) {
+    return NextResponse.json({ error: "ownerId inválido" }, { status: 400 });
+  }
+
   if (file.size > 10 * 1024 * 1024) {
     return NextResponse.json({ error: "Arquivo maior que 10 MB" }, { status: 400 });
+  }
+
+  try {
+    await assertFileType(file, ["pdf", "xml", "image"]);
+  } catch (e) {
+    if (e instanceof FileTypeError) return NextResponse.json({ error: e.message }, { status: 415 });
+    throw e;
   }
 
   const ext = path.extname(file.name).toLowerCase();

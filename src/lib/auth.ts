@@ -5,8 +5,15 @@ import { redirect } from "next/navigation";
 
 const scryptAsync = promisify(scrypt);
 
-const SECRET =
-  process.env.SESSION_SECRET ?? "prumo-dev-secret-change-in-production-32chars!";
+const SECRET = (() => {
+  const s = process.env.SESSION_SECRET;
+  if (!s || s.length < 32) {
+    throw new Error(
+      "[auth] SESSION_SECRET não definida ou muito curta (<32 chars). Configure no .env da VM."
+    );
+  }
+  return s;
+})();
 const COOKIE = "prumo_sess";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 

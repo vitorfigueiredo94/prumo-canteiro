@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assertSafeUrl, SsrfBlockedError } from "@/lib/ssrf-guard";
 import path from "path";
 import fs from "fs/promises";
 
@@ -62,6 +63,8 @@ export async function criarCotacao(
   });
 
   if (webhookUrl) {
+    // Valida SSRF antes de disparar — lança SsrfBlockedError se URL for privada
+    await assertSafeUrl(webhookUrl);
     dispararWebhook(cotacao.id, webhookUrl, {
       cotacaoId: cotacao.id,
       empresaId,

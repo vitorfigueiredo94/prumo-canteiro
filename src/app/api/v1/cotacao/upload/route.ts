@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { extrairInsumosDosPdf, salvarPdfCotacao, criarCotacao } from "@/features/cotacao-inteligente/service";
+import { SsrfBlockedError } from "@/lib/ssrf-guard";
+import { assertFileType, FileTypeError } from "@/lib/file-guard";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -14,9 +16,7 @@ export async function POST(req: NextRequest) {
     const webhookUrl = (formData.get("webhookUrl") as string | null) ?? undefined;
 
     if (!file) return NextResponse.json({ error: "Campo 'pdf' obrigatório" }, { status: 400 });
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      return NextResponse.json({ error: "Arquivo deve ser PDF" }, { status: 400 });
-    }
+    await assertFileType(file, ["pdf"]);
 
     const [pdfUrl, insumos] = await Promise.all([
       salvarPdfCotacao(file),
@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     const cotacao = await criarCotacao(session.empresaId, nome, insumos, pdfUrl, obraId, webhookUrl);
     return NextResponse.json({ ...cotacao, insumos }, { status: 201 });
   } catch (e) {
+    if (e instanceof FileTypeError) return NextResponse.json({ error: e.message }, { status: 415 });
+    if (e instanceof SsrfBlockedError) return NextResponse.json({ error: e.message }, { status: 422 });
     return NextResponse.json({ error: String(e) }, { status: 422 });
   }
 }
