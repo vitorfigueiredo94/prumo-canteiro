@@ -19,10 +19,15 @@ const adapter = new PrismaBetterSqlite3({ url: dbUrl });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const empresa = await prisma.empresa.findFirst({ orderBy: { criadoEm: "asc" } });
-  if (!empresa) { console.error("Nenhuma empresa encontrada. Crie uma conta primeiro."); process.exit(1); }
+  const demoUser = await prisma.usuario.findFirst({ where: { email: "demo@prumo.com" } });
+  if (!demoUser) {
+    console.error("Usuário demo@prumo.com não encontrado.\nExecute primeiro: node /app/prisma/seed.cjs");
+    process.exit(1);
+  }
+  const empresa = await prisma.empresa.findFirst({ where: { id: demoUser.empresaId } });
+  if (!empresa) { console.error("Empresa da conta demo não encontrada."); process.exit(1); }
   const eid = empresa.id;
-  console.log(`\n→ Empresa: ${empresa.nome} (${eid})\n`);
+  console.log(`\n→ Empresa: ${empresa.nome} (${eid}) — usuário demo@prumo.com\n`);
 
   // ── Terrenos ──────────────────────────────────────────────────────────────
   const t = {
