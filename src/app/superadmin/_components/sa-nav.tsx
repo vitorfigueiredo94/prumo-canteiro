@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, CreditCard, Receipt, Shield } from "lucide-react";
+import { LayoutDashboard, Building2, Users, CreditCard, Receipt, Shield, LogOut } from "lucide-react";
+import { logoutAction } from "@/app/(app)/actions";
 
 const LINKS = [
   { href: "/superadmin/visao-geral", label: "Visão Geral",  Icon: LayoutDashboard },
@@ -60,13 +61,22 @@ export function SaNav() {
         })}
       </div>
 
-      <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 2 }}>
         <Link
           href="/dashboard"
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8, color: "#475569", fontSize: 13, textDecoration: "none" }}
         >
           ← Voltar ao app
         </Link>
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8, color: "#EF4444", fontSize: 13, background: "transparent", border: "none", cursor: "pointer", width: "100%" }}
+          >
+            <LogOut size={14} />
+            Sair
+          </button>
+        </form>
       </div>
     </nav>
   );
