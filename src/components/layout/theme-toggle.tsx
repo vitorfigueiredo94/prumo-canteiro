@@ -5,24 +5,40 @@ import { Sun, Moon } from "lucide-react";
 
 const KEY = "prumocanteiro:theme";
 
+function getTheme(): "dark" | "light" {
+  try {
+    const stored = localStorage.getItem(KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {}
+  return "light";
+}
+
 export function ThemeToggle({ size = 18 }: { size?: number }) {
   const [dark, setDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setDark(document.documentElement.getAttribute("data-theme") === "dark");
+    const theme = getTheme();
+    setDark(theme === "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+    setMounted(true);
   }, []);
 
   function toggle() {
     const next = !dark;
     setDark(next);
-    try { localStorage.setItem(KEY, next ? "dark" : "light"); } catch {}
-    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    const theme = next ? "dark" : "light";
+    try { localStorage.setItem(KEY, theme); } catch {}
+    document.documentElement.setAttribute("data-theme", theme);
   }
+
+  // Não renderiza até hidratar para evitar mismatch de ícone
+  if (!mounted) return <div style={{ width: size + 12, height: size + 12 }} />;
 
   return (
     <button
       onClick={toggle}
-      title={dark ? "Tema claro" : "Tema escuro"}
+      title={dark ? "Mudar para tema claro" : "Mudar para tema escuro"}
       style={{
         background: "transparent",
         border: "none",

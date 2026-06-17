@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { LayoutDashboard, Building2, Users, CreditCard, Receipt, Shield, LogOut } from "lucide-react";
 import { logoutAction } from "@/app/(app)/actions";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const LINKS = [
   { href: "/superadmin/visao-geral", label: "Visão Geral",  Icon: LayoutDashboard },
@@ -14,8 +14,21 @@ const LINKS = [
   { href: "/superadmin/cobrancas",   label: "Cobranças",    Icon: Receipt },
 ];
 
+const KEY = "prumocanteiro:theme";
+
 export function SaNav() {
   const path = usePathname();
+
+  // Superadmin é sempre escuro. Força dark na entrada e restaura preferência na saída.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    return () => {
+      try {
+        const pref = localStorage.getItem(KEY);
+        document.documentElement.setAttribute("data-theme", pref === "dark" ? "dark" : "light");
+      } catch {}
+    };
+  }, []);
 
   return (
     <nav style={{
@@ -63,10 +76,6 @@ export function SaNav() {
       </div>
 
       <div style={{ padding: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 2 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 4px 4px 12px", marginBottom: 2 }}>
-          <span style={{ fontSize: 12, color: "#475569" }}>Aparência</span>
-          <ThemeToggle size={16} />
-        </div>
         <Link
           href="/dashboard"
           style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 8, color: "#475569", fontSize: 13, textDecoration: "none" }}
