@@ -3,6 +3,31 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { dispararCobranca } from "@/lib/cobranca-service";
+import { revalidatePath } from "next/cache";
+
+export async function editarDadosComprador(
+  vendaId: string,
+  data: { nomeComprador: string; cpfCnpjComprador: string; telefoneComprador: string; emailComprador: string }
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await getSession();
+  if (!session) return { ok: false, error: "Não autenticado" };
+
+  const venda = await prisma.venda.findFirst({ where: { id: vendaId, empresaId: session.empresaId }, select: { id: true } });
+  if (!venda) return { ok: false, error: "Venda não encontrada" };
+
+  await prisma.venda.update({
+    where: { id: vendaId },
+    data: {
+      nomeComprador: data.nomeComprador.trim(),
+      cpfCnpjComprador: data.cpfCnpjComprador.trim() || null,
+      telefoneComprador: data.telefoneComprador.replace(/\D/g, "") || null,
+      emailComprador: data.emailComprador.trim() || null,
+    },
+  });
+
+  revalidatePath("/compradores");
+  return { ok: true };
+}
 
 export async function cobrarTodosEmAtraso(): Promise<{
   ok: number; pulados: number; erro: number; semFone: number;

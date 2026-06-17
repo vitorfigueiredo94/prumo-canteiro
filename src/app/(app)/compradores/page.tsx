@@ -18,25 +18,32 @@ export default async function CompradoresPage() {
     return <PlanoGate recurso="vendas" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
   }
 
-  const vendas = await prisma.venda.findMany({
-    where: { empresaId: eid },
-    select: {
-      id: true,
-      nomeComprador: true,
-      cpfCnpjComprador: true,
-      telefoneComprador: true,
-      emailComprador: true,
-      valorTotal: true,
-      dataContrato: true,
-      terreno: { select: { id: true, nome: true, cidade: true } },
-      parcelas: {
-        select: { status: true, vencimento: true, pagoEm: true, valor: true },
+  const [vendasRaw, terrenosRaw] = await Promise.all([
+    prisma.venda.findMany({
+      where: { empresaId: eid },
+      select: {
+        id: true,
+        nomeComprador: true,
+        cpfCnpjComprador: true,
+        telefoneComprador: true,
+        emailComprador: true,
+        valorTotal: true,
+        dataContrato: true,
+        terreno: { select: { id: true, nome: true, cidade: true } },
+        parcelas: {
+          select: { status: true, vencimento: true, pagoEm: true, valor: true },
+        },
       },
-    },
-    orderBy: { criadoEm: "desc" },
-  });
+      orderBy: { criadoEm: "desc" },
+    }),
+    prisma.terreno.findMany({
+      where: { empresaId: eid, vendas: { none: {} } },
+      select: { id: true, nome: true, cidade: true },
+      orderBy: { nome: "asc" },
+    }),
+  ]);
 
-  const serialized = vendas.map((v: typeof vendas[0]) => ({
+  const compradores = vendasRaw.map((v) => ({
     id: v.id,
     nomeComprador: v.nomeComprador,
     cpfCnpjComprador: v.cpfCnpjComprador ?? null,
@@ -45,7 +52,7 @@ export default async function CompradoresPage() {
     valorTotal: Number(v.valorTotal),
     dataContrato: v.dataContrato?.toISOString() ?? null,
     terreno: v.terreno,
-    parcelas: v.parcelas.map((p: typeof v.parcelas[0]) => ({
+    parcelas: v.parcelas.map((p) => ({
       status: p.status,
       vencimento: p.vencimento?.toISOString() ?? null,
       pagoEm: p.pagoEm?.toISOString() ?? null,
@@ -53,5 +60,7 @@ export default async function CompradoresPage() {
     })),
   }));
 
-  return <CompradoresView compradores={serialized} />;
+  const terrenos = terrenosRaw.map((t) => ({ id: t.id, nome: t.nome, cidade: t.cidade }));
+
+  return <CompradoresView compradores={compradores} terrenos={terrenos} />;
 }
