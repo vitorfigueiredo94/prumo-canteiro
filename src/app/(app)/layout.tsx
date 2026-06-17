@@ -40,11 +40,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           flexDirection: "column",
           overflow: "hidden",
           minWidth: 0,
-          position: "relative",
         }}
       >
-        {/* Controles fixos no canto superior direito da área de conteúdo */}
-        <div style={{ position: "absolute", top: 14, right: 24, zIndex: 50, display: "flex", alignItems: "center", gap: 4 }}>
+        {/* Barra de controles — fica acima do conteúdo de cada página */}
+        <div style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 4,
+          padding: "0 20px",
+          height: 52,
+          flexShrink: 0,
+          borderBottom: "1px solid var(--border-subtle)",
+          background: "var(--bg-surface)",
+        }}>
           <ThemeToggle />
           <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} />
         </div>
