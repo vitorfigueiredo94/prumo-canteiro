@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { dispararCobranca } from "@/lib/cobranca-service";
 
 const VendaSchema = z.object({
   terrenoId: z.string().min(1),
@@ -96,4 +97,21 @@ export async function estornarParcela(parcelaId: string, vendaId: string): Promi
   if (!parcela) return;
   await prisma.parcela.update({ where: { id: parcelaId }, data: { status: "aberta", pagoEm: null } });
   revalidatePath(`/vendas/${vendaId}`);
+}
+
+export async function cobrarParcelaWhatsApp(parcelaId: string): Promise<{ ok: boolean; reason?: string }> {
+  const empresaId = await getEmpresaId();
+  const parcela = await prisma.parcela.findFirst({
+    where: { id: parcelaId, venda: { empresaId } },
+    select: {
+      id: true, numero: true, valor: true, vencimento: true,
+      venda: { select: { id: true, empresaId: true, nomeComprador: true, telefoneComprador: true } },
+    },
+  });
+  if (!parcela) return { ok: false, reason: "Parcela não encontrada" };
+
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const tipo = parcela.vencimento && new Date(parcela.vencimento) < hoje ? "aviso_atraso" : "lembrete_amigavel";
+
+  return dispararCobranca({ ...parcela, valor: Number(parcela.valor) }, tipo);
 }

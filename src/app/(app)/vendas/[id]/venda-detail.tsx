@@ -1,10 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, User, Phone, Mail, Check, RotateCcw, Printer } from "lucide-react";
+import { ArrowLeft, MapPin, User, Phone, Mail, Check, RotateCcw, Printer, MessageCircle } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
-import { registrarPagamentoParcela, estornarParcela } from "../actions";
+import { registrarPagamentoParcela, estornarParcela, cobrarParcelaWhatsApp } from "../actions";
 
 interface Parcela {
   id: string; numero: number; valor: number; vencimento: string | null; status: string; pagoEm: string | null;
@@ -31,6 +31,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function VendaDetail({ venda: v }: { venda: Venda }) {
   const [isPending, startTransition] = useTransition();
+  const [cobrancaMsg, setCobrancaMsg] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
   const pago = v.parcelas.filter((p) => p.status === "paga").reduce((s, p) => s + p.valor, 0) + v.entrada;
   const restante = v.valorTotal - pago;
@@ -39,6 +42,11 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
 
   const handlePagar = (p: Parcela) => startTransition(() => registrarPagamentoParcela(p.id, v.id));
   const handleEstornar = (p: Parcela) => startTransition(() => estornarParcela(p.id, v.id));
+  const handleCobrar = (p: Parcela) => startTransition(async () => {
+    const result = await cobrarParcelaWhatsApp(p.id);
+    setCobrancaMsg({ id: p.id, ok: result.ok, msg: result.ok ? "WhatsApp enviado!" : result.reason ?? "Erro ao enviar" });
+    setTimeout(() => setCobrancaMsg(null), 4000);
+  });
 
   return (
     <div>
@@ -96,23 +104,35 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
           <h2 style={{ margin: "0 0 14px", fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500, color: "var(--fg-primary)" }}>Extrato de parcelas</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {v.parcelas.map((p) => {
-              const s = STATUS_COLORS[p.status] ?? STATUS_COLORS.aberta;
-              const atrasada = p.status === "aberta" && p.vencimento && new Date(p.vencimento) < new Date();
+              const isAtrasada = p.status !== "paga" && p.vencimento != null && new Date(p.vencimento) < hoje;
+              const displayStatus = isAtrasada ? "atrasada" : p.status;
+              const s = STATUS_COLORS[displayStatus] ?? STATUS_COLORS.aberta;
+              const feedback = cobrancaMsg?.id === p.id ? cobrancaMsg : null;
               return (
-                <div key={p.id} style={{ background: "var(--bg-surface)", border: `1px solid ${atrasada ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-md)", padding: "12px 18px", display: "flex", alignItems: "center", gap: 16 }}>
+                <div key={p.id} style={{ background: "var(--bg-surface)", border: `1px solid ${isAtrasada ? "rgba(181,54,60,0.3)" : "var(--border-subtle)"}`, borderRadius: "var(--radius-md)", padding: "12px 18px", display: "flex", alignItems: "center", gap: 16 }}>
                   <div style={{ width: 40, height: 40, background: "var(--navy-50)", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 600, color: "var(--navy-700)", flexShrink: 0 }}>
                     {p.numero}
                   </div>
                   <div style={{ flex: 1 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: "var(--fg-primary)" }}>{fmtBRL(p.valor)}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 13, color: atrasada ? "var(--danger-500)" : "var(--fg-tertiary)" }}>
-                      Venc: {fmtDate(p.vencimento)}{p.pagoEm ? ` · Pago em ${fmtDate(p.pagoEm)}` : ""}{atrasada ? " · ATRASADA" : ""}
+                    <p style={{ margin: "2px 0 0", fontSize: 13, color: isAtrasada ? "var(--danger-500)" : "var(--fg-tertiary)" }}>
+                      Venc: {fmtDate(p.vencimento)}{p.pagoEm ? ` · Pago em ${fmtDate(p.pagoEm)}` : ""}
                     </p>
+                    {feedback && (
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: feedback.ok ? "var(--success-700)" : "var(--danger-500)", fontWeight: 600 }}>
+                        {feedback.msg}
+                      </p>
+                    )}
                   </div>
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: "var(--radius-full)", background: s.bg, fontSize: 12, fontWeight: 600, color: s.color, flexShrink: 0 }}>
-                    {STATUS_LABELS[p.status] ?? p.status}
+                    {STATUS_LABELS[displayStatus] ?? displayStatus}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    {isAtrasada && (
+                      <button disabled={isPending} onClick={() => handleCobrar(p)} title="Enviar cobrança via WhatsApp" style={{ width: 32, height: 32, border: "1px solid rgba(37,157,82,0.4)", borderRadius: "var(--radius-md)", background: "#f0fdf4", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+                        <MessageCircle size={14} />
+                      </button>
+                    )}
                     {p.status !== "paga" && (
                       <button disabled={isPending} onClick={() => handlePagar(p)} title="Marcar como paga" style={{ width: 32, height: 32, border: "1px solid rgba(47,125,74,0.4)", borderRadius: "var(--radius-md)", background: "var(--success-50)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--success-500)" }}>
                         <Check size={14} />
