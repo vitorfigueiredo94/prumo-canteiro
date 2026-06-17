@@ -18,7 +18,7 @@ export async function GET(
     where: { id: parcelaId, venda: { empresaId: session.empresaId } },
     include: {
       venda: {
-        include: { empresa: { select: { nome: true } } },
+        include: { empresa: { select: { nome: true, logoEmpresa: true } } },
       },
     },
   });
@@ -32,6 +32,7 @@ export async function GET(
 
   const html = buildNotificacaoHTML({
     nomeEmpresa:      parcela.venda.empresa.nome,
+    logoEmpresa:      (parcela.venda.empresa as any).logoEmpresa ?? null,
     cnpjEmpresa:      "00.000.000/0001-00",
     nomeComprador:    parcela.venda.nomeComprador,
     cpfComprador:     parcela.venda.cpfCnpjComprador,

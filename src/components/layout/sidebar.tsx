@@ -40,9 +40,10 @@ const NAV_ITEMS = [
 interface SidebarProps {
   empresaNome: string;
   plano: PlanoInfo;
+  logoEmpresa?: string | null;
 }
 
-export function Sidebar({ empresaNome, plano }: SidebarProps) {
+export function Sidebar({ empresaNome, plano, logoEmpresa }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -86,7 +87,10 @@ export function Sidebar({ empresaNome, plano }: SidebarProps) {
           flexShrink: 0,
         }}
       >
-        <Logo size={34} />
+        {logoEmpresa && !collapsed
+          ? <img src={logoEmpresa} alt="Logo" style={{ maxHeight: 36, maxWidth: 120, objectFit: "contain", borderRadius: 4, flexShrink: 0 }} />
+          : <Logo size={34} />
+        }
         {!collapsed && (
           <div style={{ lineHeight: 1.05, overflow: "hidden", minWidth: 0 }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>

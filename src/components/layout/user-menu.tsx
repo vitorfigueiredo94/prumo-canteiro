@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Shield, LogOut, Phone, Check, Pencil } from "lucide-react";
-import { logoutAction, salvarTelefoneGestor } from "@/app/(app)/actions";
+import { Shield, LogOut, Phone, Check, Pencil, ImagePlus, X } from "lucide-react";
+import { logoutAction, salvarTelefoneGestor, salvarLogoEmpresa } from "@/app/(app)/actions";
 
 const AV_COLORS = ["#1e3a5f","#b45309","#6d28d9","#047857","#b91c1c","#0369a1"];
 function avatarBg(name: string) {
@@ -22,13 +22,23 @@ function fmtFone(v: string) {
   return v;
 }
 
-export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
-  nome: string; email: string; superAdmin: boolean; telefoneGestor: string | null;
+export function UserMenu({ nome, email, superAdmin, telefoneGestor, logoEmpresa }: {
+  nome: string; email: string; superAdmin: boolean;
+  telefoneGestor: string | null; logoEmpresa: string | null;
 }) {
   const [open, setOpen] = useState(false);
+
+  // Telefone
   const [editingFone, setEditingFone] = useState(false);
   const [fone, setFone] = useState(telefoneGestor ?? "");
-  const [saved, setSaved] = useState(false);
+  const [foneSaved, setFoneSaved] = useState(false);
+
+  // Logo
+  const [logo, setLogo] = useState<string | null>(logoEmpresa);
+  const [logoMsg, setLogoMsg] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -50,8 +60,47 @@ export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
     startTransition(async () => {
       await salvarTelefoneGestor(fone);
       setEditingFone(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setFoneSaved(true);
+      setTimeout(() => setFoneSaved(false), 2500);
+    });
+  }
+
+  function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Use uma imagem (PNG, JPG, SVG…)");
+      return;
+    }
+    if (file.size > 400_000) {
+      setLogoError("Imagem muito grande (máx. 400 KB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      startTransition(async () => {
+        const r = await salvarLogoEmpresa(dataUrl);
+        if (r.ok) {
+          setLogo(dataUrl);
+          setLogoMsg("✓ Logo salvo!");
+          setTimeout(() => setLogoMsg(null), 2500);
+        } else {
+          setLogoError(r.error ?? "Erro ao salvar");
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  function handleRemoveLogo() {
+    startTransition(async () => {
+      await salvarLogoEmpresa(null);
+      setLogo(null);
+      setLogoMsg("Logo removido");
+      setTimeout(() => setLogoMsg(null), 2000);
     });
   }
 
@@ -78,7 +127,7 @@ export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
           position: "absolute", top: 46, right: 0, zIndex: 200,
           background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
           borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-          minWidth: 260, overflow: "hidden",
+          minWidth: 272, overflow: "hidden",
         }}>
           {/* User info */}
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
@@ -96,6 +145,77 @@ export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
                 <p style={{ margin: 0, fontSize: 12, color: "var(--fg-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{email}</p>
               </div>
             </div>
+          </div>
+
+          {/* Logo da empresa */}
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+              <ImagePlus size={11} /> Logo da empresa
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Preview */}
+              <div style={{
+                width: 64, height: 40, borderRadius: 6,
+                border: "1px solid var(--border-default)",
+                background: "var(--bg-canvas)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden", flexShrink: 0,
+              }}>
+                {logo
+                  ? <img src={logo} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+                  : <span style={{ fontSize: 10, color: "var(--fg-muted)", textAlign: "center", lineHeight: 1.3 }}>Sem logo</span>
+                }
+              </div>
+
+              {/* Ações */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0 }}>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleLogoFile}
+                />
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={isPending}
+                  style={{
+                    height: 28, padding: "0 10px",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: 6, background: "var(--bg-surface)",
+                    color: "var(--fg-secondary)", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", fontFamily: "var(--font-sans)",
+                    display: "flex", alignItems: "center", gap: 5,
+                    opacity: isPending ? 0.6 : 1,
+                  }}
+                >
+                  <ImagePlus size={11} />
+                  {isPending ? "Salvando…" : logo ? "Alterar logo" : "Enviar logo"}
+                </button>
+                {logo && (
+                  <button
+                    onClick={handleRemoveLogo}
+                    disabled={isPending}
+                    style={{
+                      height: 24, padding: "0 8px",
+                      border: "none", background: "transparent",
+                      color: "var(--fg-muted)", fontSize: 11.5,
+                      cursor: "pointer", fontFamily: "var(--font-sans)",
+                      display: "flex", alignItems: "center", gap: 4, textAlign: "left",
+                    }}
+                  >
+                    <X size={10} /> Remover logo
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {logoMsg && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "#16a34a", fontWeight: 600 }}>{logoMsg}</p>}
+            {logoError && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "#dc2626" }}>{logoError}</p>}
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--fg-muted)", lineHeight: 1.4 }}>
+              Aparece no cabeçalho dos contratos gerados. PNG, JPG ou SVG até 400 KB.
+            </p>
           </div>
 
           {/* WhatsApp do gestor */}
@@ -131,7 +251,7 @@ export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span style={{ fontSize: 13, color: fone ? "var(--fg-primary)" : "var(--fg-muted)", fontWeight: fone ? 500 : 400 }}>
-                  {saved ? "✓ Salvo!" : fone ? fmtFone(fone) : "Não configurado"}
+                  {foneSaved ? "✓ Salvo!" : fone ? fmtFone(fone) : "Não configurado"}
                 </span>
                 <button
                   onClick={() => setEditingFone(true)}

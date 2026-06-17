@@ -3,6 +3,7 @@ import { fmtBRL } from "./format";
 interface NotificacaoParams {
   nomeEmpresa: string;
   cnpjEmpresa: string;
+  logoEmpresa?: string | null;
   nomeComprador: string;
   cpfComprador: string | null;
   enderecoComprador: string;
@@ -41,6 +42,7 @@ export function buildNotificacaoHTML(d: NotificacaoParams): string {
 <body>
   <button class="no-print btn-print" onclick="window.print()">Imprimir / Salvar como PDF</button>
 
+  ${d.logoEmpresa ? `<div style="text-align:center;margin-bottom:16px"><img src="${d.logoEmpresa}" alt="Logo" style="max-height:64px;max-width:200px;object-fit:contain" /></div>` : ""}
   <h1>Notificação Extrajudicial</h1>
   <p class="subtitulo">Nos termos do Código Civil art. 397 c/c CDC arts. 42 e 43</p>
 

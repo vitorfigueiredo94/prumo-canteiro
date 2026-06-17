@@ -5,6 +5,7 @@ interface ContratoParams {
   dataContrato: string;
   cidade: string;
   nomeEmpresa: string;
+  logoEmpresa: string | null;
   nomeComprador: string;
   cpfCnpjComprador: string | null;
   telefoneComprador: string | null;
@@ -213,8 +214,11 @@ export function buildContratoHTML(d: ContratoParams): string {
   ${assinaturaStatus}
 
   <div class="header">
-    <div class="header-empresa">${d.nomeEmpresa}</div>
-    <div class="header-sub">Incorporação e Gestão Imobiliária</div>
+    ${d.logoEmpresa
+      ? `<img src="${d.logoEmpresa}" alt="Logo" style="max-height:70px;max-width:220px;object-fit:contain;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto" />`
+      : `<div class="header-empresa">${d.nomeEmpresa}</div>`
+    }
+    <div class="header-sub">${d.logoEmpresa ? `<strong>${d.nomeEmpresa}</strong> — ` : ""}Incorporação e Gestão Imobiliária</div>
   </div>
 
   <h1>Contrato Particular de Promessa de Compra e Venda</h1>

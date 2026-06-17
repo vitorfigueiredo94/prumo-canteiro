@@ -17,7 +17,7 @@ export async function GET(
   const venda = await prisma.venda.findFirst({
     where: { id: vendaId, empresaId: session.empresaId },
     include: {
-      empresa: { select: { nome: true } },
+      empresa: { select: { nome: true, logoEmpresa: true } },
       terreno: { select: { nome: true, cidade: true, numero: true, area: true } },
       parcelas: { orderBy: { numero: "asc" } },
     },
@@ -33,6 +33,7 @@ export async function GET(
     dataContrato: venda.dataContrato?.toISOString() ?? venda.criadoEm.toISOString(),
     cidade: venda.terreno.cidade,
     nomeEmpresa: venda.empresa.nome,
+    logoEmpresa: (venda.empresa as any).logoEmpresa ?? null,
     nomeComprador: venda.nomeComprador,
     cpfCnpjComprador: venda.cpfCnpjComprador ?? null,
     telefoneComprador: venda.telefoneComprador ?? null,
