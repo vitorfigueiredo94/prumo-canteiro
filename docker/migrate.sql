@@ -153,3 +153,18 @@ CREATE TABLE IF NOT EXISTS "assinaturas" (
     ON UPDATE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "assinaturas_empresaId_idx" ON "assinaturas"("empresaId");
+
+-- Migration: Audit Log de Segurança — LGPD art. 15 (v1.5)
+CREATE TABLE IF NOT EXISTS "security_audit_logs" (
+  "id"           TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"    TEXT     NOT NULL,
+  "userId"       TEXT     NOT NULL,
+  "action"       TEXT     NOT NULL,
+  "resourceType" TEXT     NOT NULL,
+  "resourceId"   TEXT,
+  "result"       TEXT     NOT NULL DEFAULT 'allowed',
+  "ipHash"       TEXT,
+  "criadoEm"    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "security_audit_logs_empresaId_idx" ON "security_audit_logs"("empresaId");
+CREATE INDEX IF NOT EXISTS "security_audit_logs_criadoEm_idx"  ON "security_audit_logs"("criadoEm");

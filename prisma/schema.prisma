@@ -73,6 +73,7 @@ model Usuario {
   passwordHash  String?
   superAdmin    Boolean  @default(false)
   bloqueado     Boolean  @default(false)
+  cargo         String   @default("admin")
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 

@@ -78,6 +78,12 @@ if (!usuariosInfo.find(c => c.name === 'bloqueado')) {
   console.log('[prumo] Migração aplicada: usuarios.bloqueado adicionado.');
 }
 
+// Migration: usuarios.cargo (RBAC — v1.5)
+if (!usuariosInfo.find(c => c.name === 'cargo')) {
+  db.exec('ALTER TABLE "usuarios" ADD COLUMN "cargo" TEXT NOT NULL DEFAULT \'admin\';');
+  console.log('[prumo] Migração aplicada: usuarios.cargo adicionado.');
+}
+
 // Migration: empresas.telefoneGestor (notificações WhatsApp)
 const empresasInfo = db.prepare("PRAGMA table_info('empresas')").all();
 if (!empresasInfo.find(c => c.name === 'telefoneGestor')) {
@@ -96,6 +102,22 @@ const vendasInfo = db.prepare("PRAGMA table_info('vendas')").all();
 if (!vendasInfo.find(c => c.name === 'contratoAssinadoEm')) {
   db.exec('ALTER TABLE "vendas" ADD COLUMN "contratoAssinadoEm" DATETIME;');
   console.log('[prumo] Migração aplicada: vendas.contratoAssinadoEm adicionado.');
+}
+
+// Retenção de audit logs: apaga registros com mais de 90 dias (LGPD art. 15)
+try {
+  const auditTableExists = db
+    .prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name='security_audit_logs'")
+    .get();
+  if (auditTableExists && auditTableExists.n > 0) {
+    const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const deleted = db.prepare('DELETE FROM "security_audit_logs" WHERE "criadoEm" < ?').run(cutoff);
+    if (deleted.changes > 0) {
+      console.log('[prumo] Audit logs antigos removidos: ' + deleted.changes + ' registros (>90 dias).');
+    }
+  }
+} catch (e) {
+  console.warn('[prumo] Retenção audit log ignorada:', e.message);
 }
 
 db.close();

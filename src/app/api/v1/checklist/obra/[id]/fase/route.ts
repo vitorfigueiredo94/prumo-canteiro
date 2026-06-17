@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSugestaoFase, avancarFase } from "@/features/checklist/service";
+import { prisma } from "@/lib/prisma";
+import { parseRole, checkPermission } from "@/lib/rbac";
+import { logAudit } from "@/lib/audit-log";
 
 export async function GET(
   _req: NextRequest,
@@ -22,8 +25,17 @@ export async function POST(
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
+  const { id } = await params;
+  const usuarioRow = await prisma.usuario.findUnique({ where: { id: session.userId }, select: { cargo: true } });
+  const role = parseRole(usuarioRow?.cargo);
+
+  if (!checkPermission(role, "obra_checklist", "write")) {
+    logAudit({ empresaId: session.empresaId, userId: session.userId }, "write", "obra_checklist", id, "denied");
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+  logAudit({ empresaId: session.empresaId, userId: session.userId }, "write", "obra_checklist", id, "allowed");
+
   try {
-    const { id } = await params;
     const novo = await avancarFase("obra", id, session.empresaId);
     return NextResponse.json(novo, { status: 201 });
   } catch (e) {
