@@ -45,30 +45,36 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
 
   const mensagem = MENSAGENS[tipo](parcela);
 
-  // Payload compatível com Evolution API v2 e Z-API
-  const payload = {
-    number: `55${telefone}@s.whatsapp.net`,
-    text: mensagem,
-    options: { delay: 1500, presence: "composing", linkPreview: false },
-  };
-
-  const apiUrl      = process.env.WHATSAPP_API_URL;
-  const apiKey      = process.env.WHATSAPP_API_KEY;
-  const instance    = process.env.WHATSAPP_INSTANCE;
+  const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   // Se não configurado, apenas loga sem enviar
-  if (!apiUrl || !apiKey || !instance) {
-    await logCobranca(parcela, tipo, "pendente", payload, "whatsapp_nao_configurado");
+  if (!accessToken || !phoneNumberId) {
+    await logCobranca(parcela, tipo, "pendente", null, "whatsapp_nao_configurado");
     return { ok: false, reason: "whatsapp_nao_configurado" };
   }
 
+  // Payload Meta Cloud API
+  const payload = {
+    messaging_product: "whatsapp",
+    to: `55${telefone}`,
+    type: "text",
+    text: { body: mensagem },
+  };
+
   try {
-    const res = await fetch(`${apiUrl}/message/sendText/${instance}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: apiKey },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10_000),
-    });
+    const res = await fetch(
+      `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
     const resposta = await res.text();
     await logCobranca(parcela, tipo, res.ok ? "enviado" : "erro", payload, resposta);
     return { ok: res.ok };
