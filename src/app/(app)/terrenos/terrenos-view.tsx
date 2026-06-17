@@ -2,12 +2,13 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, ArrowRight, Building2, Search, ChevronRight } from "lucide-react";
+import { Plus, MapPin, ArrowRight, Building2, Search, ChevronRight, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "./terreno-form";
 import { criarTerreno } from "./actions";
 import { STATUS_TERRENO, STATUS_OBRA } from "@/lib/status";
 import { fmtBRLshort, fmtDate, fmtArea } from "@/lib/format";
+import { ImportModal } from "@/components/import/ImportModal";
 
 interface Obra {
   id: string;
@@ -49,6 +50,7 @@ const metaVal: React.CSSProperties = {
 
 export function TerrenosView({ terrenos }: TerrenosViewProps) {
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [busca, setBusca] = useState("");
 
   const filtered = busca.trim()
@@ -95,27 +97,22 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
             {terrenos.length} {terrenos.length === 1 ? "terreno" : "terrenos"} no banco de terras
           </p>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          style={{
-            height: 40,
-            padding: "0 16px",
-            background: "var(--navy-700)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-md)",
-            fontFamily: "var(--font-sans)",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-          }}
-        >
-          <Plus size={16} />
-          Novo terreno
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setShowImport(true)}
+            style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}
+          >
+            <Upload size={15} />
+            Importar
+          </button>
+          <button
+            onClick={() => setShowNew(true)}
+            style={{ height: 40, padding: "0 16px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
+          >
+            <Plus size={16} />
+            Novo terreno
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -264,6 +261,9 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
 
       {showNew && (
         <TerrenoForm action={criarTerreno} onClose={closeNew} />
+      )}
+      {showImport && (
+        <ImportModal entity="terrenos" onClose={() => setShowImport(false)} />
       )}
     </>
   );

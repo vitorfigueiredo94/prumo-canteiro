@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, Phone, Mail, CreditCard, MapPin, AlertTriangle, CheckCircle2, ChevronRight, MessageCircle, Plus, Pencil } from "lucide-react";
+import { Search, Phone, Mail, CreditCard, MapPin, AlertTriangle, CheckCircle2, ChevronRight, MessageCircle, Plus, Pencil, Upload } from "lucide-react";
+import { ImportModal } from "@/components/import/ImportModal";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
 import { cobrarTodosEmAtraso } from "./actions";
 import { criarVenda } from "@/app/(app)/vendas/actions";
@@ -74,6 +75,7 @@ export function CompradoresView({ compradores: initial, terrenos }: { compradore
   const [resultado, setResultado] = useState<{ ok: number; pulados: number; erro: number; semFone: number } | null>(null);
   const [showNovoForm, setShowNovoForm] = useState(false);
   const [editando, setEditando] = useState<Comprador | null>(null);
+  const [showImport, setShowImport] = useState<"vendas" | "compradores" | null>(null);
 
   function handleCobrarTodos() {
     startTransition(async () => {
@@ -137,6 +139,18 @@ export function CompradoresView({ compradores: initial, terrenos }: { compradore
                 {isPending ? "Enviando…" : `Cobrar todos em atraso (${totalAtraso})`}
               </button>
             )}
+            <button
+              onClick={() => setShowImport("compradores")}
+              style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}
+            >
+              <Upload size={15} /> Atualizar compradores
+            </button>
+            <button
+              onClick={() => setShowImport("vendas")}
+              style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}
+            >
+              <Upload size={15} /> Importar vendas
+            </button>
             {terrenos.length > 0 && (
               <button
                 onClick={() => setShowNovoForm(true)}
@@ -284,6 +298,9 @@ export function CompradoresView({ compradores: initial, terrenos }: { compradore
             setEditando(null);
           }}
         />
+      )}
+      {showImport && (
+        <ImportModal entity={showImport} onClose={() => setShowImport(null)} />
       )}
     </div>
   );

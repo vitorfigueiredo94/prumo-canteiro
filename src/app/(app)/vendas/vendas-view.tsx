@@ -2,10 +2,11 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, ChevronRight, Search } from "lucide-react";
+import { Plus, MapPin, ChevronRight, Search, Upload } from "lucide-react";
 import { VendaForm } from "./venda-form";
 import { criarVenda } from "./actions";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
+import { ImportModal } from "@/components/import/ImportModal";
 
 interface ParcelaLite { id: string; status: string; valor: number; vencimento: string | null; }
 interface TerrenoLite { id: string; nome: string; cidade: string; }
@@ -51,6 +52,7 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState("todas");
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const closeNew = useCallback(() => setShowNew(false), []);
 
   const computed = vendas.map((v) => ({ ...v, fin: computeVenda(v) }));
@@ -81,9 +83,14 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
           <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Vendas</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>{vendas.length} {vendas.length === 1 ? "contrato" : "contratos"}</p>
         </div>
-        <button onClick={() => setShowNew(true)} style={{ height: 40, padding: "0 16px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
-          <Plus size={16} /> Registrar venda
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowImport(true)} style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}>
+            <Upload size={15} /> Importar
+          </button>
+          <button onClick={() => setShowNew(true)} style={{ height: 40, padding: "0 16px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <Plus size={16} /> Registrar venda
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -198,6 +205,7 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
       </div>
 
       {showNew && <VendaForm action={criarVenda} terrenos={terrenos} onClose={closeNew} />}
+      {showImport && <ImportModal entity="vendas" onClose={() => setShowImport(false)} />}
     </>
   );
 }
