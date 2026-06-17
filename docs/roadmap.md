@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.5
+> **Versão:** 1.6
 > **Atualizado em:** 17/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (security)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (security audit)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -230,6 +230,26 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 17/06/2026 | v1.3 | **Contrato de Compra e Venda** — template HTML, rota, registrar assinatura |
 | 17/06/2026 | v1.4 | **Logo da empresa** — upload no UserMenu, sidebar, contratos e notificações |
 | 17/06/2026 | v1.5 | **Segurança e LGPD** — RBAC, TenantGuard, ResponseMask, AuditLog, LLM PII strip |
+| 17/06/2026 | v1.6 | **Auditoria de segurança** — SSRF, Path Traversal, MIME, SESSION_SECRET, CSP/HSTS |
+
+---
+
+## Auditoria de Segurança — v1.6
+
+### Vulnerabilidades corrigidas (commit `0268d28`)
+
+| ID | Severidade | Correção | Arquivo |
+|---|---|---|---|
+| C-01 | 🔴 CRÍTICO | SSRF via `webhookUrl` → `ssrf-guard.ts` bloqueia IPs privados + DNS resolve | `src/lib/ssrf-guard.ts` |
+| C-02 | 🔴 CRÍTICO | Path Traversal em uploads → allowlist `ownerType` + regex `ownerId` | `src/app/api/v1/documentos/route.ts` |
+| A-01 | 🟠 ALTO | `SESSION_SECRET` sem fallback hardcoded → lança erro na inicialização | `src/lib/auth.ts` |
+| A-02 | 🟠 ALTO | MIME via magic bytes reais em 4 rotas → `file-guard.ts` | `src/lib/file-guard.ts` + 4 rotas |
+| M-01 | 🟡 MÉDIO | Security Headers → CSP, HSTS, X-Frame-Options, nosniff, Permissions-Policy | `next.config.ts` |
+| M-02 | 🟡 MÉDIO | `.env` nunca commitado, `.gitignore` correto, histórico limpo | — |
+
+**Novos arquivos de segurança:**
+- `src/lib/ssrf-guard.ts` — `assertSafeUrl(url)`: valida protocolo HTTPS, bloqueia IPs privados (10.x, 172.16-31.x, 192.168.x, 169.254.x, ::1) e resolve DNS para verificar IP final
+- `src/lib/file-guard.ts` — `assertFileType(file, allowed)`: lê magic bytes reais (não extensão), suporta PDF (`%PDF`), XML (`<?xml`), JPEG, PNG, GIF, WebP
 
 ---
 
