@@ -14,7 +14,8 @@ const SECRET = (() => {
   }
   return s;
 })();
-const COOKIE = "prumo_sess";
+// __Host- prefix obriga: Secure, Path=/, sem Domain → bloqueia subdomain cookie injection
+const COOKIE = "__Host-prumo_sess";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 
 // ── Senha ───────────────────────────────────────────────────────────────────

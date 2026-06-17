@@ -10,7 +10,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon");
 
-  const session = request.cookies.get("prumo_sess")?.value;
+  const session = request.cookies.get("__Host-prumo_sess")?.value;
 
   if (!session && !isPublic) {
     const url = request.nextUrl.clone();

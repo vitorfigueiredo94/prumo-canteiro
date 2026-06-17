@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, setSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { checkRateLimit, rateLimitError } from "@/lib/rate-limiter";
 
 export type RegisterState = { error?: string; success?: boolean } | null;
 
@@ -18,6 +20,12 @@ export async function registerAction(
 
   if (!nome || !empresa || !email || !password)
     return { error: "Preencha todos os campos obrigatórios." };
+
+  // Rate limit: 5 cadastros por IP a cada 60 minutos
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const rl = checkRateLimit(`register:${ip}`, 5, 60 * 60);
+  if (!rl.allowed) return { error: rateLimitError(rl.resetInSeconds) };
 
   if (password.length < 8)
     return { error: "A senha precisa ter no mínimo 8 caracteres." };

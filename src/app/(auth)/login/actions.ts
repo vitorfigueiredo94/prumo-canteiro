@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { verifyPassword, setSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { checkRateLimit, rateLimitError } from "@/lib/rate-limiter";
 
 export async function loginAction(
   _prevState: string | null,
@@ -12,6 +14,12 @@ export async function loginAction(
   const password = formData.get("password") as string;
 
   if (!email || !password) return "Informe seu e-mail e senha.";
+
+  // Rate limit: 10 tentativas por IP a cada 15 minutos
+  const hdrs = await headers();
+  const ip = hdrs.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  const rl = checkRateLimit(`login:${ip}`, 10, 15 * 60);
+  if (!rl.allowed) return rateLimitError(rl.resetInSeconds);
 
   let usuario;
   try {

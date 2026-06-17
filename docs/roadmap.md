@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.6
+> **Versão:** 1.7
 > **Atualizado em:** 17/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (security audit)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `v1.7` (audit v2)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -231,6 +231,26 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 17/06/2026 | v1.4 | **Logo da empresa** — upload no UserMenu, sidebar, contratos e notificações |
 | 17/06/2026 | v1.5 | **Segurança e LGPD** — RBAC, TenantGuard, ResponseMask, AuditLog, LLM PII strip |
 | 17/06/2026 | v1.6 | **Auditoria de segurança** — SSRF, Path Traversal, MIME, SESSION_SECRET, CSP/HSTS |
+| 17/06/2026 | v1.7 | **Auditoria estendida** — Rate limiting, brute force, timing attack, cookie __Host-, Next.js 15.3.9 |
+
+---
+
+## Auditoria Estendida — v1.7
+
+### Vulnerabilidades corrigidas
+
+| ID | Severidade | Correção | Arquivo |
+|---|---|---|---|
+| N-01 | 🟠 ALTO | Next.js 15.3.4 → 15.3.9 (patch bump, CVEs remanescentes não se aplicam: sem next/image, sem rewrites, sem nonces) | `package.json` |
+| N-02 | 🟠 ALTO | Brute force login: rate limit 10 tentativas / 15 min por IP | `src/lib/rate-limiter.ts` + `login/actions.ts` |
+| N-03 | 🟡 MÉDIO | Rate limit cadastro: 5 registros / 1h por IP | `cadastro/actions.ts` |
+| N-04 | 🟡 MÉDIO | Timing attack cron: `timingSafeEqual` em vez de `!==` | `api/cron/cobranca/route.ts` |
+| N-06 | 🔵 BAIXO | `@prisma/dev` falso positivo npm audit — documentado, sem ação | — |
+| N-07 | 🔵 BAIXO | Cookie `prumo_sess` → `__Host-prumo_sess` (bloqueia subdomain injection) | `src/lib/auth.ts` + `middleware.ts` |
+
+**Novo lib:** `src/lib/rate-limiter.ts` — Map em memória + TTL, limpeza automática a cada 60s, sem dependência externa.
+
+**Nota:** Upgrade Next.js 16.x adicionado ao backlog (major version, avaliação necessária antes de produção).
 
 ---
 

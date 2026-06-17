@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { dispararCobranca } from "@/lib/cobranca-service";
+import { timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";
 
+function verifyCronSecret(incoming: string | null): boolean {
+  const expected = process.env.CRON_SECRET;
+  if (!expected || !incoming) return false;
+  try {
+    const a = Buffer.from(incoming);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (secret !== process.env.CRON_SECRET) {
+  if (!verifyCronSecret(req.headers.get("x-cron-secret"))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
