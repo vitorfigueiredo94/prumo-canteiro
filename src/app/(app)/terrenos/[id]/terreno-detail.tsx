@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, Fragment } from "react";
 import Link from "next/link";
-import { MapPinned, Image as ImageIcon, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare } from "lucide-react";
+import { MapPinned, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare, User, Phone, Mail, CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "../terreno-form";
@@ -20,11 +20,23 @@ interface Obra {
   prazo: string | null;
 }
 
+interface ParcelaLite {
+  id: string; numero: number; valor: number;
+  vencimento: string | null; pagoEm: string | null; status: string;
+}
+
 interface Venda {
   id: string;
-  comprador: string;
+  nomeComprador: string;
+  cpfCnpjComprador: string | null;
+  telefoneComprador: string | null;
+  emailComprador: string | null;
   valorTotal: number;
-  dataVenda: string;
+  entrada: number;
+  numeroParcelas: number;
+  diaVencimento: number;
+  dataContrato: string | null;
+  parcelas: ParcelaLite[];
 }
 
 interface Terreno {
@@ -199,6 +211,171 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
   );
 }
 
+function CompradorTab({ venda: v }: { venda: Venda }) {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+  const vencidas   = v.parcelas.filter(p => p.vencimento && new Date(p.vencimento) <= hoje);
+  const pagas      = v.parcelas.filter(p => p.status === "paga");
+  const pagasNoPrazo = pagas.filter(p => p.pagoEm && p.vencimento && new Date(p.pagoEm) <= new Date(p.vencimento));
+  const pagasComAtraso = pagas.filter(p => p.pagoEm && p.vencimento && new Date(p.pagoEm) > new Date(p.vencimento));
+  const emAtraso   = vencidas.filter(p => p.status !== "paga");
+  const futuras    = v.parcelas.filter(p => p.vencimento && new Date(p.vencimento) > hoje && p.status !== "paga");
+
+  const totalPago  = pagas.reduce((s, p) => s + p.valor, 0) + v.entrada;
+  const pct        = v.valorTotal > 0 ? Math.min(Math.round((totalPago / v.valorTotal) * 100), 100) : 0;
+  const proxima    = futuras[0] ?? null;
+
+  const score = vencidas.length === 0
+    ? null
+    : Math.max(0, Math.round((pagasNoPrazo.length / vencidas.length) * 100) - emAtraso.length * 8);
+
+  const scoreLabel = score === null ? { l: "Sem histórico", c: "var(--fg-muted)" }
+    : score >= 85 ? { l: "Excelente", c: "#16a34a" }
+    : score >= 70 ? { l: "Bom", c: "#d97706" }
+    : score >= 50 ? { l: "Regular", c: "#ea580c" }
+    : { l: "Crítico", c: "#dc2626" };
+
+  const initials = v.nomeComprador.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 720 }}>
+
+      {/* Dados pessoais */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px", display: "flex", gap: 20, alignItems: "flex-start" }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--navy-700)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: "0 0 10px", fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "var(--fg-primary)" }}>{v.nomeComprador}</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
+            {v.cpfCnpjComprador && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: "var(--fg-secondary)" }}>
+                <CreditCard size={13} style={{ color: "var(--fg-muted)", flexShrink: 0 }} />
+                {v.cpfCnpjComprador}
+              </div>
+            )}
+            {v.telefoneComprador && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: "var(--fg-secondary)" }}>
+                <Phone size={13} style={{ color: "var(--fg-muted)", flexShrink: 0 }} />
+                {v.telefoneComprador}
+              </div>
+            )}
+            {v.emailComprador && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: "var(--fg-secondary)" }}>
+                <Mail size={13} style={{ color: "var(--fg-muted)", flexShrink: 0 }} />
+                {v.emailComprador}
+              </div>
+            )}
+            {v.dataContrato && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, color: "var(--fg-secondary)" }}>
+                <User size={13} style={{ color: "var(--fg-muted)", flexShrink: 0 }} />
+                Contrato: {fmtDate(v.dataContrato)}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Score + métricas */}
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 16 }}>
+        {/* Score */}
+        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 28px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 160 }}>
+          <TrendingUp size={18} style={{ color: scoreLabel.c, marginBottom: 8 }} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 48, fontWeight: 400, color: scoreLabel.c, lineHeight: 1 }}>
+            {score ?? "—"}
+          </div>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, color: scoreLabel.c, marginTop: 6 }}>
+            {scoreLabel.l}
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--fg-muted)", marginTop: 4 }}>Score interno</div>
+        </div>
+
+        {/* Métricas de pagamento */}
+        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          {[
+            { icon: <CheckCircle2 size={15} color="#16a34a" />, label: "Pagas no prazo", value: pagasNoPrazo.length, sub: `de ${vencidas.length} vencidas` },
+            { icon: <Clock size={15} color="#d97706" />, label: "Pagas com atraso", value: pagasComAtraso.length, sub: "após o vencimento" },
+            { icon: <AlertTriangle size={15} color="#dc2626" />, label: "Em atraso", value: emAtraso.length, sub: emAtraso.length === 0 ? "tudo em dia" : "cobrar agora" },
+            { icon: <TrendingUp size={15} color="var(--navy-700)" />, label: "Futuras", value: futuras.length, sub: proxima ? `próxima: ${fmtDate(proxima.vencimento)}` : "contrato quitado" },
+          ].map((m) => (
+            <div key={m.label}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, marginBottom: 4 }}>
+                {m.icon} {m.label}
+              </div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: "var(--fg-primary)", lineHeight: 1 }}>{m.value}</div>
+              <div style={{ fontSize: 11.5, color: "var(--fg-muted)", marginTop: 2 }}>{m.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Análise do contrato */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Contrato</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
+          {[
+            { l: "Valor total", v: fmtBRL(v.valorTotal) },
+            { l: "Entrada paga", v: fmtBRL(v.entrada) },
+            { l: "Total recebido", v: fmtBRL(totalPago) },
+            { l: "A receber", v: fmtBRL(Math.max(v.valorTotal - totalPago, 0)) },
+          ].map(k => (
+            <div key={k.l} style={{ background: "var(--ink-50)", borderRadius: "var(--radius-md)", padding: "10px 12px" }}>
+              <div style={{ fontSize: 10.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>{k.l}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: "var(--fg-primary)", marginTop: 2 }}>{k.v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--fg-tertiary)", marginBottom: 6 }}>
+          <span>{pagas.length}/{v.numeroParcelas} parcelas pagas</span>
+          <span style={{ fontWeight: 600 }}>{pct}% quitado</span>
+        </div>
+        <div style={{ height: 10, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "#22c55e" : emAtraso.length > 0 ? "#dc2626" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
+        </div>
+        {proxima && (
+          <div style={{ marginTop: 10, fontSize: 13, color: "var(--fg-secondary)" }}>
+            Próximo vencimento: <strong>{fmtDate(proxima.vencimento)}</strong> · {fmtBRL(proxima.valor)} · todo dia {v.diaVencimento}
+          </div>
+        )}
+      </div>
+
+      {/* Histórico de parcelas vencidas */}
+      {vencidas.length > 0 && (
+        <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", fontSize: 12, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Histórico de pagamentos
+          </div>
+          {vencidas.map((p, i) => {
+            const noPrazo = p.status === "paga" && p.pagoEm && p.vencimento && new Date(p.pagoEm) <= new Date(p.vencimento);
+            const atrasado = p.status === "paga" && !noPrazo;
+            const emAberto = p.status !== "paga";
+            return (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 20px", borderBottom: i < vencidas.length - 1 ? "1px solid var(--border-subtle)" : "none", background: emAberto ? "rgba(220,38,38,0.03)" : "transparent" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: noPrazo ? "#dcfce7" : atrasado ? "#fef3c7" : "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {noPrazo ? <CheckCircle2 size={14} color="#16a34a" /> : atrasado ? <Clock size={14} color="#d97706" /> : <AlertTriangle size={14} color="#dc2626" />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--fg-primary)" }}>Parcela {p.numero}</span>
+                  <span style={{ fontSize: 13, color: "var(--fg-muted)", marginLeft: 8 }}>Venc: {fmtDate(p.vencimento)}</span>
+                  {p.pagoEm && <span style={{ fontSize: 13, color: "var(--fg-muted)", marginLeft: 8 }}>· Pago: {fmtDate(p.pagoEm)}</span>}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-primary)" }}>{fmtBRL(p.valor)}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: noPrazo ? "#16a34a" : atrasado ? "#d97706" : "#dc2626", minWidth: 80, textAlign: "right" }}>
+                  {noPrazo ? "No prazo" : atrasado ? "Com atraso" : "Em aberto"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Link href={`/vendas/${v.id}`} style={{ alignSelf: "flex-start", fontSize: 13.5, color: "var(--navy-700)", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+        Ver contrato completo →
+      </Link>
+    </div>
+  );
+}
+
 function DetGrid({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ background: "var(--ink-50)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>
@@ -213,7 +390,7 @@ function DetGrid({ label, value }: { label: string; value: string }) {
 }
 
 export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
-  const [tab, setTab] = useState<"geral" | "documentos" | "checklist">("geral");
+  const [tab, setTab] = useState<"geral" | "documentos" | "checklist" | "comprador">("geral");
   const [editing, setEditing] = useState(false);
 
   const statusInfo = STATUS_TERRENO[terreno.status as keyof typeof STATUS_TERRENO] ?? STATUS_TERRENO.disponivel;
@@ -296,6 +473,11 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
           <button style={tabBtn(tab === "checklist")} onClick={() => setTab("checklist")}>
             <CheckSquare size={15} /> Checklist
           </button>
+          {venda && (
+            <button style={tabBtn(tab === "comprador")} onClick={() => setTab("comprador")}>
+              <User size={15} /> Comprador
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,7 +502,7 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
                   Venda registrada
                 </div>
                 <div style={{ fontSize: 14, color: "var(--fg-secondary)" }}>
-                  Vendido para <strong style={{ color: "var(--fg-primary)" }}>{venda.comprador}</strong> em {fmtDate(venda.dataVenda)} — {fmtBRL(venda.valorTotal)}
+                  Vendido para <strong style={{ color: "var(--fg-primary)" }}>{venda.nomeComprador}</strong> em {fmtDate(venda.dataContrato)} — {fmtBRL(venda.valorTotal)}
                 </div>
               </div>
             )}
@@ -369,6 +551,8 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
         )}
 
         {tab === "checklist" && <ChecklistTab terrenoId={terreno.id} />}
+
+        {tab === "comprador" && venda && <CompradorTab venda={venda} />}
 
         {tab === "documentos" && (
           <DocumentosTab ownerType="terreno" ownerId={terreno.id} />
