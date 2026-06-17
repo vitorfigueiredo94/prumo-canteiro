@@ -121,3 +121,35 @@ CREATE TABLE IF NOT EXISTS "faturas" (
 );
 CREATE INDEX IF NOT EXISTS "faturas_empresaId_idx"   ON "faturas"("empresaId");
 CREATE INDEX IF NOT EXISTS "faturas_competencia_idx" ON "faturas"("competencia");
+
+-- Migration: Planos e Assinaturas SaaS (v1.0)
+CREATE TABLE IF NOT EXISTS "planos" (
+  "id"              TEXT     NOT NULL PRIMARY KEY,
+  "nome"            TEXT     NOT NULL,
+  "preco"           DECIMAL  NOT NULL,
+  "limiteObras"     INTEGER,
+  "limiteUsuarios"  INTEGER,
+  "recursos"        TEXT     NOT NULL DEFAULT '[]',
+  "destaque"        BOOLEAN  NOT NULL DEFAULT 0,
+  "criadoEm"        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm"    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "assinaturas" (
+  "id"               TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"        TEXT     NOT NULL,
+  "planoId"          TEXT     NOT NULL,
+  "status"           TEXT     NOT NULL DEFAULT 'trial',
+  "desde"            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "proximaCobranca"  DATETIME,
+  "criadoEm"         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "assinaturas_empresaId_key" UNIQUE ("empresaId"),
+  CONSTRAINT "assinaturas_empresaId_fkey"
+    FOREIGN KEY ("empresaId") REFERENCES "empresas"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "assinaturas_planoId_fkey"
+    FOREIGN KEY ("planoId") REFERENCES "planos"("id")
+    ON UPDATE CASCADE
+);
+CREATE INDEX IF NOT EXISTS "assinaturas_empresaId_idx" ON "assinaturas"("empresaId");

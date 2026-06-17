@@ -30,10 +30,15 @@ export async function registerAction(
 
   const passwordHash = await hashPassword(password);
 
-  const plano = await prisma.plano.findFirst({
-    where: { nome: "Profissional" },
-    select: { id: true },
-  });
+  let plano: { id: string } | null = null;
+  try {
+    plano = await prisma.plano.findFirst({
+      where: { nome: "Profissional" },
+      select: { id: true },
+    });
+  } catch {
+    // planos table may not exist yet on older DBs — skip subscription creation
+  }
 
   const novaEmpresa = await prisma.empresa.create({ data: { nome: empresa } });
 
@@ -42,14 +47,18 @@ export async function registerAction(
   });
 
   if (plano) {
-    await prisma.assinatura.create({
-      data: {
-        empresaId: novaEmpresa.id,
-        planoId: plano.id,
-        status: "trial",
-        proximaCobranca: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      },
-    });
+    try {
+      await prisma.assinatura.create({
+        data: {
+          empresaId: novaEmpresa.id,
+          planoId: plano.id,
+          status: "trial",
+          proximaCobranca: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        },
+      });
+    } catch {
+      // non-critical — user can be assigned a plan later
+    }
   }
 
   await setSession({
