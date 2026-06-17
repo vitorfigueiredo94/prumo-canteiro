@@ -1,8 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.3
+> **Versão:** 1.4
 > **Atualizado em:** 17/06/2026
-> **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — **deploy estável na VM**
+> **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -28,7 +29,7 @@ financeiro e diário de obra — tudo em um único lugar.
 | WhatsApp | **Meta Cloud API** (Graph API v20.0) |
 | IA | Gemini Flash (parecer de garantia pós-obra) |
 | STT | OpenAI Whisper API (opcional) |
-| PDF | `pdf-parse@1.1.1` + geração própria |
+| PDF / Documentos | HTML otimizado para impressão (`buildContratoHTML`, `buildNotificacaoHTML`) |
 | Deploy | Docker + Nginx mTLS + Cloudflare Tunnel |
 | Repo | [github.com/vitorfigueiredo94/prumo-canteiro](https://github.com/vitorfigueiredo94/prumo-canteiro) |
 
@@ -39,7 +40,7 @@ financeiro e diário de obra — tudo em um único lugar.
 - **VM:** Mesma VM do JurisMonitor (Hyper-V Ubuntu `172.26.111.214`)
 - **Porta:** `3001` (JurisMonitor usa `8000`)
 - **Padrão mTLS:** Nginx SSL (cert autoassinado) → `noTLSVerify: true` no cloudflared
-- **Cloudflare Tunnel:** `501a7a76-113c-4539-868a-8b868b67cc9c` (mesmo tunnel do JurisMonitor)
+- **Cloudflare Tunnel:** `501a7a76-113c-4539-868a-8b868b67cc9c`
 - **DNS:** `prumocanteiro.com.br` — em produção
 - **Deploy:** `/opt/prumo-canteiro` + `docker compose up -d --build`
 - **Crontab VM:** `0 8 * * * curl -s -H "x-cron-secret: $SECRET" http://localhost:3000/api/cron/cobranca`
@@ -57,11 +58,12 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Auth HMAC-SHA256 — cookie `prumo_sess`, sem JWT externo
 - [x] App Shell — sidebar colapsável, header, layout responsivo
 - [x] Temas claro/escuro com persistência (superadmin sempre escuro)
+- [x] **Logo da empresa** — upload PNG/JPG/SVG no UserMenu (base64 no DB, até 400 KB)
 
 ### Terrenos (`/terrenos`)
 - [x] CRUD terrenos (localização, área, valor, status)
-- [x] Tabs: Visão geral / Documentos / Checklist / **Comprador**
-- [x] **Aba Comprador:** ficha completa do comprador com score interno, métricas, histórico de parcelas e análise do contrato
+- [x] Tabs: Visão geral / Documentos / Checklist / Comprador
+- [x] **Aba Comprador:** ficha completa com score interno, métricas, histórico e análise do contrato
 
 ### Obras (`/obras`)
 - [x] CRUD obras vinculadas a terrenos
@@ -77,19 +79,20 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 
 ### Vendas (`/vendas`)
 - [x] Registro de vendas com parcelamento automático
-- [x] Abas: Todas / Em dia / **Em atraso** / Pagas
+- [x] Abas: Todas / Em dia / Em atraso / Pagas
 - [x] Detecção de atraso por `vencimento < hoje` (nunca pelo campo `status` do DB)
 - [x] Badge `atrasada` calculado client-side
-- [x] **Cobrança manual por parcela:** botão WhatsApp em cada parcela em atraso
+- [x] Cobrança manual por parcela via WhatsApp
+- [x] **Contrato de Compra e Venda** — botão "Ver contrato" abre HTML para impressão/PDF
+- [x] **Registrar assinatura** — salva `contratoAssinadoEm`, exibe badge "Assinado em DD/MM/YYYY"
 
 ### Compradores (`/compradores`)
 - [x] Listagem com 4 KPIs (total, recebido, em atraso, adimplentes)
-- [x] **Score interno** por comprador: `max(0, round((noPrazo/vencidas)×100) − emAtraso×8)` — Excelente/Bom/Regular/Crítico
-- [x] Filtros: Todos / Adimplentes / Em atraso
-- [x] Busca por nome, CPF, telefone, email
-- [x] **"Cobrar todos em atraso":** deduplicação 24h via `cobranca_logs`, resultado inline
-- [x] **"Novo comprador":** abre VendaForm com terrenos disponíveis (sem venda)
-- [x] **"Editar"** (ícone lápis em cada card): modal leve para nome, CPF, telefone, email — atualização otimista sem reload
+- [x] Score interno: `max(0, round((noPrazo/vencidas)×100) − emAtraso×8)` — Excelente/Bom/Regular/Crítico
+- [x] Filtros: Todos / Adimplentes / Em atraso + busca por nome, CPF, telefone, email
+- [x] "Cobrar todos em atraso" — deduplicação 24h, resultado inline
+- [x] "Novo comprador" — abre VendaForm com terrenos disponíveis
+- [x] "Editar" (lápis) — modal leve para nome, CPF, telefone, email com atualização otimista
 
 ### Financeiro (`/financeiro`)
 - [x] KPIs: receitas, despesas, margem
@@ -107,7 +110,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Chamados: vincula comprador + componente defeituoso
 - [x] Parecer IA via Gemini Flash (aceita/nega com base em CC 618 / CDC)
 - [x] Configurar 11 componentes de garantia padrão
-- [x] Notificação extrajudicial imprimível (HTML com citações legais)
+- [x] Notificação extrajudicial imprimível com citações legais + **logo da empresa**
 
 ### Admin SaaS (`/superadmin`)
 - [x] Console Super Admin multi-tenant
@@ -116,9 +119,43 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 
 ---
 
-## WhatsApp — Meta Cloud API
+## Contrato de Compra e Venda
 
-**Migração de Evolution API → Meta Cloud API** (17/06/2026)
+**Geração:** `GET /api/contratos/[vendaId]` → HTML otimizado para impressão (Ctrl+P → PDF)
+**Template:** `src/lib/contrato-pdf.ts` — `buildContratoHTML(params)`
+**Número:** `CONT-{ano}-{6 últimos chars do ID da venda}` — único e estável
+
+**Conteúdo do contrato:**
+1. Cabeçalho — logo da empresa (se configurado) + nome + "Incorporação e Gestão Imobiliária"
+2. Título + número + cidade + data por extenso
+3. Cláusula I — Qualificação das partes (Vendedora + Compradora com CPF/telefone/email)
+4. Cláusula II — Objeto (terreno: nome, município, área)
+5. Cláusula III — Preço e forma de pagamento: tabela entrada + parcelas + tabela completa de vencimentos
+6. Cláusula IV — Posse e transferência (escritura definitiva após quitação)
+7. Cláusula V — Obrigações das partes
+8. Cláusula VI — Rescisão (60 dias atraso → multa 20% sobre valores pagos, CDC art. 53)
+9. Cláusula VII — Foro (comarca do terreno)
+10. Assinaturas: Vendedora + Compradora + 2 Testemunhas
+
+**Campos da venda envolvidos:**
+- `dataContrato`, `nomeComprador`, `cpfCnpjComprador`, `telefoneComprador`, `emailComprador`
+- `valorTotal`, `entrada`, `numeroParcelas`, `diaVencimento`
+- `contratoAssinadoEm` — registrado via botão na venda detail
+
+---
+
+## Logo da Empresa
+
+**Armazenamento:** base64 data URL no campo `empresas.logoEmpresa TEXT` (max 400 KB / ~533 KB base64)
+**Upload:** UserMenu → seção "Logo da empresa" → file input (PNG/JPG/SVG) → FileReader → `salvarLogoEmpresa()`
+**Onde aparece:**
+- Sidebar: substitui o ícone PrumoCanteiro quando a sidebar está expandida
+- Contrato PDF: centralizado no cabeçalho (substitui o nome em texto)
+- Notificação extrajudicial: acima do título
+
+---
+
+## WhatsApp — Meta Cloud API
 
 - **Endpoint:** `https://graph.facebook.com/v20.0/{phoneNumberId}/messages`
 - **Auth:** Bearer token (`WHATSAPP_ACCESS_TOKEN`)
@@ -131,16 +168,16 @@ CRON_SECRET=...                         # openssl rand -hex 32
 GEMINI_API_KEY=...                      # Para parecer de garantia (opcional)
 ```
 
-- **Fluxo de cobrança:**
+**Fluxo de cobrança:**
 
-| Trigger | Tipo | Descrição |
+| Trigger | Tipo | Deduplicação |
 |---|---|---|
-| T-5 (5 dias antes) | `lembrete_amigavel` | Lembrete amigável antes do vencimento |
-| T+0 a T+30 | `aviso_atraso` | Aviso de atraso |
-| T+30+ | `notificacao_extrajudicial` | Notificação com teor jurídico |
+| T-5 (5 dias antes) | `lembrete_amigavel` | Lifetime por parcela |
+| T+0 a T+30 | `aviso_atraso` | Lifetime por parcela |
+| T+30+ | `notificacao_extrajudicial` | Lifetime por parcela |
 
-- **Deduplicação:** cada tipo de mensagem é enviado **uma única vez por parcela** (lifetime, não diário)
-- **Notificação ao gestor:** após cada cobrança, cópia é enviada para `empresa.telefoneGestor` (configurável no UserMenu)
+- Notificação ao gestor: cópia para `empresa.telefoneGestor` após cada disparo
+- "Cobrar todos em atraso" (/compradores): deduplicação 24h (diferente do cron)
 
 ---
 
@@ -148,17 +185,27 @@ GEMINI_API_KEY=...                      # Para parecer de garantia (opcional)
 
 | Modelo | Campos-chave |
 |---|---|
-| `Empresa` | nome, **telefoneGestor** ← adicionado via PRAGMA |
-| `Venda` | nomeComprador, cpfCnpjComprador, telefoneComprador, emailComprador, valorTotal, entrada, numeroParcelas, diaVencimento, dataContrato |
+| `Empresa` | nome, **telefoneGestor TEXT**, **logoEmpresa TEXT** |
+| `Venda` | nomeComprador, cpfCnpjComprador, telefoneComprador, emailComprador, valorTotal, entrada, numeroParcelas, diaVencimento, dataContrato, **contratoAssinadoEm DATETIME** |
 | `Parcela` | valor, vencimento, status (`aberta`/`paga`), pagoEm |
 | `CobrancaLog` | empresaId, parcelaId, tipo, canal, status, criadoEm |
 | `GarantiaComponente` | empresaId, codigo, nome, prazoLegalMeses, prazoContratMeses |
 | `ChamadoAssistencia` | empresaId, vendaId, componenteId, descricao, status, parecerTexto |
+| `Plano` | nome, recursos[], limiteObras |
+| `Assinatura` | empresaId, planoId, status |
 
-### Migrações em produção (via `init-db.js` no startup Docker)
+### Migrações em produção — PRAGMA via `docker/init-db.js`
+
 ```sql
 ALTER TABLE "empresas" ADD COLUMN "telefoneGestor" TEXT;
+ALTER TABLE "empresas" ADD COLUMN "logoEmpresa" TEXT;
+ALTER TABLE "vendas"   ADD COLUMN "contratoAssinadoEm" DATETIME;
+ALTER TABLE "usuarios" ADD COLUMN "bloqueado" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl" TEXT;
 ```
+
+Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
+Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 
 ---
 
@@ -167,35 +214,36 @@ ALTER TABLE "empresas" ADD COLUMN "telefoneGestor" TEXT;
 | Data | Versão / Tag | O que foi feito |
 |------|-------------|----------------|
 | 08/06/2026 | v0.1 | CRUD inicial: obras, terrenos, funcionários, NFs, vendas |
-| 09/06/2026 | v0.2 | Checklist: 7 templates, state machine, obras + terrenos |
-| 10/06/2026 | v0.3 | Documentos: upload/download por empresa/ownerType/owner |
-| 13/06/2026 | v0.4 | Diário: upload de fotos (fotoUrl), PRAGMA fix SQLite Alpine |
-| 14/06/2026 | v0.5 | Dashboard: donut categoria + folha do mês + parcelas vencendo |
-| 15/06/2026 | v0.6 | Financeiro: 2 tabs (Por obra + Fluxo de caixa), donut |
-| 16/06/2026 | v0.7 | Audit de design: dashboard card esquerdo → obras em andamento com BudgetBars |
-| 16/06/2026 | v0.8 | Pós-obra: chamados + parecer IA + garantias; cron T-5/T+1/T+30 + PDF extrajudicial |
-| 17/06/2026 | v0.9 | fix(cadastro): tabelas planos/assinaturas no migrate.sql; fix(layout) barra fixa |
-| 17/06/2026 | v1.0 | feat: enforcement de planos; temas claro/escuro |
-| 17/06/2026 | v1.1 | feat: Meta Cloud API (WhatsApp); fix vendas "Em atraso" por data |
-| 17/06/2026 | v1.2 | feat: Ficha do Comprador (score + histórico); telefoneGestor + notificação gestor |
-| 17/06/2026 | **v1.0.0-prod** ← TAG | feat: Compradores CRUD (novo + editar); cobrar todos; cron deduplicação lifetime |
+| 09/06/2026 | v0.2 | Checklist: 7 templates, state machine |
+| 10/06/2026 | v0.3 | Documentos: upload/download |
+| 13/06/2026 | v0.4 | Diário: fotos, PRAGMA fix SQLite Alpine |
+| 14/06/2026 | v0.5 | Dashboard: donut + folha + parcelas vencendo |
+| 15/06/2026 | v0.6 | Financeiro: 2 tabs + fluxo de caixa |
+| 16/06/2026 | v0.7 | Design audit: dashboard BudgetBars |
+| 16/06/2026 | v0.8 | Pós-obra: chamados + parecer IA + garantias; cron T-5/T+1/T+30 |
+| 17/06/2026 | v0.9 | fix(cadastro): planos/assinaturas; fix(layout) barra fixa |
+| 17/06/2026 | v1.0 | Enforcement de planos + temas claro/escuro |
+| 17/06/2026 | v1.1 | Meta Cloud API; fix vendas "Em atraso" por data |
+| 17/06/2026 | v1.2 | Ficha do Comprador; telefoneGestor; notificação gestor |
+| 17/06/2026 | **v1.0.0-prod** ← TAG | Compradores CRUD; cobrar todos; cron lifetime dedup |
+| 17/06/2026 | v1.3 | **Contrato de Compra e Venda** — template HTML, rota, registrar assinatura |
+| 17/06/2026 | v1.4 | **Logo da empresa** — upload no UserMenu, sidebar, contratos e notificações |
 
 ---
 
 ## Pendências / Backlog
 
-- [ ] **DNS** `prumocanteiro.com.br` — verificar propagação completa
-- [ ] **Telas superadmin** — QR Codes (F1) e Portal tokens (F2) ainda sem UI
-- [ ] **Relatórios PDF** — gerar PDF de obra (resumo financeiro + checklist + diário)
+- [ ] **Relatórios PDF** — PDF de obra (resumo financeiro + checklist + diário)
 - [ ] **Notificações in-app** — toast/badge para parcelas vencendo em 7 dias
 - [ ] **Multi-foto no diário** — galeria com lightbox
 - [ ] **Exportar CSV** — NFs e pagamentos por obra
 - [ ] **Terrenos: mapa** — integração Leaflet/Mapbox
-- [ ] **Contratos digitais** — modelo contrato com assinatura digital
 - [ ] **Cronograma de obra** — Gantt simplificado por fase
 - [ ] **Cobrança: email** — canal adicional além de WhatsApp
-- [ ] **Assistência: agendamento** — vincular chamado aceito a data de vistoria
-- [ ] **Testes automatizados** — ainda sem suite de testes
+- [ ] **Assistência: agendamento** — chamado aceito → data de vistoria
+- [ ] **QR Code de insumos** — tela de gestão (modelo + API já existem)
+- [ ] **Portal do cliente** — tela de geração de tokens (modelo + API já existem)
+- [ ] **Testes automatizados** — ainda sem suite
 
 ---
 
@@ -208,7 +256,7 @@ docker compose -f /opt/prumo-canteiro/docker-compose.yml logs -f app
 # Reiniciar
 docker compose -f /opt/prumo-canteiro/docker-compose.yml restart
 
-# Atualizar com novo código
+# Atualizar com novo código (git pull + rebuild)
 cd /opt/prumo-canteiro && git pull && docker compose up -d --build
 
 # Verificar crontab
@@ -233,3 +281,8 @@ npm run dev   # http://localhost:3000
 ```
 
 **Login demo:** vitor@empresa.com / `123456`
+
+**Após alterar schema.prisma:**
+```bash
+npx prisma db push && npx prisma generate
+```
