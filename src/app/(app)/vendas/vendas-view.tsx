@@ -7,7 +7,7 @@ import { VendaForm } from "./venda-form";
 import { criarVenda } from "./actions";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
 
-interface ParcelaLite { id: string; status: string; valor: number; }
+interface ParcelaLite { id: string; status: string; valor: number; vencimento: string | null; }
 interface TerrenoLite { id: string; nome: string; cidade: string; }
 interface Venda {
   id: string; nomeComprador: string; valorTotal: number; entrada: number;
@@ -33,7 +33,10 @@ function computeVenda(v: Venda) {
   const saldo = v.valorTotal - recebido;
   const pct = v.valorTotal > 0 ? Math.round((recebido / v.valorTotal) * 100) : 0;
   const quitada = pct >= 100;
-  const atrasada = v.parcelas.some((p) => p.status === "atrasada");
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const atrasada = v.parcelas.some((p) =>
+    p.status !== "paga" && p.vencimento != null && new Date(p.vencimento) < hoje
+  );
   return { recebido, saldo, pct, quitada, atrasada };
 }
 

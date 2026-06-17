@@ -23,7 +23,7 @@ export default async function VendasPage() {
       where: { empresaId: eid },
       include: {
         terreno: { select: { id: true, nome: true, cidade: true } },
-        parcelas: { select: { id: true, status: true, valor: true } },
+        parcelas: { select: { id: true, status: true, valor: true, vencimento: true } },
       },
       orderBy: { criadoEm: "desc" },
     }),
@@ -39,7 +39,7 @@ export default async function VendasPage() {
     valorTotal: Number(v.valorTotal),
     entrada: Number(v.entrada),
     dataContrato: v.dataContrato?.toISOString() ?? null,
-    parcelas: v.parcelas.map((p: typeof v.parcelas[0]) => ({ ...p, valor: Number(p.valor) })),
+    parcelas: v.parcelas.map((p: typeof v.parcelas[0]) => ({ ...p, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null })),
   }));
 
   return <VendasView vendas={serialized as any} terrenos={terrenos} />;
