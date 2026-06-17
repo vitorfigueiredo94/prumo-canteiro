@@ -70,6 +70,7 @@ model Usuario {
   email         String   @unique
   passwordHash  String?
   superAdmin    Boolean  @default(false)
+  bloqueado     Boolean  @default(false)
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -527,4 +528,23 @@ model CobrancaLog {
   @@index([empresaId])
   @@index([parcelaId])
   @@map("cobranca_logs")
+}
+
+// ─────────────────────────── Faturas de Assinatura ───────────────────────────
+// Mensalidades SaaS — append-only, sem @relation nas tabelas existentes
+
+model Fatura {
+  id          String    @id @default(cuid())
+  empresaId   String
+  competencia String
+  valor       Decimal
+  vencimento  DateTime
+  status      String    @default("pendente")
+  pagaEm      DateTime?
+  criadoEm   DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([empresaId])
+  @@index([competencia])
+  @@map("faturas")
 }

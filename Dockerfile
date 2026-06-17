@@ -48,6 +48,17 @@ RUN node_modules/.bin/esbuild prisma/seed-demo.ts \
     --external:better-sqlite3 \
     --outfile=/app/prisma/seed-demo.cjs
 
+# Compila seed-superadmin.ts → seed-superadmin.cjs (cria usuário Super Admin)
+RUN node_modules/.bin/esbuild prisma/seed-superadmin.ts \
+    --bundle \
+    --platform=node \
+    --target=node20 \
+    --format=cjs \
+    --external:@prisma/client \
+    --external:@prisma/adapter-better-sqlite3 \
+    --external:better-sqlite3 \
+    --outfile=/app/prisma/seed-superadmin.cjs
+
 # Gera DDL SQL do schema — aplicado no runner sem CLI Prisma
 RUN npx prisma migrate diff \
     --from-empty \
@@ -76,6 +87,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma/seed.cjs ./prisma/seed.cjs
 COPY --from=builder /app/prisma/seed-demo.cjs ./prisma/seed-demo.cjs
+COPY --from=builder /app/prisma/seed-superadmin.cjs ./prisma/seed-superadmin.cjs
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3

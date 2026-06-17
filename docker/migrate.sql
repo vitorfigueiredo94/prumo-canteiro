@@ -106,3 +106,18 @@ CREATE TABLE IF NOT EXISTS "cobranca_logs" (
 );
 CREATE INDEX IF NOT EXISTS "cobranca_logs_empresaId_idx" ON "cobranca_logs"("empresaId");
 CREATE INDEX IF NOT EXISTS "cobranca_logs_parcelaId_idx" ON "cobranca_logs"("parcelaId");
+
+-- Migration: Super Admin — Faturas de Assinatura SaaS (v0.9)
+CREATE TABLE IF NOT EXISTS "faturas" (
+  "id"          TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"   TEXT     NOT NULL,
+  "competencia" TEXT     NOT NULL,
+  "valor"       DECIMAL  NOT NULL,
+  "vencimento"  DATETIME NOT NULL,
+  "status"      TEXT     NOT NULL DEFAULT 'pendente',
+  "pagaEm"      DATETIME,
+  "criadoEm"   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "faturas_empresaId_idx"   ON "faturas"("empresaId");
+CREATE INDEX IF NOT EXISTS "faturas_competencia_idx" ON "faturas"("competencia");

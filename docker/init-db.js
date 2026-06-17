@@ -71,4 +71,11 @@ if (!diarioInfo.find(c => c.name === 'fotoUrl')) {
   console.log('[prumo] Migração aplicada: diario_obras.fotoUrl adicionado.');
 }
 
+// Migration: usuarios.bloqueado (Super Admin — v0.9)
+const usuariosInfo = db.prepare("PRAGMA table_info('usuarios')").all();
+if (!usuariosInfo.find(c => c.name === 'bloqueado')) {
+  db.exec('ALTER TABLE "usuarios" ADD COLUMN "bloqueado" INTEGER NOT NULL DEFAULT 0;');
+  console.log('[prumo] Migração aplicada: usuarios.bloqueado adicionado.');
+}
+
 db.close();
