@@ -46,6 +46,7 @@ model Assinatura {
 model Empresa {
   id               String                 @id @default(cuid())
   nome             String
+  telefoneGestor   String?
   assinatura       Assinatura?
   usuarios         Usuario[]
   terrenos         Terreno[]

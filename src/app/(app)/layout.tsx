@@ -12,13 +12,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/login");
 
   const [empresa, usuario, plano] = await Promise.all([
-    prisma.empresa.findUnique({ where: { id: session.empresaId }, select: { nome: true } }),
+    prisma.empresa.findUnique({ where: { id: session.empresaId }, select: { nome: true, telefoneGestor: true } }),
     prisma.usuario.findUnique({ where: { id: session.userId }, select: { superAdmin: true } }),
     getPlanoEmpresa(session.empresaId),
   ]);
 
   const empresaNome = empresa?.nome ?? "Minha empresa";
   const superAdmin = usuario?.superAdmin ?? false;
+  const telefoneGestor = empresa?.telefoneGestor ?? null;
 
   return (
     <div
@@ -55,7 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           background: "var(--bg-surface)",
         }}>
           <ThemeToggle />
-          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} />
+          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} telefoneGestor={telefoneGestor} />
         </div>
 
         <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>

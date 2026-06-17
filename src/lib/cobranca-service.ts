@@ -36,6 +36,34 @@ const MENSAGENS: Record<TipoCobranca, (p: ParcelaInfo) => string> = {
     `Uma notificação formal foi gerada e será enviada ao seu endereço.`,
 };
 
+async function enviarWhatsApp(
+  telefone: string,
+  mensagem: string,
+  accessToken: string,
+  phoneNumberId: string,
+): Promise<{ ok: boolean; resposta: string }> {
+  const payload = {
+    messaging_product: "whatsapp",
+    to: `55${telefone}`,
+    type: "text",
+    text: { body: mensagem },
+  };
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    return { ok: res.ok, resposta: await res.text() };
+  } catch (err) {
+    return { ok: false, resposta: String(err) };
+  }
+}
+
 export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca) {
   const telefone = parcela.venda.telefoneComprador?.replace(/\D/g, "");
   if (!telefone) {
@@ -54,34 +82,37 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
     return { ok: false, reason: "whatsapp_nao_configurado" };
   }
 
-  // Payload Meta Cloud API
-  const payload = {
-    messaging_product: "whatsapp",
-    to: `55${telefone}`,
-    type: "text",
-    text: { body: mensagem },
-  };
+  // Envia para o comprador
+  const { ok, resposta } = await enviarWhatsApp(telefone, mensagem, accessToken, phoneNumberId);
+  await logCobranca(parcela, tipo, ok ? "enviado" : "erro", { to: telefone }, resposta);
 
+  // Notifica o gestor da empresa (número cadastrado no perfil)
   try {
-    const res = await fetch(
-      `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10_000),
-      }
-    );
-    const resposta = await res.text();
-    await logCobranca(parcela, tipo, res.ok ? "enviado" : "erro", payload, resposta);
-    return { ok: res.ok };
-  } catch (err) {
-    await logCobranca(parcela, tipo, "erro", payload, String(err));
-    return { ok: false };
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: parcela.venda.empresaId },
+      select: { telefoneGestor: true },
+    });
+    const telGestor = empresa?.telefoneGestor?.replace(/\D/g, "");
+    if (telGestor) {
+      const tipoLabel: Record<TipoCobranca, string> = {
+        lembrete_amigavel: "Lembrete",
+        aviso_atraso: "Aviso de atraso",
+        notificacao_extrajudicial: "Notificação extrajudicial",
+      };
+      const aviso =
+        `📋 *PrumoCanteiro — Cobrança disparada*\n\n` +
+        `Comprador: ${parcela.venda.nomeComprador}\n` +
+        `Parcela: Nº ${parcela.numero} · ${fmtBRL(parcela.valor)}\n` +
+        `Tipo: ${tipoLabel[tipo]}\n` +
+        `Status envio: ${ok ? "✅ Enviado" : "❌ Falhou"}\n\n` +
+        `_Mensagem enviada:_\n${mensagem}`;
+      await enviarWhatsApp(telGestor, aviso, accessToken, phoneNumberId);
+    }
+  } catch {
+    // notificação do gestor é best-effort — não bloqueia a cobrança
   }
+
+  return { ok };
 }
 
 async function logCobranca(

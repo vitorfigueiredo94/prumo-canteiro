@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Shield, LogOut } from "lucide-react";
-import { logoutAction } from "@/app/(app)/actions";
+import { Shield, LogOut, Phone, Check, Pencil } from "lucide-react";
+import { logoutAction, salvarTelefoneGestor } from "@/app/(app)/actions";
 
 const AV_COLORS = ["#1e3a5f","#b45309","#6d28d9","#047857","#b91c1c","#0369a1"];
 function avatarBg(name: string) {
@@ -15,14 +15,29 @@ function initials(name: string) {
   const p = name.trim().split(/\s+/);
   return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
 }
+function fmtFone(v: string) {
+  const d = v.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return v;
+}
 
-export function UserMenu({ nome, email, superAdmin }: { nome: string; email: string; superAdmin: boolean }) {
+export function UserMenu({ nome, email, superAdmin, telefoneGestor }: {
+  nome: string; email: string; superAdmin: boolean; telefoneGestor: string | null;
+}) {
   const [open, setOpen] = useState(false);
+  const [editingFone, setEditingFone] = useState(false);
+  const [fone, setFone] = useState(telefoneGestor ?? "");
+  const [saved, setSaved] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function close(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setEditingFone(false);
+      }
     }
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -30,6 +45,15 @@ export function UserMenu({ nome, email, superAdmin }: { nome: string; email: str
 
   const bg = avatarBg(nome);
   const ini = initials(nome);
+
+  function handleSaveFone() {
+    startTransition(async () => {
+      await salvarTelefoneGestor(fone);
+      setEditingFone(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    });
+  }
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -54,7 +78,7 @@ export function UserMenu({ nome, email, superAdmin }: { nome: string; email: str
           position: "absolute", top: 46, right: 0, zIndex: 200,
           background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
           borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-          minWidth: 220, overflow: "hidden",
+          minWidth: 260, overflow: "hidden",
         }}>
           {/* User info */}
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
@@ -72,6 +96,54 @@ export function UserMenu({ nome, email, superAdmin }: { nome: string; email: str
                 <p style={{ margin: 0, fontSize: 12, color: "var(--fg-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{email}</p>
               </div>
             </div>
+          </div>
+
+          {/* WhatsApp do gestor */}
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+              <Phone size={11} /> WhatsApp notificações
+            </div>
+
+            {editingFone ? (
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  autoFocus
+                  value={fone}
+                  onChange={e => setFone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  style={{
+                    flex: 1, height: 32, padding: "0 10px",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: 6, background: "var(--bg-canvas)",
+                    color: "var(--fg-primary)", fontSize: 13,
+                    fontFamily: "var(--font-sans)", outline: "none",
+                  }}
+                  onKeyDown={e => { if (e.key === "Enter") handleSaveFone(); if (e.key === "Escape") setEditingFone(false); }}
+                />
+                <button
+                  onClick={handleSaveFone}
+                  disabled={isPending}
+                  style={{ width: 32, height: 32, border: "none", borderRadius: 6, background: "#16a34a", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 13, color: fone ? "var(--fg-primary)" : "var(--fg-muted)", fontWeight: fone ? 500 : 400 }}>
+                  {saved ? "✓ Salvo!" : fone ? fmtFone(fone) : "Não configurado"}
+                </span>
+                <button
+                  onClick={() => setEditingFone(true)}
+                  style={{ width: 26, height: 26, border: "1px solid var(--border-subtle)", borderRadius: 6, background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                >
+                  <Pencil size={11} />
+                </button>
+              </div>
+            )}
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--fg-muted)", lineHeight: 1.4 }}>
+              Recebe cópia de cada cobrança disparada pelo sistema.
+            </p>
           </div>
 
           {/* Actions */}

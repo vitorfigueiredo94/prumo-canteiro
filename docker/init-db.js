@@ -78,4 +78,11 @@ if (!usuariosInfo.find(c => c.name === 'bloqueado')) {
   console.log('[prumo] Migração aplicada: usuarios.bloqueado adicionado.');
 }
 
+// Migration: empresas.telefoneGestor (notificações WhatsApp)
+const empresasInfo = db.prepare("PRAGMA table_info('empresas')").all();
+if (!empresasInfo.find(c => c.name === 'telefoneGestor')) {
+  db.exec('ALTER TABLE "empresas" ADD COLUMN "telefoneGestor" TEXT;');
+  console.log('[prumo] Migração aplicada: empresas.telefoneGestor adicionado.');
+}
+
 db.close();
