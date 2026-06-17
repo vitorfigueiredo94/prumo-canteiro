@@ -118,6 +118,68 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Modo Escuro — tokens sobrescritos via data-theme="dark"
+   ───────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-canvas:  #0E0D0C;
+  --bg-surface: #1A1917;
+  --bg-raised:  #2C2B27;
+  --bg-sunken:  #16150F;
+
+  --fg-primary:   #FAFAF7;
+  --fg-secondary: #D2CFC3;
+  --fg-tertiary:  #A8A498;
+  --fg-muted:     #76736A;
+  --fg-disabled:  #4D4B45;
+  --fg-on-navy:   #0E0D0C;
+
+  --border-subtle:  #2C2B27;
+  --border-default: #4D4B45;
+  --border-strong:  #76736A;
+
+  --navy-50:  #26251F;
+  --navy-100: #3A3833;
+  --navy-200: #4D4B45;
+  --navy-300: #76736A;
+  --navy-600: #223052;
+  --navy-700: #10131C;
+  --navy-800: #0A0C12;
+  --navy-900: #050609;
+
+  --ink-50:  #16150F;
+  --ink-100: #221F1A;
+  --ink-200: #33302A;
+  --ink-300: #4D4B45;
+  --ink-400: #76736A;
+  --ink-500: #A8A498;
+  --ink-600: #D2CFC3;
+  --ink-700: #FAFAF7;
+
+  --accent-primary:   #D4A24C;
+  --accent-secondary: #DCBB5A;
+  --accent-hover:     #DCBB5A;
+
+  --success-50:  #0D2B17;
+  --success-500: #3DA35D;
+  --success-700: #5BC47A;
+  --warning-50:  #2B1E08;
+  --warning-500: #D4943A;
+  --warning-700: #E8AD52;
+  --danger-50:   #2B0E0F;
+  --danger-500:  #E05A5F;
+  --danger-700:  #F07A7E;
+  --info-50:     #0D1A38;
+  --info-500:    #5B80D4;
+  --info-700:    #7A9EE8;
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.55);
+  --shadow-md: 0 6px 16px rgba(0,0,0,0.55);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.6);
+  --shadow-xl: 0 24px 60px rgba(0,0,0,0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────
    Tailwind v4 — mapeamento de tokens
    @theme inline: usa as CSS vars diretamente nas utilities
    ───────────────────────────────────────────────────────────── */

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserMenu } from "@/components/layout/user-menu";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -40,8 +41,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           position: "relative",
         }}
       >
-        {/* Avatar do usuário — fixo no canto superior direito da área de conteúdo */}
-        <div style={{ position: "absolute", top: 18, right: 28, zIndex: 50 }}>
+        {/* Controles fixos no canto superior direito da área de conteúdo */}
+        <div style={{ position: "absolute", top: 14, right: 24, zIndex: 50, display: "flex", alignItems: "center", gap: 4 }}>
+          <ThemeToggle />
           <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} />
         </div>
 

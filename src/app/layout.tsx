@@ -38,6 +38,14 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${spectral.variable} ${manrope.variable} h-full`}
     >
+      <head>
+        {/* Aplica data-theme antes do primeiro paint para evitar flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('prumocanteiro:theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="h-full antialiased">{children}</body>
     </html>
   );

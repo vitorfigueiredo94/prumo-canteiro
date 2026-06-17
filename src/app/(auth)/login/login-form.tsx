@@ -6,6 +6,7 @@ import { Eye, EyeOff, LogIn, AlertCircle, Building2, ReceiptText, Handshake, Wal
 import { useState } from "react";
 import { Logo } from "@/components/ui/logo";
 import { loginAction } from "./actions";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 const BENEFICIOS = [
   { icon: Building2, text: "Obras e financeiro num só lugar" },
@@ -53,7 +54,11 @@ export function LoginForm() {
   const [showPass, setShowPass] = useState(false);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-canvas)" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-canvas)", position: "relative" }}>
+      {/* Botão de tema — canto superior direito */}
+      <div style={{ position: "absolute", top: 16, right: 20, zIndex: 10 }}>
+        <ThemeToggle />
+      </div>
       {/* Painel marca — desktop only */}
       <div
         className="hidden lg:flex"
