@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.4
+> **Versão:** 1.5
 > **Atualizado em:** 17/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (security)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -197,11 +197,12 @@ GEMINI_API_KEY=...                      # Para parecer de garantia (opcional)
 ### Migrações em produção — PRAGMA via `docker/init-db.js`
 
 ```sql
-ALTER TABLE "empresas" ADD COLUMN "telefoneGestor" TEXT;
-ALTER TABLE "empresas" ADD COLUMN "logoEmpresa" TEXT;
-ALTER TABLE "vendas"   ADD COLUMN "contratoAssinadoEm" DATETIME;
-ALTER TABLE "usuarios" ADD COLUMN "bloqueado" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl" TEXT;
+ALTER TABLE "empresas"  ADD COLUMN "telefoneGestor"    TEXT;
+ALTER TABLE "empresas"  ADD COLUMN "logoEmpresa"       TEXT;
+ALTER TABLE "vendas"    ADD COLUMN "contratoAssinadoEm" DATETIME;
+ALTER TABLE "usuarios"  ADD COLUMN "bloqueado"         INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl"        TEXT;
+ALTER TABLE "usuarios"  ADD COLUMN "cargo"             TEXT NOT NULL DEFAULT 'admin';
 ```
 
 Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
@@ -228,6 +229,66 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 17/06/2026 | **v1.0.0-prod** ← TAG | Compradores CRUD; cobrar todos; cron lifetime dedup |
 | 17/06/2026 | v1.3 | **Contrato de Compra e Venda** — template HTML, rota, registrar assinatura |
 | 17/06/2026 | v1.4 | **Logo da empresa** — upload no UserMenu, sidebar, contratos e notificações |
+| 17/06/2026 | v1.5 | **Segurança e LGPD** — RBAC, TenantGuard, ResponseMask, AuditLog, LLM PII strip |
+
+---
+
+## Arquitetura de Segurança e LGPD — v1.5
+
+### Camadas implementadas
+
+```
+Request → M1 AuthGuard (cookie HMAC) → M2 TenantOwnershipGuard → M3 RbacGuard → M4 ResponseSanitizer
+```
+
+### RBAC (`src/lib/rbac.ts`)
+
+| Role | obra_checklist | terreno_checklist | venda | comprador | financeiro |
+|---|---|---|---|---|---|
+| admin | R/W/D | R/W/D | R/W/D | R/W/D | R/W/D |
+| engenheiro | R/W | R | R | R | R |
+| corretor | R | R/W | R/W | R/W | R |
+| cliente | R | R | R | R | — |
+
+- `cargo TEXT DEFAULT 'admin'` em `usuarios` (PRAGMA migration)
+- `checkPermission(role, resource, action)` — consulta matriz estática
+- `parseRole(raw)` — fallback para `"cliente"` (menor privilégio)
+
+### Tenant Guard (`src/lib/tenant-guard.ts`)
+
+- `assertTenantOwnership(empresaId, type, resourceId)` — 1 query Prisma, lança `TenantViolationError` (403)
+- Cobre 10 tipos: checklist, obra, terreno, venda, parcela, funcionario, nota_fiscal, diario, chamado, documento
+
+### Response Mask (`src/lib/response-mask.ts`) — LGPD art. 5
+
+| Role | CPF | Nome | Telefone | Email |
+|---|---|---|---|---|
+| admin | exposto | exposto | exposto | exposto |
+| engenheiro/corretor | `***.***.***-**` | exposto | exposto | exposto |
+| cliente | mascarado | `J*** S***` | `(**)****-****` | `j***@***.***` |
+
+### LLM Safety (`src/lib/llm.ts`)
+
+- `stripPII(text)` — remove CPF, CNPJ, telefone, email, nomes próprios antes de qualquer chamada
+- `routeLLM(text, task)` — Tier 0 (regex, 0 tokens) → Tier 1 (Flash minimal ≤16 tokens) → Tier 2 (full)
+
+### Audit Log (`src/lib/audit-log.ts` + `docker/migrate.sql`)
+
+```sql
+security_audit_logs: id, empresaId, userId, action, resourceType, resourceId,
+                     result (allowed|denied), ipHash (SHA-256 primeiros 16 chars), criadoEm
+```
+
+- Fire-and-forget — não bloqueia a request
+- Purge automático a cada restart do container (registros > 90 dias) — LGPD art. 15
+
+### Checklist routes wrapadas
+
+| Rota | Guarda adicionada |
+|---|---|
+| `PATCH /api/v1/checklist/item/[id]` | cargo lookup + RBAC por ownerType + logAudit |
+| `POST /api/v1/checklist/obra/[id]/fase` | cargo lookup + `obra_checklist.write` + logAudit |
+| `POST /api/v1/checklist/terreno/[id]/fase` | cargo lookup + `terreno_checklist.write` + logAudit |
 
 ---
 
