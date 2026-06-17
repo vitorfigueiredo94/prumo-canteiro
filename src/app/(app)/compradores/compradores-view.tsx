@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Search, Phone, Mail, CreditCard, MapPin, TrendingUp, AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
+import { Search, Phone, Mail, CreditCard, MapPin, AlertTriangle, CheckCircle2, ChevronRight, MessageCircle } from "lucide-react";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
+import { cobrarTodosEmAtraso } from "./actions";
 
 interface Parcela { status: string; vencimento: string | null; pagoEm: string | null; valor: number; }
 interface Comprador {
@@ -64,6 +65,17 @@ function ScoreBadge({ score, emAtraso }: { score: number | null; emAtraso: numbe
 export function CompradoresView({ compradores }: { compradores: Comprador[] }) {
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<"todos" | "adimplente" | "atraso">("todos");
+  const [isPending, startTransition] = useTransition();
+  const [resultado, setResultado] = useState<{ ok: number; pulados: number; erro: number; semFone: number } | null>(null);
+
+  function handleCobrarTodos() {
+    startTransition(async () => {
+      setResultado(null);
+      const r = await cobrarTodosEmAtraso();
+      setResultado(r);
+      setTimeout(() => setResultado(null), 8000);
+    });
+  }
 
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
@@ -95,10 +107,35 @@ export function CompradoresView({ compradores }: { compradores: Comprador[] }) {
     <div>
       {/* Header */}
       <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
-        <h1 style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>
-          Compradores
-        </h1>
-        <p style={{ margin: 0, fontSize: 14, color: "var(--fg-tertiary)" }}>{compradores.length} {compradores.length === 1 ? "contrato" : "contratos"}</p>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>
+              Compradores
+            </h1>
+            <p style={{ margin: 0, fontSize: 14, color: "var(--fg-tertiary)" }}>{compradores.length} {compradores.length === 1 ? "contrato" : "contratos"}</p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            {totalAtraso > 0 && (
+              <button
+                onClick={handleCobrarTodos}
+                disabled={isPending}
+                style={{ height: 40, padding: "0 18px", background: isPending ? "var(--fg-muted)" : "#dc2626", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: isPending ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: 8, opacity: isPending ? 0.7 : 1 }}
+              >
+                <MessageCircle size={15} />
+                {isPending ? "Enviando…" : `Cobrar todos em atraso (${totalAtraso})`}
+              </button>
+            )}
+            {resultado && (
+              <div style={{ fontSize: 13, color: "var(--fg-secondary)", textAlign: "right", lineHeight: 1.5 }}>
+                {resultado.ok > 0 && <span style={{ color: "#16a34a", fontWeight: 600 }}>✓ {resultado.ok} enviado{resultado.ok > 1 ? "s" : ""} </span>}
+                {resultado.pulados > 0 && <span style={{ color: "var(--fg-muted)" }}>· {resultado.pulados} já notificado{resultado.pulados > 1 ? "s" : ""} hoje </span>}
+                {resultado.semFone > 0 && <span style={{ color: "#d97706" }}>· {resultado.semFone} sem telefone </span>}
+                {resultado.erro > 0 && <span style={{ color: "#dc2626" }}>· {resultado.erro} erro{resultado.erro > 1 ? "s" : ""}</span>}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div style={{ padding: "24px 32px" }}>
