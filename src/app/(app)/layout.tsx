@@ -3,17 +3,19 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { UserMenu } from "@/components/layout/user-menu";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const empresa = await prisma.empresa.findUnique({
-    where: { id: session.empresaId },
-    select: { nome: true },
-  });
+  const [empresa, usuario] = await Promise.all([
+    prisma.empresa.findUnique({ where: { id: session.empresaId }, select: { nome: true } }),
+    prisma.usuario.findUnique({ where: { id: session.userId }, select: { superAdmin: true } }),
+  ]);
 
   const empresaNome = empresa?.nome ?? "Minha empresa";
+  const superAdmin = usuario?.superAdmin ?? false;
 
   return (
     <div
@@ -35,8 +37,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           flexDirection: "column",
           overflow: "hidden",
           minWidth: 0,
+          position: "relative",
         }}
       >
+        {/* Avatar do usuário — fixo no canto superior direito da área de conteúdo */}
+        <div style={{ position: "absolute", top: 18, right: 28, zIndex: 50 }}>
+          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} />
+        </div>
+
         <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
           {children}
         </main>
