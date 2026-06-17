@@ -15,13 +15,15 @@ export async function loginAction(
 
   const usuario = await prisma.usuario.findUnique({
     where: { email },
-    select: { id: true, empresaId: true, nome: true, passwordHash: true },
+    select: { id: true, empresaId: true, nome: true, passwordHash: true, superAdmin: true, bloqueado: true },
   });
 
   if (!usuario?.passwordHash) return "E-mail ou senha incorretos.";
 
   const ok = await verifyPassword(password, usuario.passwordHash);
   if (!ok) return "E-mail ou senha incorretos.";
+
+  if (usuario.bloqueado) return "Sua conta foi suspensa. Contate o suporte.";
 
   await setSession({
     userId: usuario.id,
@@ -30,5 +32,5 @@ export async function loginAction(
     email,
   });
 
-  redirect("/dashboard");
+  redirect(usuario.superAdmin ? "/superadmin" : "/dashboard");
 }
