@@ -5,6 +5,7 @@ import { getEmpresaId } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { criarChecklistParaObra } from "@/features/checklist/service";
+import { getPlanoEmpresa, dentroDoLimiteObras } from "@/lib/plano";
 
 const ObraSchema = z.object({
   nome: z.string().min(1),
@@ -33,6 +34,16 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
   const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
+
+  // Verifica limite de obras do plano
+  const [plano, totalObras] = await Promise.all([
+    getPlanoEmpresa(empresaId),
+    prisma.obra.count({ where: { empresaId } }),
+  ]);
+  if (!dentroDoLimiteObras(plano, totalObras)) {
+    return { error: `Seu plano ${plano.planoNome} permite no máximo ${plano.limiteObras} obra(s). Faça upgrade para adicionar mais.` };
+  }
+
   const obra = await prisma.obra.create({
     data: {
       empresaId, nome, orcamento, status,

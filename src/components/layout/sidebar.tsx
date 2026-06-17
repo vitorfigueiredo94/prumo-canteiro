@@ -16,27 +16,31 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
+  Lock,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { logoutAction } from "@/app/(app)/actions";
+import type { PlanoInfo } from "@/lib/plano";
 
+// Itens que exigem recurso específico (slug do plano)
 const NAV_ITEMS = [
-  { href: "/dashboard",     label: "Visão geral",   icon: LayoutDashboard },
-  { href: "/obras",         label: "Obras",         icon: Building2 },
-  { href: "/funcionarios",  label: "Funcionários",  icon: Users },
-  { href: "/financeiro",    label: "Financeiro",    icon: Wallet },
-  { href: "/notas",         label: "Notas fiscais", icon: ReceiptText },
-  { href: "/vendas",        label: "Vendas",        icon: Handshake },
-  { href: "/terrenos",      label: "Terrenos",      icon: MapPinned },
-  { href: "/diario",        label: "Diário",        icon: BookOpen },
-  { href: "/assistencia",   label: "Pós-obra",      icon: Wrench },
+  { href: "/dashboard",     label: "Visão geral",   icon: LayoutDashboard, recurso: null },
+  { href: "/obras",         label: "Obras",         icon: Building2,       recurso: null },
+  { href: "/funcionarios",  label: "Funcionários",  icon: Users,           recurso: null },
+  { href: "/financeiro",    label: "Financeiro",    icon: Wallet,          recurso: "fluxo_caixa" },
+  { href: "/notas",         label: "Notas fiscais", icon: ReceiptText,     recurso: null },
+  { href: "/vendas",        label: "Vendas",        icon: Handshake,       recurso: "vendas" },
+  { href: "/terrenos",      label: "Terrenos",      icon: MapPinned,       recurso: null },
+  { href: "/diario",        label: "Diário",        icon: BookOpen,        recurso: "diario" },
+  { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
 ];
 
 interface SidebarProps {
   empresaNome: string;
+  plano: PlanoInfo;
 }
 
-export function Sidebar({ empresaNome }: SidebarProps) {
+export function Sidebar({ empresaNome, plano }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -44,6 +48,14 @@ export function Sidebar({ empresaNome }: SidebarProps) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
     return pathname.startsWith(href);
   }
+
+  function isLocked(recurso: string | null): boolean {
+    if (!recurso) return false;
+    if (plano.isTrial) return false;
+    return !plano.recursos.includes(recurso);
+  }
+
+  const obrasPct = plano.limiteObras != null ? null : null; // badge calculado no server
 
   return (
     <aside
@@ -87,13 +99,14 @@ export function Sidebar({ empresaNome }: SidebarProps) {
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {NAV_ITEMS.map(({ href, label, icon: Icon, recurso }) => {
           const active = isActive(href);
+          const locked = isLocked(recurso);
           return (
             <Link
               key={href}
               href={href}
-              title={collapsed ? label : undefined}
+              title={collapsed ? (locked ? `${label} — Upgrade necessário` : label) : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -103,7 +116,7 @@ export function Sidebar({ empresaNome }: SidebarProps) {
                 justifyContent: collapsed ? "center" : "flex-start",
                 marginBottom: 3,
                 background: active ? "rgba(212,162,76,0.14)" : "transparent",
-                color: active ? "#fff" : "rgba(255,255,255,0.78)",
+                color: locked ? "rgba(255,255,255,0.35)" : active ? "#fff" : "rgba(255,255,255,0.78)",
                 borderRadius: "var(--radius-md)",
                 borderLeft: collapsed ? "none" : `3px solid ${active ? "var(--gold-400)" : "transparent"}`,
                 fontSize: 14.5,
@@ -120,7 +133,12 @@ export function Sidebar({ empresaNome }: SidebarProps) {
               }}
             >
               <Icon size={19} style={{ flexShrink: 0 }} />
-              {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
+              {!collapsed && (
+                <>
+                  <span style={{ flex: 1 }}>{label}</span>
+                  {locked && <Lock size={12} style={{ flexShrink: 0, opacity: 0.6 }} />}
+                </>
+              )}
             </Link>
           );
         })}

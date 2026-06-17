@@ -5,14 +5,16 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { getPlanoEmpresa } from "@/lib/plano";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [empresa, usuario] = await Promise.all([
+  const [empresa, usuario, plano] = await Promise.all([
     prisma.empresa.findUnique({ where: { id: session.empresaId }, select: { nome: true } }),
     prisma.usuario.findUnique({ where: { id: session.userId }, select: { superAdmin: true } }),
+    getPlanoEmpresa(session.empresaId),
   ]);
 
   const empresaNome = empresa?.nome ?? "Minha empresa";
@@ -28,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }}
     >
       <div className="hidden lg:flex" style={{ height: "100%" }}>
-        <Sidebar empresaNome={empresaNome} />
+        <Sidebar empresaNome={empresaNome} plano={plano} />
       </div>
 
       <div

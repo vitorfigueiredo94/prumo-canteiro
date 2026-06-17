@@ -29,6 +29,39 @@ async function main() {
   const eid = empresa.id;
   console.log(`\n→ Empresa: ${empresa.nome} (${eid}) — usuário demo@prumo.com\n`);
 
+  // ── Planos padrão ─────────────────────────────────────────────────────────
+  // Slugs de recursos obrigatórios para que o enforcement funcione corretamente.
+  const planoBasico = await prisma.plano.upsert({
+    where: { id: "sx-plano-basico" },
+    update: { nome: "Básico", preco: 89, limiteObras: 5, limiteUsuarios: 3, recursos: "[]", destaque: false },
+    create: { id: "sx-plano-basico", nome: "Básico", preco: 89, limiteObras: 5, limiteUsuarios: 3, recursos: "[]", destaque: false },
+  });
+  const planoPro = await prisma.plano.upsert({
+    where: { id: "sx-plano-pro" },
+    update: { nome: "Profissional", preco: 189, limiteObras: 20, limiteUsuarios: 10, recursos: JSON.stringify(["vendas","fluxo_caixa","diario","relatorios"]), destaque: true },
+    create: { id: "sx-plano-pro", nome: "Profissional", preco: 189, limiteObras: 20, limiteUsuarios: 10, recursos: JSON.stringify(["vendas","fluxo_caixa","diario","relatorios"]), destaque: true },
+  });
+  await prisma.plano.upsert({
+    where: { id: "sx-plano-emp" },
+    update: { nome: "Empresarial", preco: 389, limiteObras: null, limiteUsuarios: null, recursos: JSON.stringify(["vendas","fluxo_caixa","diario","relatorios","multiusuario_avancado","backup_exportacao"]), destaque: false },
+    create: { id: "sx-plano-emp", nome: "Empresarial", preco: 389, limiteObras: null, limiteUsuarios: null, recursos: JSON.stringify(["vendas","fluxo_caixa","diario","relatorios","multiusuario_avancado","backup_exportacao"]), destaque: false },
+  });
+  console.log("✓ Planos: Básico / Profissional / Empresarial");
+
+  // Vincula a empresa demo ao plano Profissional (acesso completo para validação)
+  await prisma.assinatura.upsert({
+    where: { empresaId: eid },
+    update: { planoId: planoPro.id, status: "ativo" },
+    create: {
+      empresaId: eid,
+      planoId: planoPro.id,
+      status: "ativo",
+      desde: new Date("2025-01-01"),
+      proximaCobranca: new Date("2026-07-01"),
+    },
+  });
+  console.log(`✓ Assinatura demo → Profissional (ativo)\n`);
+
   // ── Terrenos ──────────────────────────────────────────────────────────────
   const t = {
     t1: await prisma.terreno.upsert({ where: { id: "sx-t1" }, update: {}, create: {

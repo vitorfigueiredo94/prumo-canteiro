@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DiarioView } from "./diario-view";
+import { getPlanoEmpresa, temRecurso, RECURSO } from "@/lib/plano";
+import { PlanoGate } from "@/components/layout/plano-gate";
 
 export const metadata: Metadata = { title: "Diário de Obra" };
 
@@ -11,6 +13,10 @@ export default async function DiarioPage() {
   if (!session) redirect("/login");
 
   const eid = session.empresaId;
+  const plano = await getPlanoEmpresa(eid);
+  if (!temRecurso(plano, RECURSO.DIARIO)) {
+    return <PlanoGate recurso="diario" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
+  }
 
   const [entradas, obras] = await Promise.all([
     prisma.diarioObra.findMany({

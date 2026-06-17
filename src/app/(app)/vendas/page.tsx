@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VendasView } from "./vendas-view";
+import { getPlanoEmpresa, temRecurso, RECURSO } from "@/lib/plano";
+import { PlanoGate } from "@/components/layout/plano-gate";
 
 export const metadata: Metadata = { title: "Vendas" };
 
@@ -11,6 +13,10 @@ export default async function VendasPage() {
   if (!session) redirect("/login");
 
   const eid = session.empresaId;
+  const plano = await getPlanoEmpresa(eid);
+  if (!temRecurso(plano, RECURSO.VENDAS)) {
+    return <PlanoGate recurso="vendas" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
+  }
 
   const [vendas, terrenos] = await Promise.all([
     prisma.venda.findMany({

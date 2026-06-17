@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FinanceiroView } from "./financeiro-view";
+import { getPlanoEmpresa, temRecurso, RECURSO } from "@/lib/plano";
+import { PlanoGate } from "@/components/layout/plano-gate";
 
 export const metadata: Metadata = { title: "Financeiro" };
 
@@ -11,6 +13,10 @@ export default async function FinanceiroPage() {
   if (!session) redirect("/login");
 
   const eid = session.empresaId;
+  const plano = await getPlanoEmpresa(eid);
+  if (!temRecurso(plano, RECURSO.FLUXO_CAIXA)) {
+    return <PlanoGate recurso="fluxo_caixa" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
+  }
 
   const [obras, notas, pagamentos, parcelas, emRevisaoAgg] = await Promise.all([
     prisma.obra.findMany({
