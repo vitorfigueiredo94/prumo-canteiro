@@ -26,6 +26,7 @@ export default async function VendaDetailPage({ params }: { params: Promise<{ id
     valorTotal: Number(venda.valorTotal),
     entrada: Number(venda.entrada),
     dataContrato: venda.dataContrato?.toISOString() ?? null,
+    contratoAssinadoEm: (venda as any).contratoAssinadoEm?.toISOString() ?? null,
     parcelas: venda.parcelas.map((p: typeof venda.parcelas[0]) => ({
       ...p,
       valor: Number(p.valor),

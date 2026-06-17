@@ -99,6 +99,15 @@ export async function estornarParcela(parcelaId: string, vendaId: string): Promi
   revalidatePath(`/vendas/${vendaId}`);
 }
 
+export async function registrarAssinaturaContrato(vendaId: string): Promise<{ ok: boolean }> {
+  const empresaId = await getEmpresaId();
+  const venda = await prisma.venda.findFirst({ where: { id: vendaId, empresaId }, select: { id: true } });
+  if (!venda) return { ok: false };
+  await prisma.venda.update({ where: { id: vendaId }, data: { contratoAssinadoEm: new Date() } });
+  revalidatePath(`/vendas/${vendaId}`);
+  return { ok: true };
+}
+
 export async function cobrarParcelaWhatsApp(parcelaId: string): Promise<{ ok: boolean; reason?: string }> {
   const empresaId = await getEmpresaId();
   const parcela = await prisma.parcela.findFirst({

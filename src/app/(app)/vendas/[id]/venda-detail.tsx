@@ -2,9 +2,9 @@
 
 import { useTransition, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, User, Phone, Mail, Check, RotateCcw, Printer, MessageCircle } from "lucide-react";
+import { ArrowLeft, MapPin, User, Phone, Mail, Check, RotateCcw, Printer, MessageCircle, FileText, PenLine } from "lucide-react";
 import { fmtBRL, fmtDate } from "@/lib/format";
-import { registrarPagamentoParcela, estornarParcela, cobrarParcelaWhatsApp } from "../actions";
+import { registrarPagamentoParcela, estornarParcela, cobrarParcelaWhatsApp, registrarAssinaturaContrato } from "../actions";
 
 interface Parcela {
   id: string; numero: number; valor: number; vencimento: string | null; status: string; pagoEm: string | null;
@@ -15,6 +15,7 @@ interface Venda {
   telefoneComprador: string | null; emailComprador: string | null;
   valorTotal: number; entrada: number; numeroParcelas: number; diaVencimento: number;
   dataContrato: string | null; observacoes: string | null;
+  contratoAssinadoEm: string | null;
   terreno: { id: string; nome: string; cidade: string; numero: string | null };
   parcelas: Parcela[];
 }
@@ -32,6 +33,8 @@ const STATUS_LABELS: Record<string, string> = {
 export function VendaDetail({ venda: v }: { venda: Venda }) {
   const [isPending, startTransition] = useTransition();
   const [cobrancaMsg, setCobrancaMsg] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+  const [assinado, setAssinado] = useState<string | null>(v.contratoAssinadoEm);
+  const [assinaMsg, setAssinaMsg] = useState<string | null>(null);
 
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
@@ -46,6 +49,15 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
     const result = await cobrarParcelaWhatsApp(p.id);
     setCobrancaMsg({ id: p.id, ok: result.ok, msg: result.ok ? "WhatsApp enviado!" : result.reason ?? "Erro ao enviar" });
     setTimeout(() => setCobrancaMsg(null), 4000);
+  });
+  const handleAssinar = () => startTransition(async () => {
+    const r = await registrarAssinaturaContrato(v.id);
+    if (r.ok) {
+      const agora = new Date().toISOString();
+      setAssinado(agora);
+      setAssinaMsg("✓ Assinatura registrada");
+      setTimeout(() => setAssinaMsg(null), 4000);
+    }
   });
 
   return (
@@ -65,9 +77,37 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
               {v.emailComprador && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Mail size={13} />{v.emailComprador}</span>}
             </div>
           </div>
-          <button onClick={() => window.print()} style={{ height: 38, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Printer size={14} /> Imprimir extrato
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {/* Status de assinatura */}
+            {assinado ? (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", height: 38, borderRadius: "var(--radius-md)", background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: 13, color: "#15803d", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
+                <Check size={13} /> Assinado em {fmtDate(assinado)}
+              </div>
+            ) : (
+              <button
+                onClick={handleAssinar}
+                disabled={isPending}
+                title="Registrar que o contrato foi assinado pelas partes"
+                style={{ height: 38, padding: "0 14px", border: "1px solid rgba(21,128,61,0.4)", borderRadius: "var(--radius-md)", background: "#f0fdf4", color: "#15803d", cursor: isPending ? "not-allowed" : "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6, opacity: isPending ? 0.7 : 1 }}
+              >
+                <PenLine size={14} /> Registrar assinatura
+              </button>
+            )}
+            {assinaMsg && <span style={{ fontSize: 12.5, color: "#15803d", fontWeight: 600 }}>{assinaMsg}</span>}
+
+            {/* Ver contrato */}
+            <button
+              onClick={() => window.open(`/api/contratos/${v.id}`, "_blank")}
+              style={{ height: 38, padding: "0 14px", border: "1px solid var(--navy-600)", borderRadius: "var(--radius-md)", background: "var(--navy-700)", color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <FileText size={14} /> Ver contrato
+            </button>
+
+            {/* Imprimir extrato */}
+            <button onClick={() => window.print()} style={{ height: 38, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Printer size={14} /> Imprimir extrato
+            </button>
+          </div>
         </div>
       </div>
 

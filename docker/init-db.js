@@ -85,4 +85,11 @@ if (!empresasInfo.find(c => c.name === 'telefoneGestor')) {
   console.log('[prumo] Migração aplicada: empresas.telefoneGestor adicionado.');
 }
 
+// Migration: vendas.contratoAssinadoEm (assinatura digital)
+const vendasInfo = db.prepare("PRAGMA table_info('vendas')").all();
+if (!vendasInfo.find(c => c.name === 'contratoAssinadoEm')) {
+  db.exec('ALTER TABLE "vendas" ADD COLUMN "contratoAssinadoEm" DATETIME;');
+  console.log('[prumo] Migração aplicada: vendas.contratoAssinadoEm adicionado.');
+}
+
 db.close();

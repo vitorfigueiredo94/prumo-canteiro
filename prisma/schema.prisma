@@ -229,12 +229,13 @@ model Venda {
   entrada            Decimal     @default(0)
   numeroParcelas     Int         @default(1)
   diaVencimento      Int         @default(5)
-  dataContrato       DateTime?
-  observacoes        String?
-  parcelas           Parcela[]
-  documentos         Documento[]
-  criadoEm          DateTime    @default(now())
-  atualizadoEm      DateTime    @updatedAt
+  dataContrato         DateTime?
+  observacoes          String?
+  contratoAssinadoEm   DateTime?
+  parcelas             Parcela[]
+  documentos           Documento[]
+  criadoEm            DateTime    @default(now())
+  atualizadoEm        DateTime    @updatedAt
 
   @@index([empresaId])
   @@map("vendas")
