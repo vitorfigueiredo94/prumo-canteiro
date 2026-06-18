@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.4
+> **Versão:** 2.5
 > **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal) · `8aef1d1` (materiais obra)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -295,6 +295,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | v2.2 | **Planejamento** — Cronograma Gantt por fase (`cronogramaJson` + linha do dia), UI de Insumos & QR Codes (gerar/imprimir/desativar) |
 | 18/06/2026 | v2.3 | **Mapa de terrenos** — Leaflet + OpenStreetMap, geocoding Nominatim server-side com cache `lat/lng` no DB, pins por status |
 | 18/06/2026 | v2.4 | **Notif. WhatsApp ao cliente** — dispara ao avançar fase do checklist (obra→terreno→venda→comprador); **Editar entrada do diário** — pencil inline, textarea, save otimista |
+| 18/06/2026 | v2.5 | **Aba Materiais por obra** — lançar insumos/compras com qtde, unidade, valor unit, fornecedor, data; KPIs (total gasto, itens, item mais caro); tabela com total e DELETE; API REST guard por empresaId |
 
 ---
 
