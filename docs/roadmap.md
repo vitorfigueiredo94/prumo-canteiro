@@ -1,6 +1,6 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.1
+> **Versão:** 2.2
 > **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
 > **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal)
@@ -123,6 +123,17 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 ### Vendas (`/vendas`) — Import
 - [x] **Import Excel** — botão "Importar" → modelo .xlsx → cria Venda + Parcelas por nome do terreno (máx 200)
 
+### Insumos & QR Codes (`/insumos`)
+- [x] Listar insumos com QR Code thumbnail, filtro por tipo (insumo/equipamento)
+- [x] Criar insumo → gera PNG via `qrcode` lib, salva em `public/uploads/qrcodes/`
+- [x] Vincular a obra (opcional), imprimir QR Code (abre PNG em nova aba), desativar
+- [x] KPIs: total, materiais, equipamentos
+
+### Cronograma de Obra (`/obras/[id]` — aba Cronograma)
+- [x] `cronogramaJson TEXT` em `obras` — armazena datas por fase `{ OBRA_INICIO: { inicio, fim }, … }`
+- [x] Gantt visual: barras planejado (fundo colorido) + realizado (fill % do checklist), linha do dia
+- [x] Edição inline de datas por fase — PATCH `GET+PATCH /api/v1/obras/[id]/cronograma`
+
 ### Notas Fiscais (`/obras/[id]` — aba Notas)
 - [x] **Exportar CSV** — botão ⬇ CSV na aba Notas e aba Equipe (pagamentos) de cada obra; rota `GET /api/v1/export/obra/[id]?tipo=notas|pagamentos`; BOM UTF-8, separador `;`, compatível com Excel PT-BR
 
@@ -239,6 +250,7 @@ ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl"        TEXT;
 ALTER TABLE "usuarios"  ADD COLUMN "cargo"             TEXT NOT NULL DEFAULT 'admin';
 ALTER TABLE "diario_obras" ADD COLUMN "fotosJson"       TEXT;
 ALTER TABLE "chamados_assistencia" ADD COLUMN "dataVistoria" DATETIME;
+ALTER TABLE "obras" ADD COLUMN "cronogramaJson" TEXT;
 ```
 
 Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
@@ -273,6 +285,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | v1.9 | **Notificações superadmin** — WhatsApp (novo cadastro, fatura paga/atrasada) + Email via Zoho SMTP |
 | 18/06/2026 | v2.0 | **Engajamento** — Relatório de obra HTML/print, Portal do cliente (tokens + pág pública), Checklist edição inline, badge alertas na sidebar |
 | 18/06/2026 | v2.1 | **Operações** — Multi-foto no diário (galeria + lightbox + `fotosJson`), Exportar CSV (notas + pagamentos), Agendamento de vistoria pós-obra |
+| 18/06/2026 | v2.2 | **Planejamento** — Cronograma Gantt por fase (`cronogramaJson` + linha do dia), UI de Insumos & QR Codes (gerar/imprimir/desativar) |
 
 ---
 
@@ -426,8 +439,6 @@ security_audit_logs: id, empresaId, userId, action, resourceType, resourceId,
 ## Pendências / Backlog
 
 - [ ] **Terrenos: mapa** — integração Leaflet/Mapbox
-- [ ] **Cronograma de obra** — Gantt simplificado por fase
-- [ ] **QR Code de insumos** — tela de gestão (modelo + API já existem)
 - [ ] **Next.js 16** — major version, avaliar breaking changes antes de produção
 - [ ] **Testes automatizados** — ainda sem suite
 
