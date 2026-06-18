@@ -168,3 +168,21 @@ CREATE TABLE IF NOT EXISTS "security_audit_logs" (
 );
 CREATE INDEX IF NOT EXISTS "security_audit_logs_empresaId_idx" ON "security_audit_logs"("empresaId");
 CREATE INDEX IF NOT EXISTS "security_audit_logs_criadoEm_idx"  ON "security_audit_logs"("criadoEm");
+
+-- Migration: Materiais por obra (v2.5)
+CREATE TABLE IF NOT EXISTS "materiais_obra" (
+  "id"           TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"    TEXT     NOT NULL,
+  "obraId"       TEXT     NOT NULL,
+  "nome"         TEXT     NOT NULL,
+  "quantidade"   DECIMAL  NOT NULL,
+  "unidade"      TEXT     NOT NULL DEFAULT 'un',
+  "valorUnit"    DECIMAL  NOT NULL,
+  "fornecedor"   TEXT,
+  "data"         DATETIME,
+  "obs"          TEXT,
+  "criadoEm"    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "materiais_obra_obraId_idx"    ON "materiais_obra"("obraId");
+CREATE INDEX IF NOT EXISTS "materiais_obra_empresaId_idx" ON "materiais_obra"("empresaId");

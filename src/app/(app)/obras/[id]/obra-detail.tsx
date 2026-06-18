@@ -10,6 +10,7 @@ import {
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { CronogramaTab } from "./cronograma-tab";
+import { MateriaisTab } from "./materiais-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
 import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
@@ -369,6 +370,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
     { k: "notas",  l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
     { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
     { k: "diario", l: diarioEntries.length > 0 ? `Diário (${diarioEntries.length})` : "Diário", Icon: BookOpen },
+    { k: "materiais",   l: "Materiais",   Icon: Package },
     { k: "documentos",  l: "Documentos",  Icon: FolderOpen },
   ];
 
@@ -779,6 +781,9 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
 
         {/* ── CHECKLIST ── */}
         {tab === "checklist" && <ChecklistTab obraId={obra.id} />}
+
+        {/* ── MATERIAIS ── */}
+        {tab === "materiais" && <MateriaisTab obraId={obra.id} />}
 
         {/* ── DOCUMENTOS ── */}
         {tab === "documentos" && <DocumentosTab ownerType="obra" ownerId={obra.id} />}

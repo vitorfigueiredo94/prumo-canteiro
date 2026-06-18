@@ -326,6 +326,25 @@ model QrCodeInsumo {
   @@map("qrcodes_insumos")
 }
 
+model MaterialObra {
+  id           String    @id @default(cuid())
+  empresaId    String
+  obraId       String
+  nome         String
+  quantidade   Decimal
+  unidade      String    @default("un")
+  valorUnit    Decimal
+  fornecedor   String?
+  data         DateTime?
+  obs          String?
+  criadoEm    DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+
+  @@index([obraId])
+  @@index([empresaId])
+  @@map("materiais_obra")
+}
+
 model PortalClienteToken {
   id        String    @id @default(cuid())
   empresaId String
