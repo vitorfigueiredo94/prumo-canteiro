@@ -86,6 +86,8 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/v1/checklist/terreno/${terrenoId}`);
@@ -112,6 +114,18 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
     await fetch(`/api/v1/checklist/terreno/${terrenoId}/fase`, { method: "POST" });
     await refresh();
     setAdvancing(false);
+  };
+
+  const saveDescricao = async (itemId: string) => {
+    const val = editVal.trim();
+    setEditing(null);
+    if (!val) return;
+    await fetch(`/api/v1/checklist/item/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ descricao: val }),
+    });
+    await refresh();
   };
 
   if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
@@ -199,10 +213,33 @@ function ChecklistTab({ terrenoId }: { terrenoId: string }) {
           </div>
           <div>
             {cl.itens.map((item, idx) => (
-              <label key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 20px", cursor: toggling === item.id ? "wait" : "pointer", borderBottom: idx < cl.itens.length - 1 ? "1px solid var(--border-subtle)" : "none", background: item.concluido ? "var(--ink-50)" : "transparent" }}>
-                <input type="checkbox" checked={item.concluido} onChange={() => toggle(item.id, item.concluido)} disabled={toggling === item.id} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--navy-700)", cursor: "pointer", flexShrink: 0 }} />
-                <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
-              </label>
+              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 20px", borderBottom: idx < cl.itens.length - 1 ? "1px solid var(--border-subtle)" : "none", background: item.concluido ? "var(--ink-50)" : "transparent" }}>
+                <input type="checkbox" checked={item.concluido} onChange={() => { if (editing !== item.id) toggle(item.id, item.concluido); }} disabled={toggling === item.id} style={{ width: 16, height: 16, accentColor: "var(--navy-700)", cursor: "pointer", flexShrink: 0 }} />
+                {editing === item.id ? (
+                  <input
+                    autoFocus
+                    value={editVal}
+                    onChange={(e) => setEditVal(e.target.value)}
+                    onBlur={() => saveDescricao(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.currentTarget.blur(); }
+                      if (e.key === "Escape") { setEditing(null); }
+                    }}
+                    style={{ flex: 1, height: 28, padding: "0 8px", border: "1px solid var(--border-focus)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }}
+                  />
+                ) : (
+                  <span style={{ flex: 1, fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
+                )}
+                <button
+                  onClick={() => { setEditing(item.id); setEditVal(item.descricao); }}
+                  title="Editar descrição"
+                  style={{ width: 26, height: 26, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)", flexShrink: 0, opacity: editing === item.id ? 1 : 0.4 }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                  onMouseLeave={(e) => { if (editing !== item.id) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}
+                >
+                  <Pencil size={13} />
+                </button>
+              </div>
             ))}
           </div>
         </div>

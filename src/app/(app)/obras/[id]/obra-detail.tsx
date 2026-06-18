@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users,
   BookOpen, AlertTriangle, CheckSquare, FolderOpen, Package, Wrench, Truck,
-  HardHat, MoreHorizontal, Plus, Trash2,
+  HardHat, MoreHorizontal, Plus, Trash2, Pencil,
 } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +143,8 @@ function ChecklistTab({ obraId }: { obraId: string }) {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [advancing, setAdvancing] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/v1/checklist/obra/${obraId}`);
@@ -172,6 +174,18 @@ function ChecklistTab({ obraId }: { obraId: string }) {
     await fetch(`/api/v1/checklist/obra/${obraId}/fase`, { method: "POST" });
     await refresh();
     setAdvancing(false);
+  };
+
+  const saveDescricao = async (itemId: string) => {
+    const val = editVal.trim();
+    setEditing(null);
+    if (!val) return;
+    await fetch(`/api/v1/checklist/item/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ descricao: val }),
+    });
+    await refresh();
   };
 
   if (loading) return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando checklist…</p>;
@@ -278,11 +292,39 @@ function ChecklistTab({ obraId }: { obraId: string }) {
             <div style={{ width: `${cl.porcentagem}%`, height: "100%", background: cl.porcentagem === 100 ? "#22c55e" : "#1e3a5f", transition: "width 400ms" }} />
           </div>
           {cl.itens.map((item) => (
-            <div key={item.id} onClick={() => toggle(item.id, item.concluido)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", cursor: toggling === item.id ? "wait" : "pointer" }}>
+            <div
+              key={item.id}
+              onClick={() => { if (editing !== item.id) toggle(item.id, item.concluido); }}
+              style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", cursor: editing === item.id ? "default" : toggling === item.id ? "wait" : "pointer" }}
+            >
               <div style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0, background: item.concluido ? "#1e3a5f" : "transparent", border: `2px solid ${item.concluido ? "#1e3a5f" : "var(--border-default)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {item.concluido && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
               </div>
-              <span style={{ fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
+              {editing === item.id ? (
+                <input
+                  autoFocus
+                  value={editVal}
+                  onChange={(e) => setEditVal(e.target.value)}
+                  onBlur={() => saveDescricao(item.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.currentTarget.blur(); }
+                    if (e.key === "Escape") { setEditing(null); }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ flex: 1, height: 30, padding: "0 8px", border: "1px solid var(--border-focus)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }}
+                />
+              ) : (
+                <span style={{ flex: 1, fontSize: 14, color: item.concluido ? "var(--fg-muted)" : "var(--fg-primary)", textDecoration: item.concluido ? "line-through" : "none", lineHeight: 1.5 }}>{item.descricao}</span>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); setEditing(item.id); setEditVal(item.descricao); }}
+                title="Editar descrição"
+                style={{ width: 26, height: 26, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)", flexShrink: 0, opacity: editing === item.id ? 1 : 0.4 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                onMouseLeave={(e) => { if (editing !== item.id) (e.currentTarget as HTMLButtonElement).style.opacity = "0.4"; }}
+              >
+                <Pencil size={13} />
+              </button>
             </div>
           ))}
         </div>

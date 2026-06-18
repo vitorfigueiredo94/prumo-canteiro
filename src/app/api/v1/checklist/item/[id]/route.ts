@@ -7,8 +7,11 @@ import { logAudit } from "@/lib/audit-log";
 import { z } from "zod";
 
 const PatchSchema = z.object({
-  concluido: z.boolean(),
+  concluido: z.boolean().optional(),
   observacao: z.string().optional(),
+  descricao: z.string().min(1).max(200).optional(),
+}).refine((d) => d.concluido !== undefined || d.descricao !== undefined, {
+  message: "Informe concluido ou descricao",
 });
 
 export async function PATCH(
@@ -48,12 +51,18 @@ export async function PATCH(
   }
 
   try {
-    const item = await toggleItem(
-      id,
-      session.empresaId,
-      parsed.data.concluido,
-      parsed.data.observacao
-    );
+    const { concluido, observacao, descricao } = parsed.data;
+
+    if (descricao !== undefined) {
+      await prisma.checklistItem.update({ where: { id }, data: { descricao } });
+    }
+
+    if (concluido !== undefined) {
+      const item = await toggleItem(id, session.empresaId, concluido, observacao);
+      return NextResponse.json(item);
+    }
+
+    const item = await prisma.checklistItem.findUnique({ where: { id } });
     return NextResponse.json(item);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 404 });
