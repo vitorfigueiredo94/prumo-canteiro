@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 
 const scryptAsync = promisify(scrypt);
 
-const SECRET = (() => {
+// Avaliado em tempo de request (não de build) para evitar falha no docker build
+function getSecret(): string {
   const s = process.env.SESSION_SECRET;
   if (!s || s.length < 32) {
     throw new Error(
@@ -13,7 +14,7 @@ const SECRET = (() => {
     );
   }
   return s;
-})();
+}
 // __Host- prefix obriga: Secure, Path=/, sem Domain → bloqueia subdomain cookie injection
 const COOKIE = "__Host-prumo_sess";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
@@ -50,7 +51,7 @@ export interface Session {
 
 function sign(data: Session): string {
   const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
-  const sig = createHmac("sha256", SECRET).update(payload).digest("base64url");
+  const sig = createHmac("sha256", getSecret()).update(payload).digest("base64url");
   return `${payload}.${sig}`;
 }
 
@@ -60,7 +61,7 @@ function verify(token: string): Session | null {
     if (dot === -1) return null;
     const payload = token.slice(0, dot);
     const sig = token.slice(dot + 1);
-    const expected = createHmac("sha256", SECRET)
+    const expected = createHmac("sha256", getSecret())
       .update(payload)
       .digest("base64url");
     if (sig !== expected) return null;
