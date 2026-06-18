@@ -45,6 +45,7 @@ export default async function AssistenciaPage() {
     parecerTexto:      c.parecerTexto,
     parecerGeradoEm:   c.parecerGeradoEm?.toISOString() ?? null,
     dataEntregaChaves: c.dataEntregaChaves?.toISOString() ?? null,
+    dataVistoria:      c.dataVistoria?.toISOString() ?? null,
     criadoEm:          c.criadoEm.toISOString(),
     nomeComprador:     vendaMap[c.vendaId] ?? "—",
     nomeComponente:    compMap[c.componenteId] ?? "—",

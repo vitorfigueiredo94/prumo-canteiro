@@ -71,6 +71,19 @@ if (!diarioInfo.find(c => c.name === 'fotoUrl')) {
   console.log('[prumo] Migração aplicada: diario_obras.fotoUrl adicionado.');
 }
 
+// Migration: diario_obras.fotosJson (multi-foto — v2.0)
+if (!diarioInfo.find(c => c.name === 'fotosJson')) {
+  db.exec('ALTER TABLE "diario_obras" ADD COLUMN "fotosJson" TEXT;');
+  console.log('[prumo] Migração aplicada: diario_obras.fotosJson adicionado.');
+}
+
+// Migration: chamados_assistencia.dataVistoria (agendamento — v2.0)
+const chamadosAssistInfo = db.prepare("PRAGMA table_info('chamados_assistencia')").all();
+if (!chamadosAssistInfo.find(c => c.name === 'dataVistoria')) {
+  db.exec('ALTER TABLE "chamados_assistencia" ADD COLUMN "dataVistoria" DATETIME;');
+  console.log('[prumo] Migração aplicada: chamados_assistencia.dataVistoria adicionado.');
+}
+
 // Migration: usuarios.bloqueado (Super Admin — v0.9)
 const usuariosInfo = db.prepare("PRAGMA table_info('usuarios')").all();
 if (!usuariosInfo.find(c => c.name === 'bloqueado')) {

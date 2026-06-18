@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.9
+> **Versão:** 2.1
 > **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -108,18 +108,33 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 ### Diário de Obra (`/diario`)
 - [x] Registro diário com clima, equipe, atividades, fotos
 - [x] Filtros por data e obra + impressão PDF
+- [x] **Multi-foto por registro** — `<input multiple>`, `fotosJson JSON[]`, galeria inline com lightbox
 
 ### Pós-obra / Assistência Técnica (`/assistencia`)
 - [x] Chamados: vincula comprador + componente defeituoso
 - [x] Parecer IA via Gemini Flash (aceita/nega com base em CC 618 / CDC)
 - [x] Configurar 11 componentes de garantia padrão
 - [x] Notificação extrajudicial imprimível com citações legais + **logo da empresa**
+- [x] **Agendamento de vistoria** — chamado aceito → campo `dataVistoria`, coluna na tabela, input inline
 
 ### Terrenos (`/terrenos`) — Import
 - [x] **Import Excel** — botão "Importar" → modelo .xlsx → cria terrenos em lote (máx 500 linhas)
 
 ### Vendas (`/vendas`) — Import
 - [x] **Import Excel** — botão "Importar" → modelo .xlsx → cria Venda + Parcelas por nome do terreno (máx 200)
+
+### Notas Fiscais (`/obras/[id]` — aba Notas)
+- [x] **Exportar CSV** — botão ⬇ CSV na aba Notas e aba Equipe (pagamentos) de cada obra; rota `GET /api/v1/export/obra/[id]?tipo=notas|pagamentos`; BOM UTF-8, separador `;`, compatível com Excel PT-BR
+
+### Portal do Cliente (`/portal`)
+- [x] Gerar links de acesso com token único (nome + validade opcional)
+- [x] Revogar tokens; último acesso registrado
+- [x] Página pública `/portal?t=TOKEN` — sem login, mostra obras com progresso, status, datas, terreno
+- [x] Notificação via `x-portal-token` header na API `/api/v1/portal/obras`
+
+### Alertas de Parcelas (`sidebar`)
+- [x] Badge vermelho (atrasadas) ou âmbar (vence hoje) no item "Compradores" da sidebar
+- [x] Atualiza a cada mudança de rota (`useEffect` on `pathname`)
 
 ### Admin SaaS (`/superadmin`)
 - [x] Console Super Admin multi-tenant
@@ -222,6 +237,8 @@ ALTER TABLE "vendas"    ADD COLUMN "contratoAssinadoEm" DATETIME;
 ALTER TABLE "usuarios"  ADD COLUMN "bloqueado"         INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "diario_obras" ADD COLUMN "fotoUrl"        TEXT;
 ALTER TABLE "usuarios"  ADD COLUMN "cargo"             TEXT NOT NULL DEFAULT 'admin';
+ALTER TABLE "diario_obras" ADD COLUMN "fotosJson"       TEXT;
+ALTER TABLE "chamados_assistencia" ADD COLUMN "dataVistoria" DATETIME;
 ```
 
 Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
@@ -254,6 +271,8 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | hotfix | **Build fix** — SESSION_SECRET lazy (IIFE → função, falha em request não em build) |
 | 18/06/2026 | v1.8 | **Import Excel** — terrenos (500 linhas), vendas (200), atualizar compradores por CPF; xlsx + ImportModal |
 | 18/06/2026 | v1.9 | **Notificações superadmin** — WhatsApp (novo cadastro, fatura paga/atrasada) + Email via Zoho SMTP |
+| 18/06/2026 | v2.0 | **Engajamento** — Relatório de obra HTML/print, Portal do cliente (tokens + pág pública), Checklist edição inline, badge alertas na sidebar |
+| 18/06/2026 | v2.1 | **Operações** — Multi-foto no diário (galeria + lightbox + `fotosJson`), Exportar CSV (notas + pagamentos), Agendamento de vistoria pós-obra |
 
 ---
 
@@ -406,15 +425,10 @@ security_audit_logs: id, empresaId, userId, action, resourceType, resourceId,
 
 ## Pendências / Backlog
 
-- [ ] **Relatórios PDF** — PDF de obra (resumo financeiro + checklist + diário)
-- [ ] **Notificações in-app** — toast/badge para parcelas vencendo em 7 dias
-- [ ] **Multi-foto no diário** — galeria com lightbox
-- [ ] **Exportar CSV** — NFs e pagamentos por obra
 - [ ] **Terrenos: mapa** — integração Leaflet/Mapbox
 - [ ] **Cronograma de obra** — Gantt simplificado por fase
-- [ ] **Assistência: agendamento** — chamado aceito → data de vistoria
 - [ ] **QR Code de insumos** — tela de gestão (modelo + API já existem)
-- [ ] **Portal do cliente** — tela de geração de tokens (modelo + API já existem)
+- [ ] **Next.js 16** — major version, avaliar breaking changes antes de produção
 - [ ] **Testes automatizados** — ainda sem suite
 
 ---

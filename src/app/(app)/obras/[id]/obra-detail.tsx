@@ -84,6 +84,10 @@ function DiarioInlineForm({ obraId, onDone }: { obraId: string; onDone: () => vo
           <input name="conteudo" required placeholder="Descreva o que aconteceu hoje na obra…" style={inp} />
         </div>
       </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
+        <label style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Fotos (opcional)</label>
+        <input name="foto" type="file" multiple accept="image/jpeg,image/png,image/webp" style={{ ...inp, height: "auto", padding: "6px 10px", cursor: "pointer" }} />
+      </div>
       {state?.error && <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--danger-500)" }}>{state.error}</p>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button type="button" onClick={onDone} style={{ height: 36, padding: "0 14px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5 }}>
@@ -117,7 +121,7 @@ interface Alocacao {
 }
 
 interface DiarioEntry {
-  id: string; data: string | null; conteudo: string; autor: string | null; fotoUrl: string | null;
+  id: string; data: string | null; conteudo: string; autor: string | null; fotoUrl: string | null; fotosJson: string | null;
 }
 
 interface Obra {
@@ -349,6 +353,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   const [showNotaForm, setShowNotaForm] = useState(false);
   const [showDiarioForm, setShowDiarioForm] = useState(false);
   const [diarioEntries, setDiarioEntries] = useState(obra.diario);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => { setDiarioEntries(obra.diario); }, [obra.diario]);
@@ -534,7 +539,10 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
         {/* ── NOTAS FISCAIS ── */}
         {tab === "notas" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 16 }}>
+              <a href={`/api/v1/export/obra/${obra.id}?tipo=notas`} download style={{ height: 40, padding: "0 14px", background: "transparent", color: "var(--fg-secondary)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 500, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, textDecoration: "none" }}>
+                ⬇ CSV
+              </a>
               <button onClick={() => setShowNotaForm(true)} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
                 <Plus size={15} /> Nova nota fiscal
               </button>
@@ -636,9 +644,14 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 22px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Pagamentos lançados</p>
-                <Link href="/funcionarios" style={{ fontSize: 13.5, fontWeight: 600, color: "var(--navy-700)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <Plus size={14} /> Novo
-                </Link>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <a href={`/api/v1/export/obra/${obra.id}?tipo=pagamentos`} download style={{ height: 32, padding: "0 12px", background: "transparent", color: "var(--fg-secondary)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                    ⬇ CSV
+                  </a>
+                  <Link href="/funcionarios" style={{ fontSize: 13.5, fontWeight: 600, color: "var(--navy-700)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <Plus size={14} /> Novo
+                  </Link>
+                </div>
               </div>
               {obra.pagamentos.length === 0 ? (
                 <p style={{ fontSize: 14, color: "var(--fg-tertiary)", padding: "20px 0" }}>Nenhum pagamento registrado.</p>
@@ -691,12 +704,20 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
                       </div>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: 14, color: "var(--fg-secondary)", lineHeight: 1.6 }}>{d.conteudo}</p>
-                        {d.fotoUrl && (
-                          <a href={d.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 10, borderRadius: "var(--radius-md)", overflow: "hidden", border: "1px solid var(--border-subtle)", maxWidth: 360 }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={d.fotoUrl} alt="Foto da obra" style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
-                          </a>
-                        )}
+                        {(() => {
+                          const fotos: string[] = d.fotosJson ? JSON.parse(d.fotosJson) : d.fotoUrl ? [d.fotoUrl] : [];
+                          if (!fotos.length) return null;
+                          return (
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                              {fotos.map((url, idx) => (
+                                <button key={idx} onClick={() => setLightboxSrc(url)} style={{ padding: 0, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", overflow: "hidden", cursor: "zoom-in", background: "none", flexShrink: 0 }}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={url} alt={`Foto ${idx + 1}`} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} />
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <button onClick={() => handleExcluirEntrada(d.id)} disabled={isPending} style={{ width: 30, height: 30, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)", flexShrink: 0 }} title="Excluir registro">
                         <Trash2 size={14} />
@@ -733,6 +754,14 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
           initial={{ id: "", obraId: obra.id, categoria: "material", valor: 0, fornecedor: null, numero: null, descricao: null, emitidaEm: null, status: "pendente" }}
           onClose={() => setShowNotaForm(false)}
         />
+      )}
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div onClick={() => setLightboxSrc(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.88)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "zoom-out" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxSrc} alt="Foto ampliada" style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8, boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
+        </div>
       )}
     </>
   );

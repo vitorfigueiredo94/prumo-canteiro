@@ -7,6 +7,7 @@ import { fmtDate } from "@/lib/format";
 import {
   criarChamado, gerarParecer, atualizarStatusChamado,
   excluirChamado, inicializarGarantiasPadrao, criarComponente,
+  agendarVistoria,
   type AssistenciaFormState,
 } from "./actions";
 import { useFormStatus } from "react-dom";
@@ -17,7 +18,7 @@ interface Chamado {
   id: string; vendaId: string; componenteId: string;
   descricao: string; status: string; parecerStatus: string | null;
   parecerTexto: string | null; parecerGeradoEm: string | null;
-  dataEntregaChaves: string | null; criadoEm: string;
+  dataEntregaChaves: string | null; dataVistoria: string | null; criadoEm: string;
   nomeComprador: string; nomeComponente: string;
 }
 interface Componente { id: string; codigo: string; nome: string; prazoLegalMeses: number; prazoContratMeses: number; baseLegal: string | null; }
@@ -70,6 +71,8 @@ export function AssistenciaView({ chamados, componentes, vendas }: {
   const [gerandoId, setGerandoId]             = useState<string | null>(null);
   const [erroGerar, setErroGerar]             = useState<string | null>(null);
   const [msgInit, setMsgInit]                 = useState<string | null>(null);
+  const [agendandoId, setAgendandoId]         = useState<string | null>(null);
+  const [dataVistoriaInput, setDataVistoriaInput] = useState("");
 
   const [stateChamado, actionChamado] = useActionState(
     async (prev: AssistenciaFormState, fd: FormData) => {
@@ -112,6 +115,15 @@ export function AssistenciaView({ chamados, componentes, vendas }: {
     startTransition(async () => {
       const r = await inicializarGarantiasPadrao();
       setMsgInit(`✅ ${r.criados} componente(s) padrão inicializados com sucesso.`);
+    });
+  }
+
+  function handleAgendar(chamadoId: string) {
+    if (!dataVistoriaInput) return;
+    startTransition(async () => {
+      await agendarVistoria(chamadoId, dataVistoriaInput);
+      setAgendandoId(null);
+      setDataVistoriaInput("");
     });
   }
 
@@ -182,7 +194,7 @@ export function AssistenciaView({ chamados, componentes, vendas }: {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "var(--bg-muted)" }}>
-                      {["Comprador", "Componente", "Abertura", "Garantia", "Status", "Ações"].map(h => (
+                      {["Comprador", "Componente", "Abertura", "Garantia", "Status", "Vistoria", "Ações"].map(h => (
                         <th key={h} style={{ padding: "10px 16px", fontSize: 11, fontWeight: 600, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "left", whiteSpace: "nowrap", borderBottom: "1px solid var(--border-subtle)" }}>{h}</th>
                       ))}
                     </tr>
@@ -211,6 +223,26 @@ export function AssistenciaView({ chamados, componentes, vendas }: {
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: "var(--radius-full)", background: st.bg, color: st.color, fontSize: 12, fontWeight: 600 }}>
                               <Icon size={12} />{st.label}
                             </span>
+                          </td>
+                          <td style={{ padding: "12px 16px", minWidth: 160 }}>
+                            {c.dataVistoria ? (
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-primary)" }}>{fmtDate(c.dataVistoria)}</div>
+                                <button onClick={() => { setAgendandoId(c.id); setDataVistoriaInput(c.dataVistoria!.slice(0, 10)); }} style={{ fontSize: 11.5, color: "var(--fg-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--font-sans)" }}>Alterar</button>
+                              </div>
+                            ) : agendandoId === c.id ? (
+                              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <input type="date" value={dataVistoriaInput} onChange={(e) => setDataVistoriaInput(e.target.value)} style={{ height: 30, padding: "0 8px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 13, outline: "none" }} />
+                                <button onClick={() => handleAgendar(c.id)} disabled={isPending || !dataVistoriaInput} style={{ height: 30, padding: "0 10px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>OK</button>
+                                <button onClick={() => setAgendandoId(null)} style={{ height: 30, padding: "0 8px", background: "transparent", color: "var(--fg-muted)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 12, cursor: "pointer" }}>✕</button>
+                              </div>
+                            ) : c.status === "aceito" ? (
+                              <button onClick={() => { setAgendandoId(c.id); setDataVistoriaInput(""); }} style={{ height: 30, padding: "0 10px", background: "transparent", color: "var(--navy-700)", border: "1px solid var(--navy-700)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                + Agendar
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 12.5, color: "var(--fg-muted)" }}>—</span>
+                            )}
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>

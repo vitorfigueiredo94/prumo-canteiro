@@ -42,20 +42,21 @@ export async function criarEntrada(_prev: DiarioFormState, formData: FormData): 
   });
   if (!obra) return { error: "Obra não encontrada." };
 
-  // Handle optional photo upload
-  let fotoUrl: string | null = null;
-  const foto = formData.get("foto") as File | null;
-  if (foto && foto.size > 0) {
+  // Handle optional photo upload (multiple)
+  const dbUrl = process.env.DATABASE_URL || "file:/app/data/prumo.db";
+  const dataDir = path.dirname(dbUrl.replace(/^file:/, ""));
+  const dir = path.join(dataDir, "uploads", session.empresaId, "diario");
+  const fotos = (formData.getAll("foto") as File[]).filter(f => f && f.size > 0);
+  const fotoUrls: string[] = [];
+
+  for (const foto of fotos) {
     if (!FOTO_TYPES.includes(foto.type)) return { error: "Foto deve ser JPEG, PNG, WebP ou GIF." };
     if (foto.size > 8 * 1024 * 1024) return { error: "Foto maior que 8 MB." };
     const ext = path.extname(foto.name).toLowerCase() || ".jpg";
     const safeName = `${randomUUID()}${ext}`;
-    const dbUrl = process.env.DATABASE_URL || "file:/app/data/prumo.db";
-    const dataDir = path.dirname(dbUrl.replace(/^file:/, ""));
-    const dir = path.join(dataDir, "uploads", session.empresaId, "diario");
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, safeName), Buffer.from(await foto.arrayBuffer()));
-    fotoUrl = `/api/v1/uploads/${session.empresaId}/diario/${safeName}`;
+    fotoUrls.push(`/api/v1/uploads/${session.empresaId}/diario/${safeName}`);
   }
 
   await prisma.diarioObra.create({
@@ -63,7 +64,8 @@ export async function criarEntrada(_prev: DiarioFormState, formData: FormData): 
       obraId,
       empresaId: session.empresaId,
       conteudo,
-      fotoUrl,
+      fotoUrl: fotoUrls[0] ?? null,
+      fotosJson: fotoUrls.length > 0 ? JSON.stringify(fotoUrls) : null,
       autor: session.nome,
       data: data ? new Date(data) : new Date(),
       clima: clima || null,

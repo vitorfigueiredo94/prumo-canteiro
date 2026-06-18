@@ -116,6 +116,17 @@ export async function atualizarStatusChamado(
   revalidatePath("/assistencia");
 }
 
+export async function agendarVistoria(chamadoId: string, dataVistoria: string): Promise<{ error?: string }> {
+  const empresaId = await getEmpresaId();
+  if (!dataVistoria) return { error: "Informe a data de vistoria." };
+  await prisma.chamadoAssistencia.updateMany({
+    where: { id: chamadoId, empresaId },
+    data: { dataVistoria: new Date(dataVistoria) },
+  });
+  revalidatePath("/assistencia");
+  return {};
+}
+
 export async function excluirChamado(chamadoId: string): Promise<void> {
   const empresaId = await getEmpresaId();
   await prisma.chamadoAssistencia.deleteMany({ where: { id: chamadoId, empresaId } });
