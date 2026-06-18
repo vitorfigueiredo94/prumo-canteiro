@@ -1,6 +1,6 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.3
+> **Versão:** 2.4
 > **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
 > **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal)
@@ -110,6 +110,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Registro diário com clima, equipe, atividades, fotos
 - [x] Filtros por data e obra + impressão PDF
 - [x] **Multi-foto por registro** — `<input multiple>`, `fotosJson JSON[]`, galeria inline com lightbox
+- [x] **Editar entrada** — ícone lápis por registro → textarea inline → salvar com atualização otimista
 
 ### Pós-obra / Assistência Técnica (`/assistencia`)
 - [x] Chamados: vincula comprador + componente defeituoso
@@ -129,6 +130,9 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Criar insumo → gera PNG via `qrcode` lib, salva em `public/uploads/qrcodes/`
 - [x] Vincular a obra (opcional), imprimir QR Code (abre PNG em nova aba), desativar
 - [x] KPIs: total, materiais, equipamentos
+
+### Notificações ao cliente (checklist fase)
+- [x] **WhatsApp ao comprador** quando fase da obra avança — obra→terreno→venda→`telefoneComprador`; `msgFaseObra()` + `notificarCliente()` fire-and-forget em `POST /api/v1/checklist/obra/[id]/fase`
 
 ### Cronograma de Obra (`/obras/[id]` — aba Cronograma)
 - [x] `cronogramaJson TEXT` em `obras` — armazena datas por fase `{ OBRA_INICIO: { inicio, fim }, … }`
@@ -290,6 +294,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | v2.1 | **Operações** — Multi-foto no diário (galeria + lightbox + `fotosJson`), Exportar CSV (notas + pagamentos), Agendamento de vistoria pós-obra |
 | 18/06/2026 | v2.2 | **Planejamento** — Cronograma Gantt por fase (`cronogramaJson` + linha do dia), UI de Insumos & QR Codes (gerar/imprimir/desativar) |
 | 18/06/2026 | v2.3 | **Mapa de terrenos** — Leaflet + OpenStreetMap, geocoding Nominatim server-side com cache `lat/lng` no DB, pins por status |
+| 18/06/2026 | v2.4 | **Notif. WhatsApp ao cliente** — dispara ao avançar fase do checklist (obra→terreno→venda→comprador); **Editar entrada do diário** — pencil inline, textarea, save otimista |
 
 ---
 
