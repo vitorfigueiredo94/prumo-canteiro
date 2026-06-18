@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -46,6 +46,14 @@ interface SidebarProps {
 export function Sidebar({ empresaNome, plano, logoEmpresa }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const [alertas, setAlertas] = useState({ atrasadas: 0, vencendoHoje: 0, vencendo7dias: 0 });
+
+  useEffect(() => {
+    fetch("/api/v1/alertas")
+      .then((r) => r.json())
+      .then((d) => { if (d && typeof d.atrasadas === "number") setAlertas(d); })
+      .catch(() => null);
+  }, [pathname]);
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
@@ -142,6 +150,11 @@ export function Sidebar({ empresaNome, plano, logoEmpresa }: SidebarProps) {
               {!collapsed && (
                 <>
                   <span style={{ flex: 1 }}>{label}</span>
+                  {href === "/compradores" && (alertas.atrasadas + alertas.vencendoHoje) > 0 && (
+                    <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: alertas.atrasadas > 0 ? "#dc2626" : "#d97706", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {alertas.atrasadas + alertas.vencendoHoje}
+                    </span>
+                  )}
                   {locked && <Lock size={12} style={{ flexShrink: 0, opacity: 0.6 }} />}
                 </>
               )}
