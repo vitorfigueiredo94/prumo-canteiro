@@ -2,13 +2,19 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, ArrowRight, Building2, Search, ChevronRight, Upload } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Plus, MapPin, ArrowRight, Building2, Search, ChevronRight, Upload, Map, List } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "./terreno-form";
 import { criarTerreno } from "./actions";
 import { STATUS_TERRENO, STATUS_OBRA } from "@/lib/status";
 import { fmtBRLshort, fmtDate, fmtArea } from "@/lib/format";
 import { ImportModal } from "@/components/import/ImportModal";
+
+const MapaTerrenos = dynamic(
+  () => import("./mapa-terrenos").then((m) => m.MapaTerrenos),
+  { ssr: false, loading: () => <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 14 }}>Carregando mapa…</p> }
+);
 
 interface Obra {
   id: string;
@@ -52,6 +58,7 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [busca, setBusca] = useState("");
+  const [vista, setVista] = useState<"lista" | "mapa">("lista");
 
   const filtered = busca.trim()
     ? terrenos.filter(
@@ -97,7 +104,24 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
             {terrenos.length} {terrenos.length === 1 ? "terreno" : "terrenos"} no banco de terras
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* Vista toggle */}
+          <div style={{ display: "flex", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+            <button
+              onClick={() => setVista("lista")}
+              title="Lista"
+              style={{ height: 40, padding: "0 14px", border: "none", background: vista === "lista" ? "var(--navy-700)" : "transparent", color: vista === "lista" ? "#fff" : "var(--fg-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, fontFamily: "var(--font-sans)" }}
+            >
+              <List size={15} /> Lista
+            </button>
+            <button
+              onClick={() => setVista("mapa")}
+              title="Mapa"
+              style={{ height: 40, padding: "0 14px", border: "none", borderLeft: "1px solid var(--border-default)", background: vista === "mapa" ? "var(--navy-700)" : "transparent", color: vista === "mapa" ? "#fff" : "var(--fg-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, fontFamily: "var(--font-sans)" }}
+            >
+              <Map size={15} /> Mapa
+            </button>
+          </div>
           <button
             onClick={() => setShowImport(true)}
             style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}
@@ -143,7 +167,9 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
 
       {/* Content */}
       <div style={{ padding: "24px 32px" }}>
-        {filtered.length === 0 ? (
+        {vista === "mapa" ? (
+          <MapaTerrenos />
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 24px" }}>
             <p style={{ color: "var(--fg-tertiary)", fontSize: 15 }}>
               {busca ? "Nenhum terreno encontrado para esta busca." : "Nenhum terreno cadastrado ainda."}

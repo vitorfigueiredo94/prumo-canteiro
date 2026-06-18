@@ -97,6 +97,8 @@ model Terreno {
   obras       Obra[]
   vendas      Venda[]
   documentos  Documento[]
+  lat          Float?
+  lng          Float?
   criadoEm   DateTime   @default(now())
   atualizadoEm DateTime  @updatedAt
 

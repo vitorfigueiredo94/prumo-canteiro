@@ -85,10 +85,21 @@ if (!chamadosAssistInfo.find(c => c.name === 'dataVistoria')) {
 }
 
 // Migration: obras.cronogramaJson (cronograma por fase — v2.2)
-const obrasInfo = db.prepare("PRAGMA table_info('obras')").all();
-if (!obrasInfo.find(c => c.name === 'cronogramaJson')) {
+const obrasInfoV2 = db.prepare("PRAGMA table_info('obras')").all();
+if (!obrasInfoV2.find(c => c.name === 'cronogramaJson')) {
   db.exec('ALTER TABLE "obras" ADD COLUMN "cronogramaJson" TEXT;');
   console.log('[prumo] Migração aplicada: obras.cronogramaJson adicionado.');
+}
+
+// Migration: terrenos.lat/lng (mapa de terrenos — v2.3)
+const terrenosGeoInfo = db.prepare("PRAGMA table_info('terrenos')").all();
+if (!terrenosGeoInfo.find(c => c.name === 'lat')) {
+  db.exec('ALTER TABLE "terrenos" ADD COLUMN "lat" REAL;');
+  console.log('[prumo] Migração aplicada: terrenos.lat adicionado.');
+}
+if (!terrenosGeoInfo.find(c => c.name === 'lng')) {
+  db.exec('ALTER TABLE "terrenos" ADD COLUMN "lng" REAL;');
+  console.log('[prumo] Migração aplicada: terrenos.lng adicionado.');
 }
 
 // Migration: usuarios.bloqueado (Super Admin — v0.9)
