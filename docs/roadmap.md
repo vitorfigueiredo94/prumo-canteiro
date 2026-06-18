@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 1.7
-> **Atualizado em:** 17/06/2026
+> **Versão:** 1.9
+> **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `v1.7` (audit v2)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -25,11 +25,13 @@ financeiro e diário de obra — tudo em um único lugar.
 |--------|-----------|
 | Framework | Next.js 15 App Router (Server Actions + Route Handlers) |
 | Banco | SQLite (`better-sqlite3`) + Prisma v7.8 |
-| Auth | HMAC-SHA256 cookie (`prumo_sess`) — sem Supabase |
+| Auth | HMAC-SHA256 cookie (`__Host-prumo_sess`) — sem Supabase |
 | WhatsApp | **Meta Cloud API** (Graph API v20.0) |
+| Email | **nodemailer** + Zoho Mail SMTP (`smtp.zoho.com:587`) |
 | IA | Gemini Flash (parecer de garantia pós-obra) |
 | STT | OpenAI Whisper API (opcional) |
 | PDF / Documentos | HTML otimizado para impressão (`buildContratoHTML`, `buildNotificacaoHTML`) |
+| Import | **xlsx** — import em lote via Excel (.xlsx) para terrenos, vendas e compradores |
 | Deploy | Docker + Nginx mTLS + Cloudflare Tunnel |
 | Repo | [github.com/vitorfigueiredo94/prumo-canteiro](https://github.com/vitorfigueiredo94/prumo-canteiro) |
 
@@ -93,6 +95,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] "Cobrar todos em atraso" — deduplicação 24h, resultado inline
 - [x] "Novo comprador" — abre VendaForm com terrenos disponíveis
 - [x] "Editar" (lápis) — modal leve para nome, CPF, telefone, email com atualização otimista
+- [x] **Import Excel** — "Importar vendas" (cria nova venda) + "Atualizar compradores" (match por CPF)
 
 ### Financeiro (`/financeiro`)
 - [x] KPIs: receitas, despesas, margem
@@ -112,10 +115,17 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Configurar 11 componentes de garantia padrão
 - [x] Notificação extrajudicial imprimível com citações legais + **logo da empresa**
 
+### Terrenos (`/terrenos`) — Import
+- [x] **Import Excel** — botão "Importar" → modelo .xlsx → cria terrenos em lote (máx 500 linhas)
+
+### Vendas (`/vendas`) — Import
+- [x] **Import Excel** — botão "Importar" → modelo .xlsx → cria Venda + Parcelas por nome do terreno (máx 200)
+
 ### Admin SaaS (`/superadmin`)
 - [x] Console Super Admin multi-tenant
 - [x] Gestão de empresas e usuários
 - [x] Enforcement de planos com bloqueio de recursos e limites na sidebar
+- [x] **Notificações de fatura** — `marcarFaturaPaga` / `marcarFaturaAtrasada` disparam WhatsApp para superadmin e gestor da empresa
 
 ---
 
@@ -164,8 +174,17 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 ```env
 WHATSAPP_ACCESS_TOKEN=EAAOn1GEI8M4...   # Token Meta
 WHATSAPP_PHONE_NUMBER_ID=12345678       # ID do número no painel Meta
+ADMIN_WHATSAPP_PHONE=11987654321        # Celular do superadmin (só dígitos)
 CRON_SECRET=...                         # openssl rand -hex 32
 GEMINI_API_KEY=...                      # Para parecer de garantia (opcional)
+
+# Email — notificações ao superadmin (Zoho Mail)
+ADMIN_NOTIFICATION_EMAIL=vitorfigueiredo_94@hotmail.com
+EMAIL_FROM=PrumoCanteiro <notificacoes@prumocanteiro.com.br>
+EMAIL_HOST=smtp.zoho.com
+EMAIL_PORT=587
+EMAIL_USER=notificacoes@prumocanteiro.com.br
+EMAIL_PASS=zoho_app_password
 ```
 
 **Fluxo de cobrança:**
@@ -232,6 +251,9 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 17/06/2026 | v1.5 | **Segurança e LGPD** — RBAC, TenantGuard, ResponseMask, AuditLog, LLM PII strip |
 | 17/06/2026 | v1.6 | **Auditoria de segurança** — SSRF, Path Traversal, MIME, SESSION_SECRET, CSP/HSTS |
 | 17/06/2026 | v1.7 | **Auditoria estendida** — Rate limiting, brute force, timing attack, cookie __Host-, Next.js 15.3.9 |
+| 18/06/2026 | hotfix | **Build fix** — SESSION_SECRET lazy (IIFE → função, falha em request não em build) |
+| 18/06/2026 | v1.8 | **Import Excel** — terrenos (500 linhas), vendas (200), atualizar compradores por CPF; xlsx + ImportModal |
+| 18/06/2026 | v1.9 | **Notificações superadmin** — WhatsApp (novo cadastro, fatura paga/atrasada) + Email via Zoho SMTP |
 
 ---
 
@@ -251,6 +273,56 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 **Novo lib:** `src/lib/rate-limiter.ts` — Map em memória + TTL, limpeza automática a cada 60s, sem dependência externa.
 
 **Nota:** Upgrade Next.js 16.x adicionado ao backlog (major version, avaliação necessária antes de produção).
+
+---
+
+## Import Excel — v1.8
+
+### Arquivos novos
+
+| Arquivo | Função |
+|---|---|
+| `src/lib/excel-import.ts` | Geradores de template + parsers para terrenos, vendas e compradores |
+| `src/app/api/v1/import/terrenos/route.ts` | `GET` (template) + `POST` (import, máx 500 linhas) |
+| `src/app/api/v1/import/vendas/route.ts` | `GET` (template) + `POST` (import, máx 200 linhas) |
+| `src/app/api/v1/import/compradores/route.ts` | `GET` (template) + `POST` (atualiza campos do comprador por CPF) |
+| `src/components/import/ImportModal.tsx` | Modal reutilizável: download template → upload Excel → feedback por linha |
+
+### Comportamento
+
+- **Terrenos:** cria Terreno + dispara `criarChecklistParaTerreno()`; revalida `/terrenos`
+- **Vendas:** lookup do terreno por nome (`findFirst` tenant-isolado) → Prisma `$transaction` com Venda + `Parcela.createMany` + status terreno → "vendido"; revalida `/vendas`, `/terrenos`, `/compradores`
+- **Compradores:** match por CPF normalizado (`str.replace(/\D/g,"")`) em todas as vendas da empresa; `updateMany` só atualiza campos não-nulos do Excel
+- **Isolamento:** todas as rotas usam `session.empresaId` — nunca parâmetro do usuário
+- **Parseadores:** `num()` aceita formato brasileiro (1.234,56) e internacional; `parseDate()` aceita objetos Date (xlsx cellDates), strings DD/MM/AAAA, strings ISO
+
+---
+
+## Notificações ao Superadmin — v1.9
+
+### Arquivo: `src/lib/notificar-admin.ts`
+
+Funções exportadas:
+
+| Função | Canal | Trigger |
+|---|---|---|
+| `notificarAdmin(msg)` | WhatsApp → `ADMIN_WHATSAPP_PHONE` | Qualquer evento |
+| `notificarGestor(tel, msg)` | WhatsApp → `empresa.telefoneGestor` | Fatura paga/atrasada |
+| `emailAdmin(assunto, html, txt)` | Email SMTP → `ADMIN_NOTIFICATION_EMAIL` | Novo cadastro |
+
+Builders de mensagem: `msgNovoCadastro`, `msgFaturaPaga`, `msgFaturaAtrasada`, `msgAssinaturaPagaGestor`, `msgAssinaturaAtrasadaGestor`, `emailNovoCadastroHtml`, `emailNovoCadastroTexto`
+
+### Triggers
+
+| Evento | WhatsApp superadmin | Email superadmin | WhatsApp gestor |
+|---|---|---|---|
+| Novo cadastro (ação `registerAction`) | ✅ | ✅ | — |
+| Fatura marcada como paga | ✅ | — | ✅ |
+| Fatura marcada como atrasada | ✅ | — | ✅ |
+
+- Todas as chamadas são **fire-and-forget** (`void fn().catch(() => null)`) — nunca bloqueiam o `redirect()`
+- Email silencioso se `EMAIL_HOST`/`EMAIL_USER`/`EMAIL_PASS`/`ADMIN_NOTIFICATION_EMAIL` não estiverem configurados
+- WhatsApp silencioso se `ADMIN_WHATSAPP_PHONE` não estiver configurado
 
 ---
 
@@ -340,7 +412,6 @@ security_audit_logs: id, empresaId, userId, action, resourceType, resourceId,
 - [ ] **Exportar CSV** — NFs e pagamentos por obra
 - [ ] **Terrenos: mapa** — integração Leaflet/Mapbox
 - [ ] **Cronograma de obra** — Gantt simplificado por fase
-- [ ] **Cobrança: email** — canal adicional além de WhatsApp
 - [ ] **Assistência: agendamento** — chamado aceito → data de vistoria
 - [ ] **QR Code de insumos** — tela de gestão (modelo + API já existem)
 - [ ] **Portal do cliente** — tela de geração de tokens (modelo + API já existem)
