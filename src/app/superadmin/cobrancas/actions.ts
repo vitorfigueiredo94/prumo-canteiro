@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  notificarAdmin, notificarGestor,
+  msgFaturaPaga, msgFaturaAtrasada,
+  msgAssinaturaPagaGestor, msgAssinaturaAtrasadaGestor,
+} from "@/lib/notificar-admin";
 
 async function checkSuperAdmin() {
   const session = await getSession();
@@ -26,6 +31,17 @@ export async function marcarFaturaPaga(faturaId: string): Promise<{ error?: stri
         where: { empresaId: fatura.empresaId, status: "inadimplente" },
         data: { status: "ativo" },
       });
+    }
+
+    // Notificações — fire-and-forget
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: fatura.empresaId },
+      select: { nome: true, telefoneGestor: true },
+    });
+    if (empresa) {
+      const valor = Number(fatura.valor);
+      void notificarAdmin(msgFaturaPaga(empresa.nome, fatura.competencia, valor)).catch(() => null);
+      void notificarGestor(empresa.telefoneGestor, msgAssinaturaPagaGestor(empresa.nome, fatura.competencia)).catch(() => null);
     }
 
     revalidatePath("/superadmin/cobrancas");
@@ -70,13 +86,24 @@ export async function gerarFaturasMes(competencia: string): Promise<{ criadas: n
 export async function marcarFaturaAtrasada(faturaId: string): Promise<void> {
   await checkSuperAdmin();
   await prisma.fatura.update({ where: { id: faturaId }, data: { status: "atrasada" } });
-  // Marcar empresa como inadimplente
+
   const fatura = await prisma.fatura.findUnique({ where: { id: faturaId } });
   if (fatura) {
     await prisma.assinatura.updateMany({
       where: { empresaId: fatura.empresaId, status: "ativo" },
       data: { status: "inadimplente" },
     });
+
+    // Notificações — fire-and-forget
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: fatura.empresaId },
+      select: { nome: true, telefoneGestor: true },
+    });
+    if (empresa) {
+      const valor = Number(fatura.valor);
+      void notificarAdmin(msgFaturaAtrasada(empresa.nome, fatura.competencia, valor)).catch(() => null);
+      void notificarGestor(empresa.telefoneGestor, msgAssinaturaAtrasadaGestor(empresa.nome, fatura.competencia, valor)).catch(() => null);
+    }
   }
   revalidatePath("/superadmin/cobrancas");
 }
