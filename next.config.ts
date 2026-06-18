@@ -35,7 +35,7 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["pdf-parse", "better-sqlite3"],
+  serverExternalPackages: ["pdf-parse", "better-sqlite3", "nodemailer"],
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },
   async headers() {

@@ -5,7 +5,10 @@ import { hashPassword, setSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { checkRateLimit, rateLimitError } from "@/lib/rate-limiter";
-import { notificarAdmin, msgNovoCadastro } from "@/lib/notificar-admin";
+import {
+  notificarAdmin, msgNovoCadastro,
+  emailAdmin, emailNovoCadastroHtml, emailNovoCadastroTexto,
+} from "@/lib/notificar-admin";
 
 export type RegisterState = { error?: string; success?: boolean } | null;
 
@@ -79,6 +82,11 @@ export async function registerAction(
 
   // Fire-and-forget — nunca bloqueia o redirect
   void notificarAdmin(msgNovoCadastro(nome, novaEmpresa.nome, email)).catch(() => null);
+  void emailAdmin(
+    `[PrumoCanteiro] Novo cadastro: ${novaEmpresa.nome}`,
+    emailNovoCadastroHtml(nome, novaEmpresa.nome, email),
+    emailNovoCadastroTexto(nome, novaEmpresa.nome, email),
+  ).catch(() => null);
 
   redirect("/dashboard");
 }
