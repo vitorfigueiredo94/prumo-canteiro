@@ -100,8 +100,23 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
     <div>
       {/* Header */}
       <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Financeiro</h1>
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>Visão consolidada de receitas, despesas e orçamentos</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+          <div>
+            <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Financeiro</h1>
+            <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>Visão consolidada de receitas, despesas e orçamentos</p>
+          </div>
+          <button
+            onClick={() => {
+              const hoje = new Date();
+              const ini  = `${hoje.getFullYear()}-01-01`;
+              const fim  = hoje.toISOString().slice(0, 10);
+              window.open(`/api/relatorio/financeiro?de=${ini}&ate=${fim}`, "_blank");
+            }}
+            style={{ height: 36, padding: "0 14px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, marginTop: 4 }}
+          >
+            Relatório PDF
+          </button>
+        </div>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, marginTop: 18, marginBottom: -23, borderBottom: "1px solid var(--border-subtle)" }}>

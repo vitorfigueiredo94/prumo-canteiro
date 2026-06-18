@@ -16,6 +16,7 @@ import {
   Wrench,
   ExternalLink,
   QrCode,
+  Package,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { href: "/diario",        label: "Diário",        icon: BookOpen,        recurso: "diario" },
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
   { href: "/insumos",       label: "Insumos & QR",  icon: QrCode,          recurso: null },
+  { href: "/materiais",     label: "Materiais",     icon: Package,         recurso: null },
   { href: "/tokens",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
 ];
 

@@ -376,33 +376,63 @@ function CompradorTab({ venda: v }: { venda: Venda }) {
         )}
       </div>
 
-      {/* Histórico de parcelas vencidas */}
-      {vencidas.length > 0 && (
+      {/* Timeline completa de parcelas */}
+      {v.parcelas.length > 0 && (
         <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", fontSize: 12, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Histórico de pagamentos
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>Linha do tempo — parcelas</span>
+            <span style={{ fontSize: 12, color: "var(--fg-tertiary)" }}>{pagas.length} pagas · {emAtraso.length} em atraso · {futuras.length} futuras</span>
           </div>
-          {vencidas.map((p, i) => {
-            const noPrazo = p.status === "paga" && p.pagoEm && p.vencimento && new Date(p.pagoEm) <= new Date(p.vencimento);
-            const atrasado = p.status === "paga" && !noPrazo;
-            const emAberto = p.status !== "paga";
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 20px", borderBottom: i < vencidas.length - 1 ? "1px solid var(--border-subtle)" : "none", background: emAberto ? "rgba(220,38,38,0.03)" : "transparent" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: noPrazo ? "#dcfce7" : atrasado ? "#fef3c7" : "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {noPrazo ? <CheckCircle2 size={14} color="#16a34a" /> : atrasado ? <Clock size={14} color="#d97706" /> : <AlertTriangle size={14} color="#dc2626" />}
+          <div style={{ padding: "20px 20px 12px", maxHeight: 420, overflowY: "auto" as const }}>
+            {v.parcelas.map((p, i) => {
+              const isPaga    = p.status === "paga";
+              const isFutura  = p.vencimento && new Date(p.vencimento) > hoje && !isPaga;
+              const isAtrasada = p.vencimento && new Date(p.vencimento) <= hoje && !isPaga;
+              const noPrazo   = isPaga && p.pagoEm && p.vencimento && new Date(p.pagoEm) <= new Date(p.vencimento);
+              const comAtraso = isPaga && !noPrazo;
+
+              const nodeColor  = noPrazo ? "#16a34a" : comAtraso ? "#d97706" : isAtrasada ? "#dc2626" : "var(--fg-muted)";
+              const nodeBg     = noPrazo ? "#dcfce7" : comAtraso ? "#fef3c7" : isAtrasada ? "#fee2e2" : "var(--ink-100)";
+              const labelColor = noPrazo ? "#16a34a" : comAtraso ? "#d97706" : isAtrasada ? "#dc2626" : "var(--fg-tertiary)";
+              const label      = noPrazo ? "No prazo" : comAtraso ? "Com atraso" : isAtrasada ? "Em atraso" : "Futura";
+              const Icon       = noPrazo ? CheckCircle2 : comAtraso ? Clock : isAtrasada ? AlertTriangle : Clock;
+
+              const isLast = i === v.parcelas.length - 1;
+
+              return (
+                <div key={p.id} style={{ display: "flex", gap: 14, paddingBottom: isLast ? 0 : 4 }}>
+                  {/* Linha vertical + nó */}
+                  <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", flexShrink: 0, width: 28 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: nodeBg, border: `2px solid ${nodeColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon size={13} color={nodeColor} />
+                    </div>
+                    {!isLast && <div style={{ width: 2, flex: 1, minHeight: 20, background: "var(--border-subtle)", marginTop: 3 }} />}
+                  </div>
+
+                  {/* Conteúdo */}
+                  <div style={{ flex: 1, paddingBottom: isLast ? 0 : 18 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: isFutura ? "var(--fg-tertiary)" : "var(--fg-primary)" }}>
+                          Parcela {p.numero}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: labelColor, marginLeft: 8, padding: "1px 7px", borderRadius: 99, background: nodeBg }}>
+                          {label}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: isFutura ? "var(--fg-tertiary)" : "var(--fg-primary)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                        {fmtBRL(p.valor)}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--fg-muted)", marginTop: 3 }}>
+                      Venc. {fmtDate(p.vencimento)}
+                      {p.pagoEm && <span style={{ marginLeft: 8 }}>· Pago em {fmtDate(p.pagoEm)}</span>}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: "var(--fg-primary)" }}>Parcela {p.numero}</span>
-                  <span style={{ fontSize: 13, color: "var(--fg-muted)", marginLeft: 8 }}>Venc: {fmtDate(p.vencimento)}</span>
-                  {p.pagoEm && <span style={{ fontSize: 13, color: "var(--fg-muted)", marginLeft: 8 }}>· Pago: {fmtDate(p.pagoEm)}</span>}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-primary)" }}>{fmtBRL(p.valor)}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: noPrazo ? "#16a34a" : atrasado ? "#d97706" : "#dc2626", minWidth: 80, textAlign: "right" }}>
-                  {noPrazo ? "No prazo" : atrasado ? "Com atraso" : "Em aberto"}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 

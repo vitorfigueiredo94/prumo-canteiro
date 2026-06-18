@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { dispararCobranca } from "@/lib/cobranca-service";
+import { dispararCobranca, alertarGestorVencimento } from "@/lib/cobranca-service";
 import { timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";
@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
   const dia30 = new Date(hoje);  dia30.setDate(dia30.getDate() - 30);
   const dia5  = new Date(hoje);  dia5.setDate(dia5.getDate() + 5);
   const dia5f = new Date(dia5);  dia5f.setHours(23, 59, 59, 999);
+  const amanha = new Date(hoje); amanha.setDate(amanha.getDate() + 1);
+  const dia3  = new Date(hoje);  dia3.setDate(dia3.getDate() + 3);
+  const dia3f = new Date(dia3);  dia3f.setHours(23, 59, 59, 999);
 
   const select = {
     id: true, numero: true, valor: true, vencimento: true,
@@ -36,15 +39,15 @@ export async function GET(req: NextRequest) {
 
   // Busca logs existentes para deduplicação (um tipo por parcela — não reenviar)
   const logsExistentes = await prisma.cobrancaLog.findMany({
-    where: { tipo: { in: ["lembrete_amigavel", "aviso_atraso", "notificacao_extrajudicial"] }, status: "enviado" },
+    where: { tipo: { in: ["lembrete_amigavel", "aviso_atraso", "notificacao_extrajudicial", "alerta_gestor"] }, status: "enviado" },
     select: { parcelaId: true, tipo: true },
   });
 
   type Tipo = "lembrete_amigavel" | "aviso_atraso" | "notificacao_extrajudicial";
-  const jaEnviou = (parcelaId: string, tipo: Tipo) =>
+  const jaEnviou = (parcelaId: string, tipo: string) =>
     logsExistentes.some((l: { parcelaId: string; tipo: string }) => l.parcelaId === parcelaId && l.tipo === tipo);
 
-  const [lembretes, emAtraso, extrajudiciais] = await Promise.all([
+  const [lembretes, emAtraso, extrajudiciais, vencendo3dias] = await Promise.all([
     // T-5: vence em até 5 dias
     prisma.parcela.findMany({
       where: { status: "aberta", vencimento: { gte: hoje, lte: dia5f } },
@@ -58,6 +61,11 @@ export async function GET(req: NextRequest) {
     // 30+ dias em atraso
     prisma.parcela.findMany({
       where: { status: "aberta", vencimento: { lt: dia30 } },
+      select,
+    }),
+    // Alerta interno ao gestor: vence em 1–3 dias
+    prisma.parcela.findMany({
+      where: { status: "aberta", vencimento: { gte: amanha, lte: dia3f } },
       select,
     }),
   ]);
@@ -80,6 +88,15 @@ export async function GET(req: NextRequest) {
     )
   );
 
+  // Alertas internos ao gestor (fire-and-forget, deduplicados)
+  let alertasGestor = 0;
+  for (const p of vencendo3dias) {
+    if (!jaEnviou(p.id, "alerta_gestor")) {
+      void alertarGestorVencimento({ ...p, valor: Number(p.valor) });
+      alertasGestor++;
+    }
+  }
+
   const ok  = results.filter(r => r.status === "fulfilled" && (r.value as any).ok).length;
   const err = results.filter(r => r.status === "rejected" || !(r as any).value?.ok).length;
 
@@ -89,6 +106,7 @@ export async function GET(req: NextRequest) {
       lembretes: toSend.filter(t => t.tipo === "lembrete_amigavel").length,
       avisos:    toSend.filter(t => t.tipo === "aviso_atraso").length,
       extrajudiciais: toSend.filter(t => t.tipo === "notificacao_extrajudicial").length,
+      alertasGestor,
     },
   });
 }

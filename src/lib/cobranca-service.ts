@@ -121,7 +121,7 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
 
 async function logCobranca(
   parcela: ParcelaInfo,
-  tipo: TipoCobranca,
+  tipo: string,
   status: string,
   payload: unknown,
   resposta: string | null
@@ -136,4 +136,32 @@ async function logCobranca(
       resposta,
     },
   });
+}
+
+/** Envia alerta interno ao gestor quando uma parcela vence em breve (1–3 dias). */
+export async function alertarGestorVencimento(parcela: ParcelaInfo): Promise<void> {
+  const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!accessToken || !phoneNumberId) return;
+
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: parcela.venda.empresaId },
+    select: { telefoneGestor: true },
+  });
+  const telGestor = empresa?.telefoneGestor?.replace(/\D/g, "");
+  if (!telGestor) return;
+
+  const diasRestantes = parcela.vencimento
+    ? Math.max(1, Math.ceil((parcela.vencimento.getTime() - Date.now()) / 86_400_000))
+    : null;
+
+  const msg =
+    `⏰ *PrumoCanteiro — Vencimento próximo*\n\n` +
+    `Comprador: ${parcela.venda.nomeComprador}\n` +
+    `Parcela: Nº ${parcela.numero} · ${fmtBRL(parcela.valor)}\n` +
+    `Vencimento: em *${diasRestantes} ${diasRestantes === 1 ? "dia" : "dias"}*\n\n` +
+    `_Alerta interno — o comprador será notificado automaticamente._`;
+
+  const { ok, resposta } = await enviarWhatsApp(telGestor, msg, accessToken, phoneNumberId);
+  await logCobranca(parcela, "alerta_gestor", ok ? "enviado" : "erro", { to: telGestor }, resposta);
 }
