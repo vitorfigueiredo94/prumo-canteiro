@@ -44,7 +44,7 @@ async function enviarWhatsApp(
 ): Promise<{ ok: boolean; resposta: string }> {
   const payload = {
     messaging_product: "whatsapp",
-    to: `55${telefone}`,
+    to: telefone.startsWith("55") ? telefone : `55${telefone}`,
     type: "text",
     text: { body: mensagem },
   };
@@ -86,6 +86,10 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
   const { ok, resposta } = await enviarWhatsApp(telefone, mensagem, accessToken, phoneNumberId);
   await logCobranca(parcela, tipo, ok ? "enviado" : "erro", { to: telefone }, resposta);
 
+  if (!ok) {
+    console.error("[WA] Falha ao enviar para", telefone, "→", resposta);
+  }
+
   // Notifica o gestor da empresa (número cadastrado no perfil)
   try {
     const empresa = await prisma.empresa.findUnique({
@@ -112,7 +116,7 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
     // notificação do gestor é best-effort — não bloqueia a cobrança
   }
 
-  return { ok };
+  return { ok, reason: ok ? undefined : resposta };
 }
 
 async function logCobranca(
