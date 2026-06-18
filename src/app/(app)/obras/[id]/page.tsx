@@ -47,6 +47,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
     orcamento: Number(obra.orcamento),
     inicio: obra.inicio?.toISOString() ?? null,
     prazo: obra.prazo?.toISOString() ?? null,
+    cronogramaJson: obra.cronogramaJson ?? null,
     notas: obra.notas.map((n: typeof obra.notas[0]) => ({
       ...n,
       valor: Number(n.valor),

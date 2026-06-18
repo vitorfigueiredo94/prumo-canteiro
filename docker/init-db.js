@@ -84,6 +84,13 @@ if (!chamadosAssistInfo.find(c => c.name === 'dataVistoria')) {
   console.log('[prumo] Migração aplicada: chamados_assistencia.dataVistoria adicionado.');
 }
 
+// Migration: obras.cronogramaJson (cronograma por fase — v2.2)
+const obrasInfo = db.prepare("PRAGMA table_info('obras')").all();
+if (!obrasInfo.find(c => c.name === 'cronogramaJson')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "cronogramaJson" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.cronogramaJson adicionado.');
+}
+
 // Migration: usuarios.bloqueado (Super Admin — v0.9)
 const usuariosInfo = db.prepare("PRAGMA table_info('usuarios')").all();
 if (!usuariosInfo.find(c => c.name === 'bloqueado')) {

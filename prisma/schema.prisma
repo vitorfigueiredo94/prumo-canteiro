@@ -117,9 +117,10 @@ model Obra {
   orcamento    Decimal
   inicio       DateTime?
   prazo        DateTime?
-  progresso    Int                    @default(0)
-  responsavel  String?
-  alocacoes    AlocacaoFuncionario[]
+  progresso      Int                    @default(0)
+  responsavel    String?
+  cronogramaJson String?
+  alocacoes      AlocacaoFuncionario[]
   notas        NotaFiscal[]
   pagamentos   PagamentoFuncionario[]
   documentos   Documento[]

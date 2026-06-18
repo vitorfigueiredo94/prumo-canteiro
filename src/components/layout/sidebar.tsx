@@ -15,6 +15,7 @@ import {
   BookOpen,
   Wrench,
   ExternalLink,
+  QrCode,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { href: "/terrenos",      label: "Terrenos",      icon: MapPinned,       recurso: null },
   { href: "/diario",        label: "Diário",        icon: BookOpen,        recurso: "diario" },
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
+  { href: "/insumos",       label: "Insumos & QR",  icon: QrCode,          recurso: null },
   { href: "/portal",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
 ];
 

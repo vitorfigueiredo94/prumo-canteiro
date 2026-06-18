@@ -5,10 +5,11 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users,
   BookOpen, AlertTriangle, CheckSquare, FolderOpen, Package, Wrench, Truck,
-  HardHat, MoreHorizontal, Plus, Trash2, Pencil,
+  HardHat, MoreHorizontal, Plus, Trash2, Pencil, BarChart2,
 } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
+import { CronogramaTab } from "./cronograma-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
 import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
@@ -127,6 +128,7 @@ interface DiarioEntry {
 interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
+  cronogramaJson: string | null;
   terreno: (Terreno & { numero: string | null }) | null;
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
 }
@@ -359,12 +361,13 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   useEffect(() => { setDiarioEntries(obra.diario); }, [obra.diario]);
 
   const TABS = [
-    { k: "financeiro", l: "Financeiro", Icon: TrendingUp },
-    { k: "checklist", l: "Checklist", Icon: CheckSquare },
-    { k: "notas", l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
+    { k: "financeiro",  l: "Financeiro",  Icon: TrendingUp },
+    { k: "cronograma",  l: "Cronograma",  Icon: BarChart2 },
+    { k: "checklist",   l: "Checklist",   Icon: CheckSquare },
+    { k: "notas",  l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
     { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
     { k: "diario", l: diarioEntries.length > 0 ? `Diário (${diarioEntries.length})` : "Diário", Icon: BookOpen },
-    { k: "documentos", l: "Documentos", Icon: FolderOpen },
+    { k: "documentos",  l: "Documentos",  Icon: FolderOpen },
   ];
 
   const st = STATUS_OBRA[obra.status as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
@@ -728,6 +731,16 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
               </div>
             )}
           </div>
+        )}
+
+        {/* ── CRONOGRAMA ── */}
+        {tab === "cronograma" && (
+          <CronogramaTab
+            obraId={obra.id}
+            obraInicio={obra.inicio}
+            obraPrazo={obra.prazo}
+            cronogramaJsonInit={obra.cronogramaJson}
+          />
         )}
 
         {/* ── CHECKLIST ── */}
