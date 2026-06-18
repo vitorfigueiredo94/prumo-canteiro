@@ -1,6 +1,6 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.2
+> **Versão:** 2.3
 > **Atualizado em:** 18/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
 > **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal)
@@ -66,6 +66,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] CRUD terrenos (localização, área, valor, status)
 - [x] Tabs: Visão geral / Documentos / Checklist / Comprador
 - [x] **Aba Comprador:** ficha completa com score interno, métricas, histórico e análise do contrato
+- [x] **Mapa de terrenos** — toggle Lista/Mapa; Leaflet + OpenStreetMap; geocoding via Nominatim (server-side, cacheia `lat/lng` no DB); pins coloridos por status com popup; `GET /api/v1/terrenos/mapa`
 
 ### Obras (`/obras`)
 - [x] CRUD obras vinculadas a terrenos
@@ -251,6 +252,8 @@ ALTER TABLE "usuarios"  ADD COLUMN "cargo"             TEXT NOT NULL DEFAULT 'ad
 ALTER TABLE "diario_obras" ADD COLUMN "fotosJson"       TEXT;
 ALTER TABLE "chamados_assistencia" ADD COLUMN "dataVistoria" DATETIME;
 ALTER TABLE "obras" ADD COLUMN "cronogramaJson" TEXT;
+ALTER TABLE "terrenos" ADD COLUMN "lat" REAL;
+ALTER TABLE "terrenos" ADD COLUMN "lng" REAL;
 ```
 
 Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
@@ -286,6 +289,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | v2.0 | **Engajamento** — Relatório de obra HTML/print, Portal do cliente (tokens + pág pública), Checklist edição inline, badge alertas na sidebar |
 | 18/06/2026 | v2.1 | **Operações** — Multi-foto no diário (galeria + lightbox + `fotosJson`), Exportar CSV (notas + pagamentos), Agendamento de vistoria pós-obra |
 | 18/06/2026 | v2.2 | **Planejamento** — Cronograma Gantt por fase (`cronogramaJson` + linha do dia), UI de Insumos & QR Codes (gerar/imprimir/desativar) |
+| 18/06/2026 | v2.3 | **Mapa de terrenos** — Leaflet + OpenStreetMap, geocoding Nominatim server-side com cache `lat/lng` no DB, pins por status |
 
 ---
 
