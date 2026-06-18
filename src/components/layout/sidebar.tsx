@@ -14,6 +14,7 @@ import {
   MapPinned,
   BookOpen,
   Wrench,
+  ExternalLink,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { href: "/terrenos",      label: "Terrenos",      icon: MapPinned,       recurso: null },
   { href: "/diario",        label: "Diário",        icon: BookOpen,        recurso: "diario" },
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
+  { href: "/portal",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
 ];
 
 interface SidebarProps {

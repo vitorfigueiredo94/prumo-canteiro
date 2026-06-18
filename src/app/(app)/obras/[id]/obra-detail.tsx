@@ -404,6 +404,12 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
             <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{obra.nome}</h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
+            <button
+              onClick={() => window.open(`/api/relatorio/obra/${obra.id}`, "_blank")}
+              style={{ height: 40, padding: "0 18px", background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
+            >
+              📄 Relatório
+            </button>
             <button onClick={() => { setShowNotaForm(true); setTab("notas"); }} style={{ height: 40, padding: "0 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
               <Receipt size={15} /> + Nova nota
             </button>
