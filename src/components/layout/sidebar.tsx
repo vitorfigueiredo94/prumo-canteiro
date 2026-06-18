@@ -38,7 +38,7 @@ const NAV_ITEMS = [
   { href: "/diario",        label: "Diário",        icon: BookOpen,        recurso: "diario" },
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
   { href: "/insumos",       label: "Insumos & QR",  icon: QrCode,          recurso: null },
-  { href: "/portal",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
+  { href: "/tokens",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
 ];
 
 interface SidebarProps {
