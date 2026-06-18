@@ -61,6 +61,16 @@ export async function notificarGestor(
   await enviarWA(phone, mensagem).catch(() => null);
 }
 
+/** Envia WhatsApp para o comprador/cliente de uma obra (best-effort). */
+export async function notificarCliente(
+  telefoneCliente: string | null | undefined,
+  mensagem: string
+): Promise<void> {
+  const phone = telefoneCliente?.replace(/\D/g, "");
+  if (!phone) return;
+  await enviarWA(phone, mensagem).catch(() => null);
+}
+
 // ── Email (nodemailer) ───────────────────────────────────────────────────────
 
 async function criarTransporter() {
@@ -189,6 +199,20 @@ export function msgAssinaturaAtrasadaGestor(empresa: string, competencia: string
     `*R$ ${valor.toFixed(2).replace(".", ",")}* está em atraso.\n\n` +
     `O acesso ao sistema pode ser suspenso em breve. ` +
     `Entre em contato para regularizar.`
+  );
+}
+
+export function msgFaseObra(
+  nomeObra: string,
+  nomeCliente: string,
+  faseLabel: string,
+  nomeEmpresa: string
+): string {
+  return (
+    `🏗️ *Atualização da sua obra*\n\n` +
+    `Olá, ${nomeCliente}! A obra *${nomeObra}* avançou para a fase *${faseLabel}*.\n\n` +
+    `Qualquer dúvida, entre em contato conosco.\n\n` +
+    `_${nomeEmpresa}_`
   );
 }
 

@@ -84,3 +84,16 @@ export async function excluirEntrada(id: string): Promise<void> {
   await prisma.diarioObra.deleteMany({ where: { id, empresaId: session.empresaId } });
   revalidatePath("/diario");
 }
+
+export async function editarEntrada(id: string, conteudo: string): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const texto = conteudo.trim();
+  if (!texto) return { error: "Conteúdo não pode ser vazio." };
+  await prisma.diarioObra.updateMany({
+    where: { id, empresaId: session.empresaId },
+    data: { conteudo: texto },
+  });
+  revalidatePath("/diario");
+  return {};
+}

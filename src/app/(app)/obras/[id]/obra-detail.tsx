@@ -13,7 +13,7 @@ import { CronogramaTab } from "./cronograma-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
 import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
-import { criarEntrada, excluirEntrada } from "../../diario/actions";
+import { criarEntrada, excluirEntrada, editarEntrada } from "../../diario/actions";
 import { STATUS_OBRA, STATUS_NF, CATEGORIA_NF } from "@/lib/status";
 import { fmtBRL, fmtDate } from "@/lib/format";
 
@@ -356,6 +356,8 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   const [showDiarioForm, setShowDiarioForm] = useState(false);
   const [diarioEntries, setDiarioEntries] = useState(obra.diario);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [editingDiarioId, setEditingDiarioId] = useState<string | null>(null);
+  const [editDiarioContent, setEditDiarioContent] = useState("");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => { setDiarioEntries(obra.diario); }, [obra.diario]);
@@ -397,6 +399,16 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
     startTransition(async () => {
       await excluirEntrada(id);
       setDiarioEntries((prev) => prev.filter((e) => e.id !== id));
+    });
+  };
+
+  const handleEditarEntrada = (id: string, conteudo: string) => {
+    startTransition(async () => {
+      const r = await editarEntrada(id, conteudo);
+      if (!r.error) {
+        setDiarioEntries((prev) => prev.map((e) => e.id === id ? { ...e, conteudo } : e));
+        setEditingDiarioId(null);
+      }
     });
   };
 
@@ -705,26 +717,48 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
                         <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", lineHeight: 1 }}>{day}</div>
                         <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{mon}</div>
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: 14, color: "var(--fg-secondary)", lineHeight: 1.6 }}>{d.conteudo}</p>
-                        {(() => {
-                          const fotos: string[] = d.fotosJson ? JSON.parse(d.fotosJson) : d.fotoUrl ? [d.fotoUrl] : [];
-                          if (!fotos.length) return null;
-                          return (
-                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                              {fotos.map((url, idx) => (
-                                <button key={idx} onClick={() => setLightboxSrc(url)} style={{ padding: 0, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", overflow: "hidden", cursor: "zoom-in", background: "none", flexShrink: 0 }}>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={url} alt={`Foto ${idx + 1}`} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} />
-                                </button>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      <button onClick={() => handleExcluirEntrada(d.id)} disabled={isPending} style={{ width: 30, height: 30, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)", flexShrink: 0 }} title="Excluir registro">
-                        <Trash2 size={14} />
-                      </button>
+                      {editingDiarioId === d.id ? (
+                        <div style={{ flex: 1 }}>
+                          <textarea
+                            value={editDiarioContent}
+                            onChange={(e) => setEditDiarioContent(e.target.value)}
+                            rows={3}
+                            style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--border-focus)", borderRadius: "var(--radius-md)", fontSize: 14, fontFamily: "var(--font-sans)", resize: "vertical", outline: "none", color: "var(--fg-primary)", background: "var(--bg-surface)" }}
+                          />
+                          <div style={{ display: "flex", gap: 6, marginTop: 8, justifyContent: "flex-end" }}>
+                            <button onClick={() => setEditingDiarioId(null)} style={{ height: 32, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontSize: 13, fontFamily: "var(--font-sans)" }}>Cancelar</button>
+                            <button onClick={() => handleEditarEntrada(d.id, editDiarioContent)} disabled={isPending} style={{ height: 32, padding: "0 14px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.7 : 1 }}>Salvar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontSize: 14, color: "var(--fg-secondary)", lineHeight: 1.6 }}>{d.conteudo}</p>
+                          {(() => {
+                            const fotos: string[] = d.fotosJson ? JSON.parse(d.fotosJson) : d.fotoUrl ? [d.fotoUrl] : [];
+                            if (!fotos.length) return null;
+                            return (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                                {fotos.map((url, idx) => (
+                                  <button key={idx} onClick={() => setLightboxSrc(url)} style={{ padding: 0, border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", overflow: "hidden", cursor: "zoom-in", background: "none", flexShrink: 0 }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={url} alt={`Foto ${idx + 1}`} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} />
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      {editingDiarioId !== d.id && (
+                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                          <button onClick={() => { setEditingDiarioId(d.id); setEditDiarioContent(d.conteudo); }} disabled={isPending} style={{ width: 30, height: 30, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)" }} title="Editar registro">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => handleExcluirEntrada(d.id)} disabled={isPending} style={{ width: 30, height: 30, border: "none", background: "transparent", color: "var(--fg-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-md)" }} title="Excluir registro">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
