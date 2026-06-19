@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/cadastro", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/cadastro", "/forgot-password", "/api/cron"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
