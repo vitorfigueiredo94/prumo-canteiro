@@ -1,9 +1,9 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.7
+> **Versão:** 2.8
 > **Atualizado em:** 19/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal) · `8aef1d1` (materiais obra) · `499179e` (orçamento v2.7-A) · `26add5c` (boletim v2.7-B) · `7527855` (relatório v2 v2.7-C) · `e9e82c6` (alertas painel v2.7-D)
+> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal) · `8aef1d1` (materiais obra) · `499179e` (orçamento v2.7-A) · `26add5c` (boletim v2.7-B) · `7527855` (relatório v2 v2.7-C) · `e9e82c6` (alertas painel v2.7-D) · `548ed61` (inadimplência+projeção+KPIs v2.8)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
