@@ -14,7 +14,7 @@ export async function GET(
 
   const { id } = await params;
 
-  const [obra, empresa, checklists] = await Promise.all([
+  const [obra, empresa, checklists, materiais, orcamento] = await Promise.all([
     prisma.obra.findFirst({
       where: { id, empresaId: session.empresaId },
       include: {
@@ -24,7 +24,7 @@ export async function GET(
           include: { funcionario: { select: { nome: true } } },
           orderBy: { pagoEm: "desc" },
         },
-        diario: { orderBy: { data: "desc" }, take: 30 },
+        diario: { orderBy: { data: "desc" }, take: 40 },
       },
     }),
     prisma.empresa.findUnique({
@@ -32,6 +32,14 @@ export async function GET(
       select: { nome: true, logoEmpresa: true },
     }),
     getChecklistComProgresso("obra", id, session.empresaId),
+    prisma.materialObra.findMany({
+      where: { obraId: id, empresaId: session.empresaId },
+      orderBy: { criadoEm: "asc" },
+    }),
+    prisma.orcamentoItem.findMany({
+      where: { obraId: id, empresaId: session.empresaId },
+      orderBy: [{ categoria: "asc" }, { ordem: "asc" }],
+    }),
   ]);
 
   if (!obra || !empresa)
@@ -47,6 +55,7 @@ export async function GET(
       inicio: obra.inicio ? obra.inicio.toISOString() : null,
       prazo: obra.prazo ? obra.prazo.toISOString() : null,
       responsavel: obra.responsavel,
+      cronogramaJson: obra.cronogramaJson,
       terreno: obra.terreno
         ? {
             nome: obra.terreno.nome,
@@ -74,6 +83,25 @@ export async function GET(
       data: d.data ? d.data.toISOString() : null,
       conteudo: d.conteudo,
       autor: d.autor,
+      fotos: (() => {
+        const arr: string[] = d.fotosJson ? JSON.parse(d.fotosJson) : d.fotoUrl ? [d.fotoUrl] : [];
+        return arr.slice(0, 4);
+      })(),
+    })),
+    materiais: materiais.map((m) => ({
+      nome: m.nome,
+      quantidade: Number(m.quantidade),
+      unidade: m.unidade,
+      valorUnit: Number(m.valorUnit),
+      fornecedor: m.fornecedor,
+      data: m.data ? m.data.toISOString() : null,
+    })),
+    orcamento: orcamento.map((o) => ({
+      categoria: o.categoria,
+      descricao: o.descricao,
+      unidade: o.unidade,
+      quantidade: Number(o.quantidade),
+      valorUnit: Number(o.valorUnit),
     })),
   });
 
