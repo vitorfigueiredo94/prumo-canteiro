@@ -8,7 +8,11 @@ import { PlanoGate } from "@/components/layout/plano-gate";
 
 export const metadata: Metadata = { title: "Financeiro" };
 
-export default async function FinanceiroPage() {
+export default async function FinanceiroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ de?: string; ate?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -18,7 +22,10 @@ export default async function FinanceiroPage() {
     return <PlanoGate recurso="fluxo_caixa" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
   }
 
+  const { de, ate } = await searchParams;
   const today = new Date();
+  const deDate  = de  ? new Date(de  + "T00:00:00") : undefined;
+  const ateDate = ate ? new Date(ate + "T23:59:59") : undefined;
 
   const [obras, notas, pagamentos, parcelas, emRevisaoAgg, parcelasVencidas, parcelasFuturas] = await Promise.all([
     prisma.obra.findMany({
@@ -27,15 +34,15 @@ export default async function FinanceiroPage() {
       orderBy: { nome: "asc" },
     }),
     prisma.notaFiscal.findMany({
-      where: { empresaId: eid, status: "confirmada" },
+      where: { empresaId: eid, status: "confirmada", ...(deDate || ateDate ? { emitidaEm: { gte: deDate, lte: ateDate } } : {}) },
       select: { obraId: true, valor: true, emitidaEm: true, categoria: true, fornecedor: true },
     }),
     prisma.pagamentoFuncionario.findMany({
-      where: { empresaId: eid },
+      where: { empresaId: eid, ...(deDate || ateDate ? { pagoEm: { gte: deDate, lte: ateDate } } : {}) },
       select: { obraId: true, valor: true, pagoEm: true, descricao: true, funcionario: { select: { nome: true } } },
     }),
     prisma.parcela.findMany({
-      where: { venda: { empresaId: eid }, status: "paga" },
+      where: { venda: { empresaId: eid }, status: "paga", ...(deDate || ateDate ? { pagoEm: { gte: deDate, lte: ateDate } } : {}) },
       select: { valor: true, pagoEm: true },
     }),
     prisma.notaFiscal.aggregate({
@@ -64,6 +71,8 @@ export default async function FinanceiroPage() {
     pagamentos: pagamentos.map((p: typeof pagamentos[0]) => ({ ...p, valor: Number(p.valor), pagoEm: p.pagoEm?.toISOString() ?? null, funcNome: (p as any).funcionario?.nome ?? null })),
     parcelas: parcelas.map((p: typeof parcelas[0]) => ({ valor: Number(p.valor), pagoEm: p.pagoEm?.toISOString() ?? null })),
     totalEmRevisao: Number((emRevisaoAgg._sum as any).valor ?? 0),
+    de: de ?? null,
+    ate: ate ?? null,
     parcelasVencidas: parcelasVencidas.map((p) => ({
       id: p.id,
       valor: Number(p.valor),

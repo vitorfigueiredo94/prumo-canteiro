@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Building2, HardHat, Package, Wrench, Truck, MoreHorizontal, AlertCircle, TrendingUp } from "lucide-react";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
@@ -52,7 +53,7 @@ function Donut({ pct, size = 120 }: { pct: number; size?: number }) {
 }
 
 export function FinanceiroView({
-  obras, notas, pagamentos, parcelas, totalEmRevisao, parcelasVencidas, parcelasFuturas,
+  obras, notas, pagamentos, parcelas, totalEmRevisao, parcelasVencidas, parcelasFuturas, de, ate,
 }: {
   obras: Obra[];
   notas: NotaItem[];
@@ -61,7 +62,10 @@ export function FinanceiroView({
   totalEmRevisao: number;
   parcelasVencidas: ParcelaVencidaItem[];
   parcelasFuturas: ParcelaFuturaItem[];
+  de?: string | null;
+  ate?: string | null;
 }) {
+  const router = useRouter();
   const [tab, setTab] = useState<"obra" | "fluxo" | "inadimplencia" | "dre">("obra");
   const [obraFiltro, setObraFiltro] = useState<string>("todas");
 
@@ -185,17 +189,34 @@ export function FinanceiroView({
             <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Financeiro</h1>
             <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>Visão consolidada de receitas, despesas e orçamentos</p>
           </div>
-          <button
-            onClick={() => {
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {(() => {
               const hoje = new Date();
-              const ini  = `${hoje.getFullYear()}-01-01`;
-              const fim  = hoje.toISOString().slice(0, 10);
-              window.open(`/api/relatorio/financeiro?de=${ini}&ate=${fim}`, "_blank");
-            }}
-            style={{ height: 36, padding: "0 14px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0, marginTop: 4 }}
-          >
-            Relatório PDF
-          </button>
+              const anoAtual = hoje.getFullYear();
+              const periodos = [
+                { l: "Este mês",    de: `${anoAtual}-${String(hoje.getMonth()+1).padStart(2,"0")}-01`, ate: hoje.toISOString().slice(0,10) },
+                { l: "Este ano",    de: `${anoAtual}-01-01`, ate: hoje.toISOString().slice(0,10) },
+                { l: "Últimos 12m", de: new Date(hoje.getFullYear(), hoje.getMonth()-11, 1).toISOString().slice(0,10), ate: hoje.toISOString().slice(0,10) },
+                { l: "Total",       de: null, ate: null },
+              ];
+              const ativo = !de && !ate ? "Total" : periodos.find((p) => p.de === de && p.ate === ate)?.l ?? "Personalizado";
+              return periodos.map(({ l, de: d, ate: a }) => (
+                <button key={l} onClick={() => router.push(d && a ? `/financeiro?de=${d}&ate=${a}` : "/financeiro")} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-full)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", border: `1px solid ${ativo === l ? "var(--navy-600)" : "var(--border-default)"}`, background: ativo === l ? "var(--navy-700)" : "var(--bg-surface)", color: ativo === l ? "#fff" : "var(--fg-secondary)" }}>
+                  {l}
+                </button>
+              ));
+            })()}
+            <button
+              onClick={() => {
+                const d = de ?? new Date().getFullYear() + "-01-01";
+                const a = ate ?? new Date().toISOString().slice(0, 10);
+                window.open(`/api/relatorio/financeiro?de=${d}&ate=${a}`, "_blank");
+              }}
+              style={{ height: 30, padding: "0 12px", background: "var(--navy-700)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+            >
+              Relatório PDF
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -604,6 +625,40 @@ export function FinanceiroView({
                   ))}
                 </div>
               </div>
+
+              {/* Break-even */}
+              {(() => {
+                const avgCusto3m = months.slice(-3).reduce((s, m) => s + dreDespMes[m], 0) / 3;
+                const recMedParcela = parcelas.length > 0 ? totalPagas / parcelas.length : 0;
+                const beN = recMedParcela > 0 ? Math.ceil(avgCusto3m / recMedParcela) : 0;
+                const parcelasMes = parcelas.filter((p) => {
+                  const ym = getYM(p.pagoEm);
+                  return ym === months[months.length - 1];
+                }).length;
+                const margSeg = parcelasMes - beN;
+                return (
+                  <div style={cardStyle}>
+                    <div style={cardHead}>
+                      <h3 style={cardTitle}>Ponto de equilíbrio (break-even)</h3>
+                      <span style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>baseado nos últimos 3 meses</span>
+                    </div>
+                    <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 20 }}>
+                      {[
+                        { label: "Custo fixo médio/mês", value: fmtBRLshort(avgCusto3m), sub: "NFs + folha, últimos 3m", color: "var(--danger-500)" },
+                        { label: "Receita média/parcela", value: recMedParcela > 0 ? fmtBRLshort(recMedParcela) : "—", sub: `${parcelas.length} parcelas recebidas`, color: "var(--fg-primary)" },
+                        { label: "Break-even mensal", value: beN > 0 ? `${beN} parcelas` : "—", sub: "para cobrir os custos", color: beN > 0 && parcelasMes >= beN ? "var(--success-700)" : "var(--danger-500)" },
+                        { label: "Margem de segurança", value: margSeg >= 0 ? `+${margSeg} parcelas` : `${margSeg} parcelas`, sub: "parcelas acima do break-even no mês atual", color: margSeg >= 0 ? "var(--success-700)" : "var(--danger-500)" },
+                      ].map(({ label, value, sub, color }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 400, color, letterSpacing: "-0.01em" }}>{value}</div>
+                          <div style={{ fontSize: 12, color: "var(--fg-tertiary)", marginTop: 3 }}>{sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Monthly margin trend */}
               <div style={cardStyle}>

@@ -2,8 +2,9 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, MapPin, ChevronRight, Search, Upload } from "lucide-react";
+import { Plus, MapPin, ChevronRight, Search, Upload, Calculator } from "lucide-react";
 import { VendaForm } from "./venda-form";
+import { SimuladorModal } from "./simulador-modal";
 import { criarVenda } from "./actions";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
 import { ImportModal } from "@/components/import/ImportModal";
@@ -53,6 +54,7 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
   const [filtro, setFiltro] = useState("todas");
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showSimulador, setShowSimulador] = useState(false);
   const closeNew = useCallback(() => setShowNew(false), []);
 
   const computed = vendas.map((v) => ({ ...v, fin: computeVenda(v) }));
@@ -84,6 +86,9 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>{vendas.length} {vendas.length === 1 ? "contrato" : "contratos"}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowSimulador(true)} style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}>
+            <Calculator size={15} /> Simular
+          </button>
           <button onClick={() => setShowImport(true)} style={{ height: 40, padding: "0 14px", background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, color: "var(--fg-secondary)" }}>
             <Upload size={15} /> Importar
           </button>
@@ -206,6 +211,7 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
 
       {showNew && <VendaForm action={criarVenda} terrenos={terrenos} onClose={closeNew} />}
       {showImport && <ImportModal entity="vendas" onClose={() => setShowImport(false)} />}
+      {showSimulador && <SimuladorModal onClose={() => setShowSimulador(false)} />}
     </>
   );
 }
