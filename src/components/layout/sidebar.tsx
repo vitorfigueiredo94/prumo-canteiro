@@ -17,6 +17,7 @@ import {
   ExternalLink,
   QrCode,
   Package,
+  Bell,
   ChevronsLeft,
   ChevronsRight,
   LogOut,
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
   { href: "/insumos",       label: "Insumos & QR",  icon: QrCode,          recurso: null },
   { href: "/materiais",     label: "Materiais",     icon: Package,         recurso: null },
+  { href: "/alertas",       label: "Alertas",       icon: Bell,            recurso: null },
   { href: "/tokens",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
 ];
 
@@ -157,6 +159,11 @@ export function Sidebar({ empresaNome, plano, logoEmpresa }: SidebarProps) {
                 <>
                   <span style={{ flex: 1 }}>{label}</span>
                   {href === "/compradores" && (alertas.atrasadas + alertas.vencendoHoje) > 0 && (
+                    <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: alertas.atrasadas > 0 ? "#dc2626" : "#d97706", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {alertas.atrasadas + alertas.vencendoHoje}
+                    </span>
+                  )}
+                  {href === "/alertas" && (alertas.atrasadas + alertas.vencendoHoje) > 0 && (
                     <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: alertas.atrasadas > 0 ? "#dc2626" : "#d97706", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {alertas.atrasadas + alertas.vencendoHoje}
                     </span>
