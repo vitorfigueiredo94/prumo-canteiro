@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notificarAdmin } from "@/lib/notificar-admin";
 import { timingSafeEqual } from "crypto";
 
 export const runtime = "nodejs";
@@ -119,6 +120,15 @@ export async function GET(req: NextRequest) {
       data: { status: "trial_expirado" },
     });
 
+    // Notificar o superadmin: lead quente para converter
+    void notificarAdmin(
+      `🔴 *Trial expirado — ${a.empresa.nome}*\n\n` +
+      `O período de teste da empresa *${a.empresa.nome}* encerrou hoje.\n` +
+      (a.empresa.telefoneGestor ? `📞 Gestor: ${a.empresa.telefoneGestor}\n` : "") +
+      `\nAcesse /superadmin/clientes para ativar após o pagamento.`
+    );
+
+    // Notificar o gestor da empresa
     const tel = a.empresa.telefoneGestor;
     if (tel) {
       const msg = [

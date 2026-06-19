@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notificarGestor } from "@/lib/notificar-admin";
 
 async function checkSuperAdmin() {
   const session = await getSession();
@@ -65,6 +66,24 @@ export async function updatePlanoEmpresa(empresaId: string, planoId: string): Pr
 export async function updateStatusEmpresa(empresaId: string, status: string): Promise<void> {
   await checkSuperAdmin();
   await prisma.assinatura.update({ where: { empresaId }, data: { status } });
+
+  // Notificar o gestor da empresa quando o acesso é ativado
+  if (status === "ativo") {
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { nome: true, telefoneGestor: true },
+    });
+    if (empresa?.telefoneGestor) {
+      void notificarGestor(
+        empresa.telefoneGestor,
+        `✅ *Acesso ao PrumoCanteiro ativado!*\n\n` +
+        `Olá, ${empresa.nome}! Seu acesso foi liberado e você já pode entrar no sistema normalmente.\n\n` +
+        `Qualquer dúvida, é só chamar aqui.\n\n` +
+        `_PrumoCanteiro — Gestão de Obras_`
+      );
+    }
+  }
+
   revalidatePath("/superadmin/clientes");
   revalidatePath("/superadmin/visao-geral");
 }

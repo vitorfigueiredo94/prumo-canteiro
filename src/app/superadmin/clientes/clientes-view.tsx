@@ -7,8 +7,8 @@ import { fmtBRL } from "@/lib/format";
 interface Empresa { id: string; nome: string; criadoEm: string; planoId: string | null; planoNome: string; preco: number; status: string; proximaCobranca: string | null; usuarios: number; obras: number; }
 interface Plano { id: string; nome: string; preco: number; }
 
-const STATUS_LABEL: Record<string, string> = { ativo: "Ativo", trial: "Trial", inadimplente: "Inadimplente", cancelado: "Cancelado", sem_assinatura: "Sem plano" };
-const STATUS_COLOR: Record<string, string> = { ativo: "#22C55E", trial: "#3B82F6", inadimplente: "#EF4444", cancelado: "#64748B", sem_assinatura: "#64748B" };
+const STATUS_LABEL: Record<string, string> = { ativo: "Ativo", trial: "Trial", trial_expirado: "Trial expirado", inadimplente: "Inadimplente", cancelado: "Cancelado", sem_assinatura: "Sem plano" };
+const STATUS_COLOR: Record<string, string> = { ativo: "#22C55E", trial: "#3B82F6", trial_expirado: "#f97316", inadimplente: "#EF4444", cancelado: "#64748B", sem_assinatura: "#64748B" };
 
 const Th = ({ children }: { children: React.ReactNode }) => (
   <th style={{ padding: "10px 16px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase" as const, letterSpacing: "0.06em", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.08)", textAlign: "left" as const, whiteSpace: "nowrap" as const }}>{children}</th>
@@ -29,8 +29,9 @@ export function ClientesView({ empresas, planos }: { empresas: Empresa[]; planos
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const ativas = empresas.filter(e => e.status === "ativo").length;
-  const trial  = empresas.filter(e => e.status === "trial").length;
+  const ativas     = empresas.filter(e => e.status === "ativo").length;
+  const trial      = empresas.filter(e => e.status === "trial").length;
+  const expirados  = empresas.filter(e => e.status === "trial_expirado").length;
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,7 +55,9 @@ export function ClientesView({ empresas, planos }: { empresas: Empresa[]; planos
   }
 
   function handleStatus(empresaId: string, statusAtual: string) {
-    const novoStatus = statusAtual === "ativo" ? "inadimplente" : statusAtual === "inadimplente" ? "ativo" : statusAtual === "trial" ? "ativo" : "ativo";
+    const novoStatus = statusAtual === "ativo" ? "inadimplente"
+      : statusAtual === "inadimplente" ? "ativo"
+      : "ativo"; // trial, trial_expirado, cancelado → ativo
     const msg = `Alterar status para "${STATUS_LABEL[novoStatus]}"?`;
     if (!confirm(msg)) return;
     startTransition(() => updateStatusEmpresa(empresaId, novoStatus));
@@ -70,7 +73,10 @@ export function ClientesView({ empresas, planos }: { empresas: Empresa[]; planos
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
           <h1 style={{ margin: "0 0 4px", fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "#F1F5F9" }}>Clientes</h1>
-          <p style={{ margin: 0, fontSize: 14, color: "#64748B" }}>{empresas.length} empresas · {ativas} ativas · {trial} em teste</p>
+          <p style={{ margin: 0, fontSize: 14, color: "#64748B" }}>
+            {empresas.length} empresas · {ativas} ativas · {trial} em teste
+            {expirados > 0 && <span style={{ color: "#f97316", fontWeight: 600 }}> · {expirados} para converter 🔥</span>}
+          </p>
         </div>
         <Btn onClick={() => setShowModal(true)}>+ Novo Cliente</Btn>
       </div>
