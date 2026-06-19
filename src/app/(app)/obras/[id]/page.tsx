@@ -23,7 +23,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
           include: { funcionario: { select: { id: true, nome: true } } },
         },
         alocacoes: {
-          include: { funcionario: { select: { id: true, nome: true, cargo: true } } },
+          include: { funcionario: { select: { id: true, nome: true, cargo: true, telefone: true } } },
           orderBy: { inicio: "asc" },
         },
         pagamentos: {

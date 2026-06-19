@@ -30,11 +30,13 @@ export async function GET() {
 
   const terrenos = await prisma.terreno.findMany({
     where: { empresaId: session.empresaId },
-    select: { id: true, nome: true, endereco: true, cidade: true, area: true, status: true, lat: true, lng: true },
+    select: { id: true, nome: true, endereco: true, cidade: true, cep: true, area: true, status: true, lat: true, lng: true },
     orderBy: { criadoEm: "asc" },
   });
 
   const result = [];
+  let geocodingCount = 0;
+  const MAX_GEOCODE_PER_REQUEST = 3;
 
   for (const t of terrenos) {
     const area = Number(t.area);
@@ -45,13 +47,14 @@ export async function GET() {
       continue;
     }
 
-    if (!t.cidade) {
+    if (!t.cidade || geocodingCount >= MAX_GEOCODE_PER_REQUEST) {
       result.push({ ...base, lat: null, lng: null });
       continue;
     }
 
-    // Geocode via Nominatim and cache
-    const q = [t.endereco, t.cidade].filter(Boolean).join(", ");
+    // Geocode via Nominatim and cache (CEP first for accuracy, fallback to endereco+cidade)
+    const q = [(t as any).cep, t.endereco, t.cidade].filter(Boolean).join(", ");
+    geocodingCount++;
     const coords = await geocodeNominatim(q);
 
     if (coords) {

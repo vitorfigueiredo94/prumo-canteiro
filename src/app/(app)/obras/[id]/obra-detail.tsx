@@ -121,7 +121,7 @@ interface Pagamento {
 
 interface Alocacao {
   id: string; cargo: string | null; inicio: string | null; fim: string | null;
-  funcionario: { id: string; nome: string; cargo: string | null };
+  funcionario: { id: string; nome: string; cargo: string | null; telefone: string | null };
 }
 
 interface DiarioEntry {
@@ -363,6 +363,11 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
   const [editingDiarioId, setEditingDiarioId] = useState<string | null>(null);
   const [editDiarioContent, setEditDiarioContent] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [notificarAloc, setNotificarAloc] = useState<Alocacao | null>(null);
+  const [notifTarefa, setNotifTarefa] = useState("");
+  const [notifData, setNotifData] = useState("");
+  const [notifSending, setNotifSending] = useState(false);
+  const [notifResult, setNotifResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => { setDiarioEntries(obra.diario); }, [obra.diario]);
 
@@ -692,9 +697,20 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
                         <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{a.funcionario.nome}</div>
                         <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{a.cargo ?? a.funcionario.cargo ?? "—"}</div>
                       </div>
-                      <Link href={`/funcionarios/${a.funcionario.id}`} style={{ height: 32, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}>
-                        Pagar
-                      </Link>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {a.funcionario.telefone && (
+                          <button
+                            onClick={() => { setNotificarAloc(a); setNotifTarefa(""); setNotifData(""); setNotifResult(null); }}
+                            title="Notificar via WhatsApp"
+                            style={{ height: 32, padding: "0 10px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#25d366", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5 }}
+                          >
+                            📲 Notificar
+                          </button>
+                        )}
+                        <Link href={`/funcionarios/${a.funcionario.id}`} style={{ height: 32, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                          Pagar
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -856,6 +872,73 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
           initial={{ id: "", obraId: obra.id, categoria: "material", valor: 0, fornecedor: null, numero: null, descricao: null, emitidaEm: null, status: "pendente" }}
           onClose={() => setShowNotaForm(false)}
         />
+      )}
+
+      {/* Modal: Notificar funcionário via WhatsApp */}
+      {notificarAloc && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-default)", width: "100%", maxWidth: 480, padding: 24, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "var(--fg-primary)" }}>📲 Notificar via WhatsApp</p>
+            <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--fg-tertiary)" }}>Enviando para <strong>{notificarAloc.funcionario.nome}</strong> ({notificarAloc.funcionario.telefone})</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Data / hora</span>
+                <input
+                  type="datetime-local"
+                  value={notifData}
+                  onChange={(e) => setNotifData(e.target.value)}
+                  style={{ height: 40, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>O que fazer *</span>
+                <textarea
+                  rows={4}
+                  value={notifTarefa}
+                  onChange={(e) => setNotifTarefa(e.target.value)}
+                  placeholder="Ex.: Ajudar na concretagem do pilar P3, trazer ferramentas de escavação..."
+                  style={{ padding: "10px 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, resize: "vertical", outline: "none" }}
+                />
+              </div>
+
+              {notifResult && (
+                <div style={{ padding: "9px 12px", borderRadius: "var(--radius-md)", fontSize: 13, background: notifResult.ok ? "var(--success-50)" : "var(--danger-50)", color: notifResult.ok ? "var(--success-700)" : "var(--danger-500)", border: `1px solid ${notifResult.ok ? "rgba(22,163,74,0.25)" : "rgba(181,54,60,0.25)"}` }}>
+                  {notifResult.msg}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 18, marginTop: 4, borderTop: "1px solid var(--border-subtle)" }}>
+              <button onClick={() => setNotificarAloc(null)} style={{ height: 38, padding: "0 16px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14 }}>
+                Fechar
+              </button>
+              <button
+                disabled={!notifTarefa.trim() || notifSending}
+                onClick={async () => {
+                  setNotifSending(true);
+                  setNotifResult(null);
+                  try {
+                    const res = await fetch(`/api/v1/obras/${obra.id}/notificar-funcionario`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ funcionarioId: notificarAloc.funcionario.id, tarefa: notifTarefa, data: notifData || undefined }),
+                    });
+                    const json = await res.json();
+                    setNotifResult({ ok: json.ok ?? res.ok, msg: json.ok ? `✅ WhatsApp enviado para ${json.funcionario}!` : `❌ Falha ao enviar. Verifique o número cadastrado.` });
+                  } catch {
+                    setNotifResult({ ok: false, msg: "❌ Erro de conexão." });
+                  } finally {
+                    setNotifSending(false);
+                  }
+                }}
+                style={{ height: 38, padding: "0 20px", background: "#25d366", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: !notifTarefa.trim() || notifSending ? "not-allowed" : "pointer", opacity: !notifTarefa.trim() || notifSending ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: 7 }}
+              >
+                {notifSending ? "Enviando…" : "Enviar WhatsApp"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Lightbox */}
