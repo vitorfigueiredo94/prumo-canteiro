@@ -7,6 +7,7 @@ import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
 interface KPIs {
   obrasAtivas: number; obrasTotal: number; funcAtivos: number;
   orcamento: number; gastoTotal: number; receita: number; parcelasAtrasadas: number;
+  parcelasAtrasadasValor: number;
 }
 interface NotaPendente { id: string; fornecedor: string | null; valor: number; emitidaEm: string | null; obra: { id: string; nome: string }; }
 interface ParcelaVencendo { id: string; valor: number; vencimento: string | null; venda: { id: string; nomeComprador: string }; }
@@ -123,17 +124,19 @@ export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVence
 
       <div style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
         {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14 }}>
           {[
-            { label: "Obras em andamento", value: String(kpis.obrasAtivas), sub: `${kpis.obrasTotal} obras no total` },
-            { label: "Investido nas obras", value: fmtBRLshort(kpis.gastoTotal), sub: `de ${fmtBRLshort(kpis.orcamento)} orçados` },
-            { label: "Saldo de orçamento", value: fmtBRLshort(Math.abs(saldo)), sub: saldo >= 0 ? "previsto − realizado" : "em estouro", color: saldo < 0 ? "var(--danger-500)" : "var(--fg-primary)" },
-            { label: "Funcionários ativos", value: String(kpis.funcAtivos), sub: notasPendentes.length ? `${notasPendentes.length} nota(s) em revisão` : "Tudo conciliado" },
+            { label: "Obras em andamento", value: String(kpis.obrasAtivas), sub: `${kpis.obrasTotal} obras no total`, color: undefined },
+            { label: "Investido nas obras", value: fmtBRLshort(kpis.gastoTotal), sub: `de ${fmtBRLshort(kpis.orcamento)} orçados`, color: undefined },
+            { label: "Saldo de orçamento", value: fmtBRLshort(Math.abs(saldo)), sub: saldo >= 0 ? "previsto − realizado" : "em estouro", color: saldo < 0 ? "var(--danger-500)" : undefined },
+            { label: "Receita de vendas", value: fmtBRLshort(kpis.receita), sub: "parcelas pagas acumulado", color: "var(--success-700)" },
+            { label: "Funcionários ativos", value: String(kpis.funcAtivos), sub: notasPendentes.length ? `${notasPendentes.length} nota(s) em revisão` : "Tudo conciliado", color: undefined },
+            { label: "Em inadimplência", value: fmtBRLshort(kpis.parcelasAtrasadasValor), sub: `${kpis.parcelasAtrasadas} parcela${kpis.parcelasAtrasadas !== 1 ? "s" : ""} em atraso`, color: kpis.parcelasAtrasadas > 0 ? "var(--danger-500)" : "var(--fg-muted)" },
           ].map((k) => (
             <div key={k.label} style={cardStyle}>
-              <div style={{ padding: "18px 22px" }}>
+              <div style={{ padding: "16px 20px" }}>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>{k.label}</div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: k.color ?? "var(--fg-primary)", letterSpacing: "-0.02em" }}>{k.value}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 400, color: k.color ?? "var(--fg-primary)", letterSpacing: "-0.02em" }}>{k.value}</div>
                 <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)", marginTop: 3 }}>{k.sub}</div>
               </div>
             </div>

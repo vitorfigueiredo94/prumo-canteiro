@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, HardHat, Package, Wrench, Truck, MoreHorizontal } from "lucide-react";
+import { Building2, HardHat, Package, Wrench, Truck, MoreHorizontal, AlertCircle, TrendingUp } from "lucide-react";
 import { fmtBRL, fmtBRLshort, fmtDate } from "@/lib/format";
 
 interface Obra { id: string; nome: string; orcamento: number; status: string; }
 interface NotaItem { obraId: string; valor: number; emitidaEm: string | null; categoria: string; fornecedor: string | null; }
 interface PagItem { obraId: string | null; valor: number; pagoEm: string | null; descricao: string | null; funcNome: string | null; }
 interface ParcelaItem { valor: number; pagoEm: string | null; }
+interface ParcelaVencidaItem { id: string; valor: number; vencimento: string | null; numero: number; nomeComprador: string; }
+interface ParcelaFuturaItem { valor: number; vencimento: string | null; }
 
 const CAT_META: Record<string, { label: string; Icon: React.ElementType; color: string }> = {
   material:     { label: "Material",     Icon: Package,        color: "#1e3a5f" },
@@ -28,6 +30,10 @@ function monthLabel(ym: string) {
   const names = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return `${names[parseInt(m) - 1]}/${y.slice(2)}`;
 }
+function diasAtraso(vencimento: string | null): number {
+  if (!vencimento) return 0;
+  return Math.max(0, Math.floor((Date.now() - new Date(vencimento).getTime()) / 86_400_000));
+}
 
 function Donut({ pct, size = 120 }: { pct: number; size?: number }) {
   const r = (size - 20) / 2;
@@ -45,10 +51,18 @@ function Donut({ pct, size = 120 }: { pct: number; size?: number }) {
   );
 }
 
-export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevisao }: {
-  obras: Obra[]; notas: NotaItem[]; pagamentos: PagItem[]; parcelas: ParcelaItem[]; totalEmRevisao: number;
+export function FinanceiroView({
+  obras, notas, pagamentos, parcelas, totalEmRevisao, parcelasVencidas, parcelasFuturas,
+}: {
+  obras: Obra[];
+  notas: NotaItem[];
+  pagamentos: PagItem[];
+  parcelas: ParcelaItem[];
+  totalEmRevisao: number;
+  parcelasVencidas: ParcelaVencidaItem[];
+  parcelasFuturas: ParcelaFuturaItem[];
 }) {
-  const [tab, setTab] = useState<"obra" | "fluxo">("obra");
+  const [tab, setTab] = useState<"obra" | "fluxo" | "inadimplencia">("obra");
   const [obraFiltro, setObraFiltro] = useState<string>("todas");
 
   const totalOrcamento = obras.reduce((s, o) => s + o.orcamento, 0);
@@ -79,7 +93,7 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
     ...pagamentos.filter((p) => p.valor > 0).map((p) => ({ tipo: "pag" as const, data: p.pagoEm, valor: p.valor, obraId: p.obraId, label: p.funcNome ?? p.descricao ?? "Pagamento", cat: "mao_obra" })),
   ].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? "")).slice(0, 8);
 
-  // Monthly cashflow
+  // Monthly cashflow (past 12 months)
   const now = new Date();
   const months: string[] = [];
   for (let i = 11; i >= 0; i--) { const d = new Date(now); d.setMonth(d.getMonth() - i); months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`); }
@@ -92,9 +106,63 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
   filteredPags.forEach((p) => { const ym = getYM(p.pagoEm); if (ym && despesas[ym] !== undefined) despesas[ym] += p.valor; });
   const maxVal = Math.max(...months.map((m) => Math.max(receitas[m], despesas[m])), 1);
 
+  // Projeção futura: próximos 6 meses
+  const futureMonths: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now); d.setMonth(d.getMonth() + i);
+    futureMonths.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+  }
+  const entradasFuturas: Record<string, number> = {};
+  futureMonths.forEach((m) => { entradasFuturas[m] = 0; });
+  parcelasFuturas.forEach((p) => {
+    const ym = getYM(p.vencimento);
+    if (ym && entradasFuturas[ym] !== undefined) entradasFuturas[ym] += p.valor;
+  });
+  // Despesa estimada: média dos últimos 3 meses
+  const last3 = months.slice(-3);
+  const avgDespesa = last3.reduce((s, m) => s + despesas[m], 0) / 3;
+  const maxFutureVal = Math.max(...futureMonths.map((m) => Math.max(entradasFuturas[m], avgDespesa)), 1);
+
+  // Inadimplência
+  const totalPagas = parcelas.reduce((s, p) => s + p.valor, 0);
+  const totalVencido = parcelasVencidas.reduce((s, p) => s + p.valor, 0);
+  const taxaInadimplencia = (totalVencido + totalPagas) > 0
+    ? (totalVencido / (totalVencido + totalPagas)) * 100
+    : 0;
+
+  const buckets: Record<string, { count: number; valor: number; label: string; color: string }> = {
+    "1-15":  { count: 0, valor: 0, label: "1–15 dias",  color: "#d97706" },
+    "16-30": { count: 0, valor: 0, label: "16–30 dias", color: "#ea580c" },
+    "31-60": { count: 0, valor: 0, label: "31–60 dias", color: "#dc2626" },
+    "+60":   { count: 0, valor: 0, label: "+60 dias",   color: "#7f1d1d" },
+  };
+  for (const p of parcelasVencidas) {
+    const d = diasAtraso(p.vencimento);
+    const key = d <= 15 ? "1-15" : d <= 30 ? "16-30" : d <= 60 ? "31-60" : "+60";
+    buckets[key].count++;
+    buckets[key].valor += p.valor;
+  }
+
+  // Top devedores: aggregate by nomeComprador
+  const devedorMap: Record<string, { valor: number; parcelas: number }> = {};
+  for (const p of parcelasVencidas) {
+    if (!devedorMap[p.nomeComprador]) devedorMap[p.nomeComprador] = { valor: 0, parcelas: 0 };
+    devedorMap[p.nomeComprador].valor += p.valor;
+    devedorMap[p.nomeComprador].parcelas++;
+  }
+  const topDevedores = Object.entries(devedorMap)
+    .sort((a, b) => b[1].valor - a[1].valor)
+    .slice(0, 10);
+
   const cardStyle: React.CSSProperties = { background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xs)" };
   const cardHead: React.CSSProperties = { padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" };
   const cardTitle: React.CSSProperties = { margin: 0, fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 500, color: "var(--fg-primary)" };
+
+  const tabList: [string, string][] = [
+    ["obra", "Por obra"],
+    ["fluxo", "Fluxo de caixa"],
+    ["inadimplencia", "Inadimplência"],
+  ];
 
   return (
     <div>
@@ -120,18 +188,28 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 4, marginTop: 18, marginBottom: -23, borderBottom: "1px solid var(--border-subtle)" }}>
-          {([["obra", "Por obra"], ["fluxo", "Fluxo de caixa"]] as const).map(([k, l]) => {
+          {(tabList as [typeof tab, string][]).map(([k, l]) => {
             const on = tab === k;
-            return <button key={k} onClick={() => setTab(k)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "transparent", border: "none", borderBottom: `2px solid ${on ? "var(--navy-700)" : "transparent"}`, color: on ? "var(--fg-primary)" : "var(--fg-tertiary)", fontSize: 14.5, fontWeight: on ? 700 : 500, cursor: "pointer", fontFamily: "var(--font-sans)", marginBottom: -1 }}>{l}</button>;
+            const hasBadge = k === "inadimplencia" && parcelasVencidas.length > 0;
+            return (
+              <button key={k} onClick={() => setTab(k)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", background: "transparent", border: "none", borderBottom: `2px solid ${on ? "var(--navy-700)" : "transparent"}`, color: on ? "var(--fg-primary)" : "var(--fg-tertiary)", fontSize: 14.5, fontWeight: on ? 700 : 500, cursor: "pointer", fontFamily: "var(--font-sans)", marginBottom: -1 }}>
+                {l}
+                {hasBadge && (
+                  <span style={{ minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "#dc2626", color: "#fff", fontSize: 10.5, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    {parcelasVencidas.length}
+                  </span>
+                )}
+              </button>
+            );
           })}
         </div>
       </div>
 
       <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+
         {/* ── Tab: Por obra ── */}
         {tab === "obra" && (
           <>
-            {/* 4 KPI stat cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
               {[
                 { label: "Orçamento total", value: fmtBRLshort(totalOrcamento), sub: "todas as obras", tone: "" },
@@ -152,11 +230,8 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
               })}
             </div>
 
-            {/* Two-column: left (donut + por obra) | right (últimos lançamentos) */}
             <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 20, alignItems: "start" }}>
-              {/* Left */}
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {/* Donut */}
                 <div style={cardStyle}>
                   <div style={cardHead}><h3 style={cardTitle}>Investimento por categoria</h3></div>
                   <div style={{ padding: "20px 24px", display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
@@ -183,7 +258,6 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
                   </div>
                 </div>
 
-                {/* Orçamento por obra */}
                 <div style={cardStyle}>
                   <div style={cardHead}><h3 style={cardTitle}>Orçamento por obra</h3></div>
                   <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -208,7 +282,6 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
                 </div>
               </div>
 
-              {/* Right: últimos lançamentos */}
               <div style={cardStyle}>
                 <div style={cardHead}><h3 style={cardTitle}>Últimos lançamentos</h3></div>
                 <div style={{ padding: "4px 0" }}>
@@ -239,40 +312,238 @@ export function FinanceiroView({ obras, notas, pagamentos, parcelas, totalEmRevi
 
         {/* ── Tab: Fluxo de caixa ── */}
         {tab === "fluxo" && (
-          <div style={cardStyle}>
-            <div style={cardHead}>
-              <h3 style={cardTitle}>Fluxo de caixa — últimos 12 meses</h3>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setObraFiltro("todas")} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-full)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", border: `1px solid ${obraFiltro === "todas" ? "var(--navy-600)" : "var(--border-default)"}`, background: obraFiltro === "todas" ? "var(--navy-700)" : "var(--bg-surface)", color: obraFiltro === "todas" ? "#fff" : "var(--fg-secondary)" }}>Todas</button>
-                {obras.map((o) => (
-                  <button key={o.id} onClick={() => setObraFiltro(o.id)} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-full)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", border: `1px solid ${obraFiltro === o.id ? "var(--navy-600)" : "var(--border-default)"}`, background: obraFiltro === o.id ? "var(--navy-700)" : "var(--bg-surface)", color: obraFiltro === o.id ? "#fff" : "var(--fg-secondary)" }}>{o.nome}</button>
-                ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Histórico 12 meses */}
+            <div style={cardStyle}>
+              <div style={cardHead}>
+                <h3 style={cardTitle}>Fluxo de caixa — últimos 12 meses</h3>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => setObraFiltro("todas")} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-full)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", border: `1px solid ${obraFiltro === "todas" ? "var(--navy-600)" : "var(--border-default)"}`, background: obraFiltro === "todas" ? "var(--navy-700)" : "var(--bg-surface)", color: obraFiltro === "todas" ? "#fff" : "var(--fg-secondary)" }}>Todas</button>
+                  {obras.map((o) => (
+                    <button key={o.id} onClick={() => setObraFiltro(o.id)} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-full)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", border: `1px solid ${obraFiltro === o.id ? "var(--navy-600)" : "var(--border-default)"}`, background: obraFiltro === o.id ? "var(--navy-700)" : "var(--bg-surface)", color: obraFiltro === o.id ? "#fff" : "var(--fg-secondary)" }}>{o.nome}</button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div style={{ padding: "22px 28px" }}>
-              <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
-                {[{ color: "var(--success-500)", label: "Receitas (vendas)" }, { color: "var(--danger-400)", label: "Despesas (NFs + Pgtos)" }].map((l) => (
-                  <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-tertiary)" }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 2, background: l.color, display: "inline-block" }} />{l.label}
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 180, overflowX: "auto" }}>
-                {months.map((ym) => {
-                  const r = receitas[ym]; const d = despesas[ym];
-                  const rH = Math.round((r / maxVal) * 160); const dH = Math.round((d / maxVal) * 160);
-                  return (
-                    <div key={ym} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0, minWidth: 48 }}>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 160 }}>
-                        <div title={`Receita: ${fmtBRL(r)}`} style={{ width: 18, height: rH || 2, background: "var(--success-500)", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
-                        <div title={`Despesa: ${fmtBRL(d)}`} style={{ width: 18, height: dH || 2, background: "var(--danger-400)", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
-                      </div>
-                      <span style={{ fontSize: 11, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{monthLabel(ym)}</span>
+              <div style={{ padding: "22px 28px" }}>
+                <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+                  {[{ color: "var(--success-500)", label: "Receitas (vendas)" }, { color: "var(--danger-400)", label: "Despesas (NFs + Pgtos)" }].map((l) => (
+                    <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-tertiary)" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: l.color, display: "inline-block" }} />{l.label}
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 180, overflowX: "auto" }}>
+                  {months.map((ym) => {
+                    const r = receitas[ym]; const d = despesas[ym];
+                    const rH = Math.round((r / maxVal) * 160); const dH = Math.round((d / maxVal) * 160);
+                    return (
+                      <div key={ym} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0, minWidth: 48 }}>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 160 }}>
+                          <div title={`Receita: ${fmtBRL(r)}`} style={{ width: 18, height: rH || 2, background: "var(--success-500)", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
+                          <div title={`Despesa: ${fmtBRL(d)}`} style={{ width: 18, height: dH || 2, background: "var(--danger-400)", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{monthLabel(ym)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+
+            {/* Projeção 6 meses */}
+            <div style={cardStyle}>
+              <div style={cardHead}>
+                <h3 style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}>
+                  <TrendingUp size={18} style={{ color: "var(--success-600)" }} />
+                  Projeção — próximos 6 meses
+                </h3>
+                <span style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>baseado em parcelas em aberto</span>
+              </div>
+              <div style={{ padding: "22px 28px" }}>
+                <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+                  {[
+                    { color: "#16a34a", label: "Entradas previstas (parcelas)" },
+                    { color: "#9ca3af", label: `Despesa estimada (média ${fmtBRLshort(avgDespesa)}/mês)` },
+                  ].map((l) => (
+                    <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-tertiary)" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: l.color, display: "inline-block" }} />{l.label}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 180, marginBottom: 24 }}>
+                  {futureMonths.map((ym) => {
+                    const r = entradasFuturas[ym];
+                    const d = avgDespesa;
+                    const rH = Math.round((r / maxFutureVal) * 160);
+                    const dH = Math.round((d / maxFutureVal) * 160);
+                    const positivo = r >= d;
+                    return (
+                      <div key={ym} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0, minWidth: 64 }}>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 160 }}>
+                          <div title={`Entradas: ${fmtBRL(r)}`} style={{ width: 22, height: rH || 2, background: positivo ? "#16a34a" : "#dc2626", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
+                          <div title={`Despesa est.: ${fmtBRL(d)}`} style={{ width: 22, height: dH || 2, background: "#9ca3af", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{monthLabel(ym)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Tabela resumo */}
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--border-subtle)" }}>
+                      {["Mês", "Entradas previstas", "Despesa est.", "Resultado"].map((h) => (
+                        <th key={h} style={{ textAlign: "left", padding: "8px 0", fontWeight: 600, color: "var(--fg-tertiary)", fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {futureMonths.map((ym) => {
+                      const entrada = entradasFuturas[ym];
+                      const desp = avgDespesa;
+                      const resultado = entrada - desp;
+                      return (
+                        <tr key={ym} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "10px 0", fontWeight: 600, color: "var(--fg-primary)" }}>{monthLabel(ym)}</td>
+                          <td style={{ padding: "10px 0", fontVariantNumeric: "tabular-nums", color: "#16a34a", fontWeight: 600 }}>{fmtBRLshort(entrada)}</td>
+                          <td style={{ padding: "10px 0", fontVariantNumeric: "tabular-nums", color: "var(--fg-tertiary)" }}>{fmtBRLshort(desp)}</td>
+                          <td style={{ padding: "10px 0", fontVariantNumeric: "tabular-nums", fontWeight: 700, color: resultado >= 0 ? "var(--success-700)" : "var(--danger-500)" }}>
+                            {resultado >= 0 ? "+" : ""}{fmtBRLshort(resultado)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {parcelasFuturas.length === 0 && (
+                  <p style={{ textAlign: "center", color: "var(--fg-tertiary)", fontSize: 13, marginTop: 16 }}>
+                    Nenhuma parcela em aberto cadastrada para projeção.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Inadimplência ── */}
+        {tab === "inadimplencia" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* KPI cards por faixa */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+              {/* Total */}
+              <div style={{ ...cardStyle, borderLeft: `4px solid ${taxaInadimplencia > 10 ? "#dc2626" : "#d97706"}` }}>
+                <div style={{ padding: "16px 20px" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginBottom: 6 }}>Total em atraso</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: "#dc2626", letterSpacing: "-0.02em" }}>{fmtBRLshort(totalVencido)}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)", marginTop: 3 }}>{parcelasVencidas.length} parcela{parcelasVencidas.length !== 1 ? "s" : ""} · taxa {taxaInadimplencia.toFixed(1)}%</div>
+                </div>
+              </div>
+              {/* Faixas */}
+              {Object.entries(buckets).map(([key, b]) => (
+                <div key={key} style={{ ...cardStyle, borderLeft: `4px solid ${b.color}` }}>
+                  <div style={{ padding: "16px 20px" }}>
+                    <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginBottom: 6 }}>{b.label}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 400, color: b.count > 0 ? b.color : "var(--fg-muted)", letterSpacing: "-0.02em" }}>{fmtBRLshort(b.valor)}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)", marginTop: 3 }}>{b.count} parcela{b.count !== 1 ? "s" : ""}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Barra visual de composição */}
+            {totalVencido > 0 && (
+              <div style={cardStyle}>
+                <div style={cardHead}><h3 style={cardTitle}>Composição da inadimplência</h3></div>
+                <div style={{ padding: "20px 24px" }}>
+                  <div style={{ display: "flex", height: 20, borderRadius: "var(--radius-full)", overflow: "hidden", marginBottom: 12 }}>
+                    {Object.entries(buckets).filter(([, b]) => b.valor > 0).map(([key, b]) => (
+                      <div key={key} title={`${b.label}: ${fmtBRL(b.valor)}`} style={{ width: `${(b.valor / totalVencido) * 100}%`, background: b.color, transition: "width 600ms" }} />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    {Object.entries(buckets).filter(([, b]) => b.valor > 0).map(([key, b]) => (
+                      <div key={key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-tertiary)" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: b.color, display: "inline-block", flexShrink: 0 }} />
+                        {b.label} — {((b.valor / totalVencido) * 100).toFixed(0)}%
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ranking de devedores */}
+            <div style={cardStyle}>
+              <div style={cardHead}>
+                <h3 style={{ ...cardTitle, display: "flex", alignItems: "center", gap: 8 }}>
+                  <AlertCircle size={17} style={{ color: "#dc2626" }} />
+                  Ranking de devedores
+                </h3>
+                <span style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>ordenado por valor em aberto</span>
+              </div>
+              {topDevedores.length === 0 ? (
+                <p style={{ padding: "28px 20px", textAlign: "center", color: "var(--success-700)", fontSize: 14, margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  Nenhuma parcela em atraso. Carteira saudável!
+                </p>
+              ) : (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 24px", padding: "8px 20px", borderBottom: "1px solid var(--border-subtle)", fontSize: 11.5, fontWeight: 600, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    <span>Comprador</span>
+                    <span style={{ textAlign: "right" }}>Parcelas</span>
+                    <span style={{ textAlign: "right" }}>Valor total</span>
+                  </div>
+                  {topDevedores.map(([nome, data], i) => (
+                    <div key={nome} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: "0 24px", padding: "13px 20px", borderBottom: i < topDevedores.length - 1 ? "1px solid var(--border-subtle)" : "none", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: "50%", background: i === 0 ? "#7f1d1d" : i < 3 ? "#dc2626" : "#d97706", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--fg-primary)" }}>{nome}</span>
+                      </div>
+                      <span style={{ fontSize: 13, color: "var(--fg-tertiary)", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{data.parcelas}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "#dc2626", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>{fmtBRL(data.valor)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tabela detalhada */}
+            {parcelasVencidas.length > 0 && (
+              <div style={cardStyle}>
+                <div style={cardHead}><h3 style={cardTitle}>Parcelas em atraso — detalhe</h3></div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid var(--border-subtle)" }}>
+                        {["Comprador", "Parcela nº", "Vencimento", "Dias em atraso", "Valor"].map((h) => (
+                          <th key={h} style={{ textAlign: "left", padding: "10px 20px", fontWeight: 600, color: "var(--fg-tertiary)", fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parcelasVencidas.map((p) => {
+                        const dias = diasAtraso(p.vencimento);
+                        const badgeColor = dias <= 15 ? "#d97706" : dias <= 30 ? "#ea580c" : dias <= 60 ? "#dc2626" : "#7f1d1d";
+                        return (
+                          <tr key={p.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                            <td style={{ padding: "10px 20px", fontWeight: 600, color: "var(--fg-primary)" }}>{p.nomeComprador}</td>
+                            <td style={{ padding: "10px 20px", color: "var(--fg-secondary)" }}>#{p.numero}</td>
+                            <td style={{ padding: "10px 20px", color: "var(--fg-tertiary)", whiteSpace: "nowrap" }}>{fmtDate(p.vencimento)}</td>
+                            <td style={{ padding: "10px 20px" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: "var(--radius-full)", background: `${badgeColor}20`, color: badgeColor, fontSize: 12, fontWeight: 700 }}>
+                                {dias}d
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 20px", fontWeight: 700, color: "#dc2626", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(p.valor)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

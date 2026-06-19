@@ -21,6 +21,7 @@ export default async function DashboardPage() {
     gastoNotasAggregate,
     gastoPagsAggregate,
     receitaAggregate,
+    valorAtrasadoAggregate,
     notasPendentes,
     parcelasVencendo,
     parcelasAtrasadas,
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
     prisma.notaFiscal.aggregate({ where: { empresaId: eid, status: "confirmada" }, _sum: { valor: true } }),
     prisma.pagamentoFuncionario.aggregate({ where: { empresaId: eid }, _sum: { valor: true } }),
     prisma.parcela.aggregate({ where: { venda: { empresaId: eid }, status: "paga" }, _sum: { valor: true } }),
+    prisma.parcela.aggregate({ where: { venda: { empresaId: eid }, status: "aberta", vencimento: { lt: today } }, _sum: { valor: true } }),
     prisma.notaFiscal.findMany({
       where: { empresaId: eid, status: "pendente" },
       include: { obra: { select: { id: true, nome: true } } },
@@ -69,6 +71,7 @@ export default async function DashboardPage() {
   const orcamento = Number(orcamentoAggregate._sum.orcamento ?? 0);
   const gastoTotal = Number(gastoNotasAggregate._sum.valor ?? 0) + Number(gastoPagsAggregate._sum.valor ?? 0);
   const receita = Number(receitaAggregate._sum.valor ?? 0);
+  const parcelasAtrasadasValor = Number((valorAtrasadoAggregate._sum as any).valor ?? 0);
 
   const obrasFinanceiro = obrasRaw.map((o: typeof obrasRaw[0]) => {
     const gasto = o.notas.reduce((s: number, n: any) => s + Number(n.valor), 0)
@@ -88,7 +91,7 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       nomeUsuario={session.nome}
-      kpis={{ obrasAtivas, obrasTotal, funcAtivos, orcamento, gastoTotal, receita, parcelasAtrasadas }}
+      kpis={{ obrasAtivas, obrasTotal, funcAtivos, orcamento, gastoTotal, receita, parcelasAtrasadas, parcelasAtrasadasValor }}
       notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
       parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}
       obrasComEstouro={obrasComEstouro}

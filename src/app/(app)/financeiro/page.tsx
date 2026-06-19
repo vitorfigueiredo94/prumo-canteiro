@@ -18,7 +18,9 @@ export default async function FinanceiroPage() {
     return <PlanoGate recurso="fluxo_caixa" planoNecessario="Profissional" planoAtual={plano.planoNome} />;
   }
 
-  const [obras, notas, pagamentos, parcelas, emRevisaoAgg] = await Promise.all([
+  const today = new Date();
+
+  const [obras, notas, pagamentos, parcelas, emRevisaoAgg, parcelasVencidas, parcelasFuturas] = await Promise.all([
     prisma.obra.findMany({
       where: { empresaId: eid },
       select: { id: true, nome: true, orcamento: true, status: true },
@@ -40,6 +42,20 @@ export default async function FinanceiroPage() {
       where: { empresaId: eid, status: "em_revisao" },
       _sum: { valor: true },
     }),
+    // Inadimplência: parcelas vencidas e não pagas
+    prisma.parcela.findMany({
+      where: { venda: { empresaId: eid }, status: "aberta", vencimento: { lt: today } },
+      select: { id: true, valor: true, vencimento: true, numero: true, venda: { select: { nomeComprador: true } } },
+      orderBy: { vencimento: "asc" },
+      take: 200,
+    }),
+    // Projeção: parcelas abertas com vencimento futuro
+    prisma.parcela.findMany({
+      where: { venda: { empresaId: eid }, status: "aberta", vencimento: { gte: today } },
+      select: { valor: true, vencimento: true },
+      orderBy: { vencimento: "asc" },
+      take: 500,
+    }),
   ]);
 
   const serialized = {
@@ -48,6 +64,17 @@ export default async function FinanceiroPage() {
     pagamentos: pagamentos.map((p: typeof pagamentos[0]) => ({ ...p, valor: Number(p.valor), pagoEm: p.pagoEm?.toISOString() ?? null, funcNome: (p as any).funcionario?.nome ?? null })),
     parcelas: parcelas.map((p: typeof parcelas[0]) => ({ valor: Number(p.valor), pagoEm: p.pagoEm?.toISOString() ?? null })),
     totalEmRevisao: Number((emRevisaoAgg._sum as any).valor ?? 0),
+    parcelasVencidas: parcelasVencidas.map((p) => ({
+      id: p.id,
+      valor: Number(p.valor),
+      vencimento: p.vencimento?.toISOString() ?? null,
+      numero: p.numero,
+      nomeComprador: (p as any).venda?.nomeComprador ?? "—",
+    })),
+    parcelasFuturas: parcelasFuturas.map((p) => ({
+      valor: Number(p.valor),
+      vencimento: p.vencimento?.toISOString() ?? null,
+    })),
   };
 
   return <FinanceiroView {...serialized} />;
