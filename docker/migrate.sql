@@ -203,3 +203,41 @@ CREATE TABLE IF NOT EXISTS "orcamento_itens" (
 );
 CREATE INDEX IF NOT EXISTS "orcamento_itens_obraId_idx"    ON "orcamento_itens"("obraId");
 CREATE INDEX IF NOT EXISTS "orcamento_itens_empresaId_idx" ON "orcamento_itens"("empresaId");
+
+-- Migration: Boletim de Medição (v2.7-B)
+CREATE TABLE IF NOT EXISTS "bol_servicos" (
+  "id"             TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"      TEXT     NOT NULL,
+  "obraId"         TEXT     NOT NULL,
+  "descricao"      TEXT     NOT NULL,
+  "unidade"        TEXT     NOT NULL DEFAULT 'un',
+  "qtdeContratada" DECIMAL  NOT NULL,
+  "valorUnit"      DECIMAL  NOT NULL DEFAULT 0,
+  "ordem"          INTEGER  NOT NULL DEFAULT 0,
+  "criadoEm"      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm"  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "bol_servicos_obraId_idx"    ON "bol_servicos"("obraId");
+CREATE INDEX IF NOT EXISTS "bol_servicos_empresaId_idx" ON "bol_servicos"("empresaId");
+
+CREATE TABLE IF NOT EXISTS "medicoes" (
+  "id"        TEXT     NOT NULL PRIMARY KEY,
+  "empresaId" TEXT     NOT NULL,
+  "obraId"    TEXT     NOT NULL,
+  "numero"    INTEGER  NOT NULL,
+  "data"      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "obs"       TEXT,
+  "criadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "medicoes_obraId_idx"    ON "medicoes"("obraId");
+CREATE INDEX IF NOT EXISTS "medicoes_empresaId_idx" ON "medicoes"("empresaId");
+
+CREATE TABLE IF NOT EXISTS "medicao_linhas" (
+  "id"         TEXT     NOT NULL PRIMARY KEY,
+  "medicaoId"  TEXT     NOT NULL,
+  "servicoId"  TEXT     NOT NULL,
+  "qtdeMedida" DECIMAL  NOT NULL,
+  "criadoEm"  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "medicao_linhas_medicaoId_idx" ON "medicao_linhas"("medicaoId");
+CREATE INDEX IF NOT EXISTS "medicao_linhas_servicoId_idx" ON "medicao_linhas"("servicoId");

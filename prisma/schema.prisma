@@ -345,6 +345,49 @@ model MaterialObra {
   @@map("materiais_obra")
 }
 
+model BolServico {
+  id             String   @id @default(cuid())
+  empresaId      String
+  obraId         String
+  descricao      String
+  unidade        String   @default("un")
+  qtdeContratada Decimal
+  valorUnit      Decimal  @default(0)
+  ordem          Int      @default(0)
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  @@index([obraId])
+  @@index([empresaId])
+  @@map("bol_servicos")
+}
+
+model Medicao {
+  id        String   @id @default(cuid())
+  empresaId String
+  obraId    String
+  numero    Int
+  data      DateTime @default(now())
+  obs       String?
+  criadoEm DateTime @default(now())
+
+  @@index([obraId])
+  @@index([empresaId])
+  @@map("medicoes")
+}
+
+model MedicaoLinha {
+  id         String   @id @default(cuid())
+  medicaoId  String
+  servicoId  String
+  qtdeMedida Decimal
+  criadoEm  DateTime @default(now())
+
+  @@index([medicaoId])
+  @@index([servicoId])
+  @@map("medicao_linhas")
+}
+
 model OrcamentoItem {
   id           String   @id @default(cuid())
   empresaId    String

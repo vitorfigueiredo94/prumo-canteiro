@@ -5,13 +5,14 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users,
   BookOpen, AlertTriangle, CheckSquare, FolderOpen, Package, Wrench, Truck,
-  HardHat, MoreHorizontal, Plus, Trash2, Pencil, BarChart2, ClipboardList,
+  HardHat, MoreHorizontal, Plus, Trash2, Pencil, BarChart2, ClipboardList, ClipboardCheck,
 } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { CronogramaTab } from "./cronograma-tab";
 import { MateriaisTab } from "./materiais-tab";
 import { OrcamentoTab } from "./orcamento-tab";
+import { BoletimTab } from "./boletim-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
 import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
@@ -367,6 +368,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
   const TABS = [
     { k: "financeiro",  l: "Financeiro",  Icon: TrendingUp },
     { k: "orcamento",   l: "Orçamento",   Icon: ClipboardList },
+    { k: "boletim",     l: "Boletim",     Icon: ClipboardCheck },
     { k: "cronograma",  l: "Cronograma",  Icon: BarChart2 },
     { k: "checklist",   l: "Checklist",   Icon: CheckSquare },
     { k: "notas",  l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
@@ -773,6 +775,9 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
 
         {/* ── ORÇAMENTO ── */}
         {tab === "orcamento" && <OrcamentoTab obraId={obra.id} realizado={realizado} />}
+
+        {/* ── BOLETIM DE MEDIÇÃO ── */}
+        {tab === "boletim" && <BoletimTab obraId={obra.id} />}
 
         {/* ── CRONOGRAMA ── */}
         {tab === "cronograma" && (
