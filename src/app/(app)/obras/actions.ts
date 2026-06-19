@@ -15,6 +15,9 @@ const ObraSchema = z.object({
   inicio: z.string().optional(),
   prazo: z.string().optional(),
   responsavel: z.string().optional(),
+  endereco: z.string().optional(),
+  cidade: z.string().optional(),
+  cep: z.string().optional(),
   progresso: z.coerce.number().min(0).max(100).default(0),
 });
 
@@ -30,10 +33,13 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
     inicio: formData.get("inicio") || undefined,
     prazo: formData.get("prazo") || undefined,
     responsavel: formData.get("responsavel") || undefined,
+    endereco: formData.get("endereco") || undefined,
+    cidade: formData.get("cidade") || undefined,
+    cep: formData.get("cep") || undefined,
     progresso: formData.get("progresso") || 0,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
+  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, progresso } = parsed.data;
 
   // Verifica limite de obras do plano
   const [plano, totalObras] = await Promise.all([
@@ -51,6 +57,9 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,
+      endereco: endereco || null,
+      cidade: cidade || null,
+      cep: cep || null,
       progresso,
     },
   });
@@ -69,10 +78,13 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
     inicio: formData.get("inicio") || undefined,
     prazo: formData.get("prazo") || undefined,
     responsavel: formData.get("responsavel") || undefined,
+    endereco: formData.get("endereco") || undefined,
+    cidade: formData.get("cidade") || undefined,
+    cep: formData.get("cep") || undefined,
     progresso: formData.get("progresso") || 0,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, progresso } = parsed.data;
+  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, progresso } = parsed.data;
   await prisma.obra.updateMany({
     where: { id, empresaId },
     data: {
@@ -81,6 +93,9 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
       inicio: inicio ? new Date(inicio) : null,
       prazo: prazo ? new Date(prazo) : null,
       responsavel: responsavel || null,
+      endereco: endereco || null,
+      cidade: cidade || null,
+      cep: cep || null,
     },
   });
   revalidatePath("/obras");

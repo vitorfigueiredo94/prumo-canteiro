@@ -13,6 +13,7 @@ interface Terreno {
   numero: string | null;
   endereco: string | null;
   cidade: string;
+  cep: string | null;
   area: number;
   status: string;
   aquisicao: Date | null;
@@ -128,9 +129,15 @@ export function TerrenoForm({ onClose, action, initial, isEdit = false }: Terren
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          <FieldLabel>Endereço</FieldLabel>
-          <input name="endereco" defaultValue={initial?.endereco ?? ""} placeholder="Rua das Acácias, 100" style={fieldStyle} onFocus={focus} onBlur={blur} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <FieldLabel>Endereço</FieldLabel>
+            <input name="endereco" defaultValue={initial?.endereco ?? ""} placeholder="Rua das Acácias, 100" style={fieldStyle} onFocus={focus} onBlur={blur} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <FieldLabel>CEP</FieldLabel>
+            <input name="cep" defaultValue={initial?.cep ?? ""} placeholder="00000-000" maxLength={9} style={{ ...fieldStyle, width: 120 }} onFocus={focus} onBlur={blur} />
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>

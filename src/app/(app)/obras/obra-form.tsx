@@ -11,7 +11,8 @@ interface Terreno { id: string; nome: string; cidade: string; }
 interface ObraInitial {
   id: string; nome: string; terrenoId: string | null; orcamento: number;
   status: string; inicio: string | null; prazo: string | null;
-  responsavel: string | null; progresso: number;
+  responsavel: string | null; endereco: string | null; cidade: string | null;
+  cep: string | null; progresso: number;
 }
 
 interface ObraFormProps {
@@ -104,6 +105,22 @@ export function ObraForm({ onClose, action, terrenos, initial, isEdit = false }:
             {lbl("Progresso físico (%)")}
             <input name="progresso" type="number" min="0" max="100" defaultValue={initial?.progresso ?? 0} style={fs} onFocus={fv} onBlur={fb} />
           </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {lbl("Endereço da obra")}
+            <input name="endereco" defaultValue={initial?.endereco ?? ""} placeholder="Rua das Acácias, 100" style={fs} onFocus={fv} onBlur={fb} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {lbl("CEP")}
+            <input name="cep" defaultValue={initial?.cep ?? ""} placeholder="00000-000" maxLength={9} style={{ ...fs, width: 120 }} onFocus={fv} onBlur={fb} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          {lbl("Cidade")}
+          <input name="cidade" defaultValue={initial?.cidade ?? ""} placeholder="São Paulo" style={fs} onFocus={fv} onBlur={fb} />
         </div>
 
         {state?.error && (

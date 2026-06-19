@@ -101,6 +101,25 @@ if (!terrenosGeoInfo.find(c => c.name === 'lng')) {
   db.exec('ALTER TABLE "terrenos" ADD COLUMN "lng" REAL;');
   console.log('[prumo] Migração aplicada: terrenos.lng adicionado.');
 }
+if (!terrenosGeoInfo.find(c => c.name === 'cep')) {
+  db.exec('ALTER TABLE "terrenos" ADD COLUMN "cep" TEXT;');
+  console.log('[prumo] Migração aplicada: terrenos.cep adicionado.');
+}
+
+// Migration: obras.endereco/cidade/cep (endereço para envio a funcionários — v2.9)
+const obrasEnderecoInfo = db.prepare("PRAGMA table_info('obras')").all();
+if (!obrasEnderecoInfo.find(c => c.name === 'endereco')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "endereco" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.endereco adicionado.');
+}
+if (!obrasEnderecoInfo.find(c => c.name === 'cidade')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "cidade" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.cidade adicionado.');
+}
+if (!obrasEnderecoInfo.find(c => c.name === 'cep')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "cep" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.cep adicionado.');
+}
 
 // Migration: usuarios.bloqueado (Super Admin — v0.9)
 const usuariosInfo = db.prepare("PRAGMA table_info('usuarios')").all();

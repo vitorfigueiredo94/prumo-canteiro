@@ -131,6 +131,7 @@ interface DiarioEntry {
 interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
+  endereco: string | null; cidade: string | null; cep: string | null;
   cronogramaJson: string | null;
   terreno: (Terreno & { numero: string | null }) | null;
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
@@ -448,6 +449,12 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} /><Link href={`/terrenos/${obra.terreno.id}`} style={{ color: "var(--navy-700)", textDecoration: "none" }}>{obra.terreno.nome}</Link> · {obra.terreno.cidade}</span>
             ) : (
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={13} />Sem terreno vinculado</span>
+            )}
+            {(obra.endereco || obra.cidade) && (
+              <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <MapPin size={13} />
+                {[obra.endereco, obra.cep, obra.cidade].filter(Boolean).join(" · ")}
+              </span>
             )}
             {obra.responsavel && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><UserRound size={13} />{obra.responsavel}</span>}
             {(obra.inicio || obra.prazo) && <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Calendar size={13} />{fmtDate(obra.inicio)} → {fmtDate(obra.prazo)}</span>}
@@ -839,7 +846,7 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
           terrenos={terrenos}
           onClose={closeEdit}
           isEdit
-          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, progresso: obra.progresso }}
+          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep, progresso: obra.progresso }}
         />
       )}
       {showNotaForm && (

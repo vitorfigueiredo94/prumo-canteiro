@@ -97,6 +97,7 @@ model Terreno {
   obras       Obra[]
   vendas      Venda[]
   documentos  Documento[]
+  cep          String?
   lat          Float?
   lng          Float?
   criadoEm   DateTime   @default(now())
@@ -121,6 +122,9 @@ model Obra {
   prazo        DateTime?
   progresso      Int                    @default(0)
   responsavel    String?
+  endereco       String?
+  cidade         String?
+  cep            String?
   cronogramaJson String?
   alocacoes      AlocacaoFuncionario[]
   notas        NotaFiscal[]

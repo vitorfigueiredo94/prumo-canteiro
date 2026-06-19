@@ -45,6 +45,7 @@ interface Terreno {
   numero: string | null;
   endereco: string | null;
   cidade: string;
+  cep: string | null;
   area: number;
   status: string;
   aquisicao: string | null;
@@ -557,6 +558,7 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
               <DetGrid label="Numeração / matrícula" value={terreno.numero ?? "—"} />
               <DetGrid label="Área" value={fmtArea(terreno.area)} />
               <DetGrid label="Endereço" value={terreno.endereco ?? "—"} />
+              <DetGrid label="CEP" value={terreno.cep ?? "—"} />
               <DetGrid label="Cidade" value={terreno.cidade} />
               <DetGrid label="Valor de aquisição" value={terreno.valorCompra ? fmtBRL(terreno.valorCompra) : "—"} />
               <DetGrid label="Adquirido em" value={terreno.aquisicao ? fmtDate(terreno.aquisicao) : "—"} />

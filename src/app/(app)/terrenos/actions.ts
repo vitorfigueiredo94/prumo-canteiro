@@ -11,6 +11,7 @@ const TerrenoSchema = z.object({
   numero: z.string().optional(),
   endereco: z.string().optional(),
   cidade: z.string().min(1),
+  cep: z.string().optional(),
   area: z.coerce.number().positive(),
   status: z.enum(["disponivel", "em_obra", "vendido"]),
   aquisicao: z.string().optional(),
@@ -26,18 +27,20 @@ export async function criarTerreno(_prev: TerrenoFormState, formData: FormData):
     numero: formData.get("numero") || undefined,
     endereco: formData.get("endereco") || undefined,
     cidade: formData.get("cidade"),
+    cep: formData.get("cep") || undefined,
     area: formData.get("area"),
     status: formData.get("status") || "disponivel",
     aquisicao: formData.get("aquisicao") || undefined,
     valorCompra: formData.get("valorCompra") || undefined,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, numero, endereco, cidade, area, status, aquisicao, valorCompra } = parsed.data;
+  const { nome, numero, endereco, cidade, cep, area, status, aquisicao, valorCompra } = parsed.data;
   const terreno = await prisma.terreno.create({
     data: {
       empresaId, nome, cidade, area, status,
       numero: numero || null,
       endereco: endereco || null,
+      cep: cep || null,
       aquisicao: aquisicao ? new Date(aquisicao) : null,
       valorCompra: valorCompra ?? null,
     },
@@ -54,19 +57,21 @@ export async function editarTerreno(id: string, _prev: TerrenoFormState, formDat
     numero: formData.get("numero") || undefined,
     endereco: formData.get("endereco") || undefined,
     cidade: formData.get("cidade"),
+    cep: formData.get("cep") || undefined,
     area: formData.get("area"),
     status: formData.get("status"),
     aquisicao: formData.get("aquisicao") || undefined,
     valorCompra: formData.get("valorCompra") || undefined,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, numero, endereco, cidade, area, status, aquisicao, valorCompra } = parsed.data;
+  const { nome, numero, endereco, cidade, cep, area, status, aquisicao, valorCompra } = parsed.data;
   await prisma.terreno.updateMany({
     where: { id, empresaId },
     data: {
       nome, cidade, area, status,
       numero: numero || null,
       endereco: endereco || null,
+      cep: cep || null,
       aquisicao: aquisicao ? new Date(aquisicao) : null,
       valorCompra: valorCompra ?? null,
     },
