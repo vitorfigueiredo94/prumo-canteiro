@@ -13,15 +13,31 @@ interface TerrenoMapa {
 }
 
 const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-const MARKER_ICON = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png";
-const MARKER_ICON_2X = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png";
-const MARKER_SHADOW = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png";
 
-const STATUS_POPUP: Record<string, { label: string; bg: string; color: string }> = {
+// Pin colors matching the design system tokens (hardcoded for Leaflet SVG)
+const PIN_COLORS: Record<string, { fill: string; ring: string }> = {
+  disponivel: { fill: "#16a34a", ring: "#15803d" }, // success-600/700
+  em_obra:    { fill: "#d97706", ring: "#b45309" }, // warning-500/700
+  vendido:    { fill: "#64748b", ring: "#475569" }, // slate-500/600
+};
+
+const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
   disponivel: { label: "Disponível", bg: "#dcfce7", color: "#166534" },
   em_obra:    { label: "Em obra",    bg: "#fef3c7", color: "#92400e" },
   vendido:    { label: "Vendido",    bg: "#f1f5f9", color: "#475569" },
 };
+
+function makePinSvg(status: string): string {
+  const { fill, ring } = PIN_COLORS[status] ?? PIN_COLORS.disponivel;
+  // Teardrop shape: circle top + pointed bottom, 24×32 viewBox
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">`,
+    `<path d="M12 0C5.37 0 0 5.37 0 12c0 8.25 12 20 12 20S24 20.25 24 12C24 5.37 18.63 0 12 0z"`,
+    ` fill="${fill}" stroke="${ring}" stroke-width="1.5"/>`,
+    `<circle cx="12" cy="11" r="4.5" fill="white" opacity="0.85"/>`,
+    `</svg>`,
+  ].join("");
+}
 
 export function MapaTerrenos() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,7 +50,7 @@ export function MapaTerrenos() {
     let cancelled = false;
 
     async function init() {
-      // 1. Inject Leaflet CSS (CDN — avoids Next.js CSS bundle issues)
+      // 1. Inject Leaflet CSS
       if (!document.getElementById("leaflet-css")) {
         await new Promise<void>((resolve) => {
           const link = document.createElement("link");
@@ -52,11 +68,6 @@ export function MapaTerrenos() {
       // 2. Dynamic import of Leaflet (avoids SSR)
       const L = (await import("leaflet")).default;
       if (cancelled) return;
-
-      // Fix default marker icon (webpack issue)
-      // @ts-ignore
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({ iconUrl: MARKER_ICON, iconRetinaUrl: MARKER_ICON_2X, shadowUrl: MARKER_SHADOW });
 
       // 3. Initialize map centered on Brazil
       const map = L.map(containerRef.current).setView([-15.78, -47.93], 4);
@@ -85,16 +96,27 @@ export function MapaTerrenos() {
       for (const t of comCoords) {
         const ll: [number, number] = [t.lat!, t.lng!];
         bounds.push(ll);
-        const s = STATUS_POPUP[t.status] ?? STATUS_POPUP.disponivel;
-        L.marker(ll)
+
+        const s = STATUS_LABEL[t.status] ?? STATUS_LABEL.disponivel;
+
+        // Colored SVG pin via divIcon
+        const icon = L.divIcon({
+          html: makePinSvg(t.status),
+          iconSize: [24, 32],
+          iconAnchor: [12, 32],
+          popupAnchor: [0, -34],
+          className: "",
+        });
+
+        L.marker(ll, { icon })
           .addTo(map)
           .bindPopup(
-            `<div style="min-width:160px;font-family:sans-serif">
-              <div style="font-size:15px;font-weight:700;margin-bottom:3px">${t.nome}</div>
-              <div style="font-size:13px;color:#666;margin-bottom:6px">${t.cidade}</div>
-              <div style="font-size:12px;color:#888">Área: ${t.area.toFixed(0)} m²</div>
-              <span style="display:inline-block;margin-top:7px;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;background:${s.bg};color:${s.color}">${s.label}</span>
-            </div>`
+            `<div style="min-width:170px;font-family:system-ui,sans-serif;padding:2px 0">
+              <div style="font-size:14.5px;font-weight:700;color:#0f172a;margin-bottom:2px">${t.nome}</div>
+              <div style="font-size:12.5px;color:#64748b;margin-bottom:8px">${t.cidade} · ${t.area.toFixed(0)} m²</div>
+              <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:700;background:${s.bg};color:${s.color}">${s.label}</span>
+            </div>`,
+            { maxWidth: 240 }
           );
       }
 
@@ -124,10 +146,27 @@ export function MapaTerrenos() {
           {MSG[fase]}
         </p>
       )}
+
+      {/* Legend */}
+      {(fase === "done" || fase === "geocoding") && (
+        <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
+          {Object.entries(STATUS_LABEL).map(([key, s]) => (
+            <div key={key} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-secondary)" }}>
+              <span
+                dangerouslySetInnerHTML={{ __html: makePinSvg(key) }}
+                style={{ display: "inline-block", width: 16, height: 21, verticalAlign: "middle" }}
+              />
+              {s.label}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div
         ref={containerRef}
         style={{ height: 520, borderRadius: "var(--radius-lg)", border: "1px solid var(--border-subtle)", overflow: "hidden", background: "var(--ink-50)" }}
       />
+
       {fase === "done" && semGeo.length > 0 && (
         <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--fg-tertiary)" }}>
           Sem localização: {semGeo.join(", ")}. Preencha o endereço completo para aparecer no mapa.
