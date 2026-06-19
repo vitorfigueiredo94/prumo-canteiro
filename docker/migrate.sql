@@ -186,3 +186,20 @@ CREATE TABLE IF NOT EXISTS "materiais_obra" (
 );
 CREATE INDEX IF NOT EXISTS "materiais_obra_obraId_idx"    ON "materiais_obra"("obraId");
 CREATE INDEX IF NOT EXISTS "materiais_obra_empresaId_idx" ON "materiais_obra"("empresaId");
+
+-- Migration: Orçamento detalhado por obra (v2.7)
+CREATE TABLE IF NOT EXISTS "orcamento_itens" (
+  "id"           TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"    TEXT     NOT NULL,
+  "obraId"       TEXT     NOT NULL,
+  "categoria"    TEXT     NOT NULL DEFAULT 'outros',
+  "descricao"    TEXT     NOT NULL,
+  "unidade"      TEXT     NOT NULL DEFAULT 'un',
+  "quantidade"   DECIMAL  NOT NULL DEFAULT 1,
+  "valorUnit"    DECIMAL  NOT NULL DEFAULT 0,
+  "ordem"        INTEGER  NOT NULL DEFAULT 0,
+  "criadoEm"    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "orcamento_itens_obraId_idx"    ON "orcamento_itens"("obraId");
+CREATE INDEX IF NOT EXISTS "orcamento_itens_empresaId_idx" ON "orcamento_itens"("empresaId");

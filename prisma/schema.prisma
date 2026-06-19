@@ -345,6 +345,24 @@ model MaterialObra {
   @@map("materiais_obra")
 }
 
+model OrcamentoItem {
+  id           String   @id @default(cuid())
+  empresaId    String
+  obraId       String
+  categoria    String   @default("outros")
+  descricao    String
+  unidade      String   @default("un")
+  quantidade   Decimal  @default(1)
+  valorUnit    Decimal  @default(0)
+  ordem        Int      @default(0)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([obraId])
+  @@index([empresaId])
+  @@map("orcamento_itens")
+}
+
 model PortalClienteToken {
   id        String    @id @default(cuid())
   empresaId String
