@@ -20,8 +20,9 @@ export interface PlanoInfo {
   limiteObras: number | null;       // null = ilimitado
   limiteUsuarios: number | null;    // null = ilimitado
   recursos: string[];               // slugs incluídos no plano
-  status: string;                   // trial | ativo | inadimplente | cancelado
+  status: string;                   // trial | ativo | inadimplente | cancelado | trial_expirado
   isTrial: boolean;
+  trialExpirado: boolean;
 }
 
 const TRIAL_INFO: PlanoInfo = {
@@ -31,6 +32,7 @@ const TRIAL_INFO: PlanoInfo = {
   recursos: Object.values(RECURSO),
   status: "trial",
   isTrial: true,
+  trialExpirado: false,
 };
 
 export async function getPlanoEmpresa(empresaId: string): Promise<PlanoInfo> {
@@ -42,7 +44,18 @@ export async function getPlanoEmpresa(empresaId: string): Promise<PlanoInfo> {
 
     if (!assinatura) return TRIAL_INFO;
 
-    // Inadimplente/cancelado: bloqueia tudo além do Básico
+    if (assinatura.status === "trial_expirado") {
+      return {
+        planoNome: "Trial expirado",
+        limiteObras: 0,
+        limiteUsuarios: 0,
+        recursos: [],
+        status: "trial_expirado",
+        isTrial: false,
+        trialExpirado: true,
+      };
+    }
+
     if (assinatura.status === "cancelado") {
       return {
         planoNome: "Cancelado",
@@ -51,6 +64,7 @@ export async function getPlanoEmpresa(empresaId: string): Promise<PlanoInfo> {
         recursos: [],
         status: "cancelado",
         isTrial: false,
+        trialExpirado: false,
       };
     }
 
@@ -65,6 +79,7 @@ export async function getPlanoEmpresa(empresaId: string): Promise<PlanoInfo> {
       recursos,
       status: assinatura.status,
       isTrial: assinatura.status === "trial",
+      trialExpirado: false,
     };
   } catch {
     return TRIAL_INFO;
@@ -73,7 +88,7 @@ export async function getPlanoEmpresa(empresaId: string): Promise<PlanoInfo> {
 
 export function temRecurso(plano: PlanoInfo, recurso: RecursoSlug): boolean {
   if (plano.isTrial) return true;
-  if (plano.status === "cancelado") return false;
+  if (plano.status === "cancelado" || plano.trialExpirado) return false;
   return plano.recursos.includes(recurso);
 }
 

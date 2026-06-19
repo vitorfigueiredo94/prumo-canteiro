@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
   const [expirados, aviso3d, aviso1d] = await Promise.all([
     // Trials vencidos (ainda com status trial)
     prisma.assinatura.findMany({
-      where: { status: "trial", desde: { lte: dataLimiteExpiracao } },
+      where: { status: "trial", desde: { lte: dataLimiteExpiracao } } as any,
       select: assinaturaSelect,
     }),
     // Trials que expiram em exatamente 3 dias
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
   for (const a of expirados) {
     await prisma.assinatura.update({
       where: { id: a.id },
-      data: { status: "cancelado" },
+      data: { status: "trial_expirado" },
     });
 
     const tel = a.empresa.telefoneGestor;

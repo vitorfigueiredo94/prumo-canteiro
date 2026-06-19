@@ -22,6 +22,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const telefoneGestor = empresa?.telefoneGestor ?? null;
   const logoEmpresa = empresa?.logoEmpresa ?? null;
 
+  if (plano.trialExpirado && !superAdmin) redirect("/upgrade");
+
   return (
     <div
       style={{
