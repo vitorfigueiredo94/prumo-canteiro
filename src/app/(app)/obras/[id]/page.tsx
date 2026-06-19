@@ -42,6 +42,14 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
 
   if (!obra) notFound();
 
+  const receitaAtribuidaAgg = obra.terreno?.id
+    ? await prisma.parcela.aggregate({
+        where: { status: "paga", venda: { terrenoId: obra.terreno.id } },
+        _sum: { valor: true },
+      })
+    : null;
+  const receitaAtribuida = Number((receitaAtribuidaAgg?._sum as any)?.valor ?? 0);
+
   const serialized = {
     ...obra,
     orcamento: Number(obra.orcamento),
@@ -69,5 +77,5 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
     })),
   };
 
-  return <ObraDetail obra={serialized as any} terrenos={terrenos} />;
+  return <ObraDetail obra={serialized as any} terrenos={terrenos} receitaAtribuida={receitaAtribuida} />;
 }

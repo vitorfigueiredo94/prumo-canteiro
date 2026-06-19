@@ -27,11 +27,17 @@ export async function GET(req: NextRequest) {
   const ateDate = ate ? new Date(ate + "T23:59:59") : new Date();
   const ateFim  = new Date(ateDate); ateFim.setHours(23, 59, 59, 999);
 
-  const [notas, parcelas, empresa] = await Promise.all([
+  const now = new Date();
+  const [notas, pagamentos, parcelas, parcelasVencidas, empresa] = await Promise.all([
     prisma.notaFiscal.findMany({
       where: { empresaId: session.empresaId, emitidaEm: { gte: deDate, lte: ateFim } },
       include: { obra: { select: { nome: true } } },
       orderBy: { emitidaEm: "desc" },
+    }),
+    (prisma as any).pagamentoFuncionario.findMany({
+      where: { empresaId: session.empresaId, pagoEm: { gte: deDate, lte: ateFim } },
+      include: { funcionario: { select: { nome: true } } },
+      orderBy: { pagoEm: "desc" },
     }),
     prisma.parcela.findMany({
       where: {
@@ -42,12 +48,21 @@ export async function GET(req: NextRequest) {
       include: { venda: { select: { nomeComprador: true, terrenoId: true, terreno: { select: { nome: true } } } } },
       orderBy: { pagoEm: "desc" },
     }),
+    prisma.parcela.findMany({
+      where: { venda: { empresaId: session.empresaId }, status: "aberta", vencimento: { lt: now } },
+      select: { valor: true },
+      take: 200,
+    }),
     prisma.empresa.findUnique({ where: { id: session.empresaId }, select: { nome: true, logoEmpresa: true } }),
   ]);
 
   const totalReceitas = parcelas.reduce((s, p) => s + Number(p.valor), 0);
-  const totalDespesas = notas.reduce((s, n) => s + Number(n.valor), 0);
+  const totalNFs = notas.reduce((s, n) => s + Number(n.valor), 0);
+  const totalFolha = pagamentos.reduce((s: number, p: any) => s + Number(p.valor), 0);
+  const totalDespesas = totalNFs + totalFolha;
+  const totalInadimplencia = parcelasVencidas.reduce((s, p) => s + Number(p.valor), 0);
   const saldo = totalReceitas - totalDespesas;
+  const margem = totalReceitas > 0 ? (saldo / totalReceitas) * 100 : 0;
 
   // Agrupamento de despesas por categoria
   const porCategoria = notas.reduce<Record<string, number>>((acc, n) => {
@@ -100,21 +115,46 @@ export async function GET(req: NextRequest) {
 <!-- KPIs -->
 <div style="margin-bottom:28px">
   <div class="kpi">
-    <div class="kpi-label">Receitas</div>
+    <div class="kpi-label">Receitas recebidas</div>
     <div class="kpi-value" style="color:#16a34a">${fmtBRL(totalReceitas)}</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Despesas</div>
-    <div class="kpi-value" style="color:#dc2626">${fmtBRL(totalDespesas)}</div>
+    <div class="kpi-label">Despesas (NFs)</div>
+    <div class="kpi-value" style="color:#dc2626">${fmtBRL(totalNFs)}</div>
   </div>
   <div class="kpi">
-    <div class="kpi-label">Saldo</div>
+    <div class="kpi-label">Folha de pagamento</div>
+    <div class="kpi-value" style="color:#dc2626">${fmtBRL(totalFolha)}</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Resultado</div>
     <div class="kpi-value ${saldo >= 0 ? "saldo-pos" : "saldo-neg"}">${fmtBRL(saldo)}</div>
   </div>
+  <div class="kpi">
+    <div class="kpi-label">Margem bruta</div>
+    <div class="kpi-value" style="color:${margem >= 20 ? "#16a34a" : margem > 0 ? "#d97706" : "#dc2626"}">${margem.toFixed(1)}%</div>
+  </div>
+  ${totalInadimplencia > 0 ? `<div class="kpi">
+    <div class="kpi-label">Inadimplência em aberto</div>
+    <div class="kpi-value" style="color:#dc2626">${fmtBRL(totalInadimplencia)}</div>
+  </div>` : ""}
 </div>
 
+<!-- DRE -->
+<h2>Demonstrativo de Resultados</h2>
+<table style="margin-bottom:24px;max-width:480px">
+  <tbody>
+    <tr><td class="bold">Receita Bruta Recebida</td><td class="r bold" style="color:#16a34a">${fmtBRL(totalReceitas)}</td></tr>
+    <tr><td style="color:#64748b;padding-left:20px">Material e insumos (NFs)</td><td class="r" style="color:#64748b">(${fmtBRL(totalNFs)})</td></tr>
+    <tr><td style="color:#64748b;padding-left:20px">Mão de obra (folha)</td><td class="r" style="color:#64748b">(${fmtBRL(totalFolha)})</td></tr>
+    <tr style="border-top:2px solid #e2e8f0"><td class="bold">Total de custos</td><td class="r bold" style="color:#dc2626">(${fmtBRL(totalDespesas)})</td></tr>
+    <tr style="background:#f8fafc"><td class="bold" style="font-size:15px">Resultado Operacional</td><td class="r bold" style="font-size:15px;color:${saldo >= 0 ? "#16a34a" : "#dc2626"}">${saldo >= 0 ? "" : "("}${fmtBRL(Math.abs(saldo))}${saldo >= 0 ? "" : ")"}</td></tr>
+    ${totalInadimplencia > 0 ? `<tr><td style="color:#d97706;padding-left:20px">Inadimplência em aberto (risco)</td><td class="r" style="color:#d97706">(${fmtBRL(totalInadimplencia)})</td></tr>` : ""}
+  </tbody>
+</table>
+
 <!-- Despesas por categoria -->
-${Object.keys(porCategoria).length > 0 ? `
+${Object.keys(porCategoria).length > 0 || totalFolha > 0 ? `
 <h2>Despesas por categoria</h2>
 <table style="margin-bottom:24px">
   <thead><tr><th>Categoria</th><th class="r">Total</th><th class="r">%</th></tr></thead>
@@ -125,6 +165,11 @@ ${Object.keys(porCategoria).length > 0 ? `
       <td class="r">${fmtBRL(val)}</td>
       <td class="r" style="color:#64748b">${totalDespesas > 0 ? ((val/totalDespesas)*100).toFixed(1) : 0}%</td>
     </tr>`).join("")}
+    ${totalFolha > 0 ? `<tr>
+      <td class="bold">Mão de obra (folha)</td>
+      <td class="r">${fmtBRL(totalFolha)}</td>
+      <td class="r" style="color:#64748b">${totalDespesas > 0 ? ((totalFolha/totalDespesas)*100).toFixed(1) : 0}%</td>
+    </tr>` : ""}
   </tbody>
   <tfoot><tr><td class="bold">Total despesas</td><td class="r bold">${fmtBRL(totalDespesas)}</td><td></td></tr></tfoot>
 </table>` : ""}
@@ -145,6 +190,23 @@ ${parcelas.length === 0 ? '<p style="color:#94a3b8;font-size:13px;margin-bottom:
   </tbody>
   <tfoot><tr><td class="bold" colspan="2">Total receitas</td><td class="r bold" style="color:#16a34a">${fmtBRL(totalReceitas)}</td><td></td></tr></tfoot>
 </table>`}
+
+<!-- Folha de pagamento -->
+${pagamentos.length > 0 ? `
+<h2>Folha de pagamento (${pagamentos.length})</h2>
+<table style="margin-bottom:24px">
+  <thead><tr><th>Funcionário</th><th>Descrição</th><th class="r">Valor</th><th class="r">Data</th></tr></thead>
+  <tbody>
+    ${pagamentos.map((p: any)=>`
+    <tr>
+      <td class="bold">${p.funcionario?.nome??'—'}</td>
+      <td style="color:#64748b">${p.descricao??'Pagamento'}</td>
+      <td class="r bold" style="color:#dc2626">${fmtBRL(Number(p.valor))}</td>
+      <td class="r" style="color:#64748b">${fmtDate(p.pagoEm)}</td>
+    </tr>`).join("")}
+  </tbody>
+  <tfoot><tr><td class="bold" colspan="2">Total folha</td><td class="r bold" style="color:#dc2626">${fmtBRL(totalFolha)}</td><td></td></tr></tfoot>
+</table>` : ""}
 
 <!-- Despesas (notas fiscais) -->
 <h2>Despesas — notas fiscais (${notas.length})</h2>

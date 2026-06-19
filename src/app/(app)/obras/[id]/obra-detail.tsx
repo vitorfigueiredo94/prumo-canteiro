@@ -352,7 +352,7 @@ const KPI = ({ label, value, sub, danger, green }: { label: string; value: strin
 );
 
 // ─── main component ────────────────────────────────────────────────────────────
-export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[] }) {
+export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obra; terrenos: Terreno[]; receitaAtribuida?: number }) {
   const [tab, setTab] = useState("financeiro");
   const [showEdit, setShowEdit] = useState(false);
   const [showNotaForm, setShowNotaForm] = useState(false);
@@ -464,6 +464,11 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
         <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do previsto`} />
         <KPI label={estouro ? "Estouro" : "Saldo disponível"} value={fmtBRL(Math.abs(saldo))} danger={estouro} green={!estouro} sub={estouro ? "acima do orçamento" : undefined} />
         <KPI label="Execução física" value={`${obra.progresso}%`} sub={obra.notas.filter((n) => n.status === "pendente").length > 0 ? `${obra.notas.filter((n) => n.status === "pendente").length} nota(s) em revisão` : undefined} />
+        {receitaAtribuida > 0 && (() => {
+          const margem = receitaAtribuida - realizado;
+          const margemPct = receitaAtribuida > 0 ? (margem / receitaAtribuida) * 100 : 0;
+          return <KPI label="Receita do terreno" value={fmtBRL(receitaAtribuida)} sub={`margem ${margemPct.toFixed(0)}% · ${margem >= 0 ? "lucro" : "prejuízo"} ${fmtBRL(Math.abs(margem))}`} green={margem >= 0} danger={margem < 0} />;
+        })()}
       </div>
 
       {/* Tabs */}
@@ -525,7 +530,34 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
               </div>
             </div>
 
-            {/* Right: Gasto por categoria */}
+            {/* Right: Gasto por categoria + Resultado */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {receitaAtribuida > 0 && (() => {
+              const margem = receitaAtribuida - realizado;
+              const margemPct = receitaAtribuida > 0 ? (margem / receitaAtribuida) * 100 : 0;
+              const pos = margem >= 0;
+              return (
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
+                  <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Resultado da obra</p>
+                  {[
+                    { label: "Receita do terreno (parcelas pagas)", value: receitaAtribuida, color: "var(--success-700)" },
+                    { label: "Custo total (NFs + folha)", value: realizado, color: "var(--fg-primary)" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "11px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                      <span style={{ color: "var(--fg-secondary)" }}>{label}</span>
+                      <span style={{ fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}>{fmtBRL(value)}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, paddingTop: 13 }}>
+                    <span style={{ fontWeight: 700 }}>{pos ? "Margem bruta" : "Resultado negativo"}</span>
+                    <span style={{ fontWeight: 700, color: pos ? "#16a34a" : "var(--danger-500)", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(margem)} ({margemPct.toFixed(1)}%)</span>
+                  </div>
+                  <div style={{ marginTop: 12, height: 8, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden" }}>
+                    <div style={{ width: `${Math.min(Math.abs(margemPct), 100)}%`, height: "100%", background: pos ? "#16a34a" : "var(--danger-500)", borderRadius: "var(--radius-full)", transition: "width 600ms" }} />
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
               <p style={{ margin: "0 0 18px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Gasto por categoria</p>
               {Object.keys(catValues).length === 0 ? (
@@ -554,6 +586,7 @@ export function ObraDetail({ obra, terrenos }: { obra: Obra; terrenos: Terreno[]
                 </div>
               )}
             </div>
+            </div>{/* closes flex column right */}
           </div>
         )}
 

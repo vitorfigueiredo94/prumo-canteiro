@@ -62,7 +62,7 @@ export function FinanceiroView({
   parcelasVencidas: ParcelaVencidaItem[];
   parcelasFuturas: ParcelaFuturaItem[];
 }) {
-  const [tab, setTab] = useState<"obra" | "fluxo" | "inadimplencia">("obra");
+  const [tab, setTab] = useState<"obra" | "fluxo" | "inadimplencia" | "dre">("obra");
   const [obraFiltro, setObraFiltro] = useState<string>("todas");
 
   const totalOrcamento = obras.reduce((s, o) => s + o.orcamento, 0);
@@ -123,6 +123,17 @@ export function FinanceiroView({
   const avgDespesa = last3.reduce((s, m) => s + despesas[m], 0) / 3;
   const maxFutureVal = Math.max(...futureMonths.map((m) => Math.max(entradasFuturas[m], avgDespesa)), 1);
 
+  // DRE monthly (empresa-wide, unfiltered by obra)
+  const dreDespMes: Record<string, number> = {};
+  const dreRecMes: Record<string, number> = {};
+  months.forEach((m) => { dreDespMes[m] = 0; dreRecMes[m] = 0; });
+  parcelas.forEach((p) => { const ym = getYM(p.pagoEm); if (ym && dreRecMes[ym] !== undefined) dreRecMes[ym] += p.valor; });
+  notas.forEach((n) => { const ym = getYM(n.emitidaEm); if (ym && dreDespMes[ym] !== undefined) dreDespMes[ym] += n.valor; });
+  pagamentos.forEach((p) => { const ym = getYM(p.pagoEm); if (ym && dreDespMes[ym] !== undefined) dreDespMes[ym] += p.valor; });
+  const margemMensal: Record<string, number> = {};
+  months.forEach((m) => { margemMensal[m] = dreRecMes[m] - dreDespMes[m]; });
+  const maxAbsMargen = Math.max(...months.map((m) => Math.abs(margemMensal[m])), 1);
+
   // Inadimplência
   const totalPagas = parcelas.reduce((s, p) => s + p.valor, 0);
   const totalVencido = parcelasVencidas.reduce((s, p) => s + p.valor, 0);
@@ -162,6 +173,7 @@ export function FinanceiroView({
     ["obra", "Por obra"],
     ["fluxo", "Fluxo de caixa"],
     ["inadimplencia", "Inadimplência"],
+    ["dre", "DRE"],
   ];
 
   return (
@@ -546,6 +558,87 @@ export function FinanceiroView({
             )}
           </div>
         )}
+
+        {/* ── Tab: DRE ── */}
+        {tab === "dre" && (() => {
+          const dreRes = totalPagas - totalRealizado;
+          const dreMar = totalPagas > 0 ? (dreRes / totalPagas) * 100 : 0;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {/* KPI cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                {[
+                  { label: "Receita recebida", value: fmtBRLshort(totalPagas), sub: "parcelas pagas (total)", color: "var(--success-700)" },
+                  { label: "Custos totais", value: fmtBRLshort(totalRealizado), sub: "NFs + folha de pagamento", color: "var(--danger-500)" },
+                  { label: dreRes >= 0 ? "Resultado positivo" : "Resultado negativo", value: fmtBRLshort(Math.abs(dreRes)), sub: dreRes >= 0 ? "lucro operacional" : "prejuízo operacional", color: dreRes >= 0 ? "var(--success-700)" : "var(--danger-500)" },
+                  { label: "Margem bruta", value: totalPagas > 0 ? `${dreMar.toFixed(1)}%` : "—", sub: dreMar >= 20 ? "saudável (≥20%)" : dreMar > 0 ? "abaixo do ideal" : "sem receita", color: dreMar >= 20 ? "var(--success-700)" : dreMar > 0 ? "#d97706" : "var(--fg-muted)" },
+                ].map(({ label, value, sub, color }) => (
+                  <div key={label} style={cardStyle}>
+                    <div style={{ padding: "16px 20px" }}>
+                      <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color, letterSpacing: "-0.02em" }}>{value}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)", marginTop: 3 }}>{sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* DRE waterfall */}
+              <div style={cardStyle}>
+                <div style={cardHead}><h3 style={cardTitle}>Demonstrativo de Resultados — acumulado</h3></div>
+                <div style={{ padding: "8px 0" }}>
+                  {[
+                    { label: "Receita Bruta Recebida",   value: totalPagas,        indent: 0, bold: true,  sep: false },
+                    { label: "Material e insumos (NFs)", value: -totalGastoNotas,   indent: 1, bold: false, sep: false },
+                    { label: "Mão de obra (folha)",      value: -totalGastoPag,    indent: 1, bold: false, sep: false },
+                    { label: "Total de custos",          value: -totalRealizado,    indent: 0, bold: true,  sep: true  },
+                    { label: "Resultado Operacional",    value: dreRes,             indent: 0, bold: true,  sep: true  },
+                    { label: "Inadimplência em aberto",  value: -totalVencido,      indent: 1, bold: false, sep: false },
+                  ].map(({ label, value, indent, bold, sep }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", paddingLeft: `${24 + indent * 20}px`, borderBottom: "1px solid var(--border-subtle)", background: sep ? "var(--ink-50)" : "transparent" }}>
+                      <span style={{ fontSize: 14, fontWeight: bold ? 700 : 400, color: "var(--fg-primary)" }}>{label}</span>
+                      <span style={{ fontSize: 14, fontWeight: bold ? 700 : 500, fontVariantNumeric: "tabular-nums", color: value === 0 ? "var(--fg-muted)" : value > 0 ? (bold ? "var(--success-700)" : "var(--fg-secondary)") : (bold ? "var(--danger-500)" : "var(--fg-tertiary)") }}>
+                        {value < 0 ? `(${fmtBRLshort(Math.abs(value))})` : fmtBRLshort(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Monthly margin trend */}
+              <div style={cardStyle}>
+                <div style={cardHead}><h3 style={cardTitle}>Resultado mensal — últimos 12 meses</h3></div>
+                <div style={{ padding: "22px 28px" }}>
+                  <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+                    {[{ color: "var(--success-500)", label: "Resultado positivo" }, { color: "var(--danger-400)", label: "Resultado negativo" }].map((l) => (
+                      <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--fg-tertiary)" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: l.color, display: "inline-block" }} />{l.label}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 180, overflowX: "auto" }}>
+                    {months.map((ym) => {
+                      const mg = margemMensal[ym];
+                      const pos = mg >= 0;
+                      const h = Math.round((Math.abs(mg) / maxAbsMargen) * 160);
+                      return (
+                        <div key={ym} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0, minWidth: 48 }}>
+                          <div style={{ display: "flex", alignItems: "flex-end", height: 160 }}>
+                            <div title={`${pos ? "+" : ""}${fmtBRL(mg)}`} style={{ width: 28, height: h || 2, background: pos ? "var(--success-500)" : "var(--danger-400)", borderRadius: "3px 3px 0 0", transition: "height 600ms" }} />
+                          </div>
+                          <span style={{ fontSize: 11, color: "var(--fg-muted)", whiteSpace: "nowrap" }}>{monthLabel(ym)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {months.every((ym) => margemMensal[ym] === 0) && (
+                    <p style={{ textAlign: "center", color: "var(--fg-tertiary)", fontSize: 13, marginTop: 16 }}>Sem dados de receita ou despesa nos últimos 12 meses.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
