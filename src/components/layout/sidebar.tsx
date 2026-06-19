@@ -8,6 +8,7 @@ import {
   Building2,
   Users,
   UserCheck,
+  UserPlus,
   Wallet,
   ReceiptText,
   Handshake,
@@ -41,8 +42,9 @@ const NAV_ITEMS = [
   { href: "/assistencia",   label: "Pós-obra",      icon: Wrench,          recurso: null },
   { href: "/insumos",       label: "Insumos & QR",  icon: QrCode,          recurso: null },
   { href: "/materiais",     label: "Materiais",     icon: Package,         recurso: null },
-  { href: "/alertas",       label: "Alertas",       icon: Bell,            recurso: null },
-  { href: "/tokens",        label: "Portal do cliente", icon: ExternalLink, recurso: null },
+  { href: "/alertas",             label: "Alertas",           icon: Bell,        recurso: null },
+  { href: "/tokens",              label: "Portal do cliente",  icon: ExternalLink, recurso: null },
+  { href: "/configuracoes/equipe", label: "Equipe",            icon: UserPlus,    recurso: null },
 ];
 
 interface SidebarProps {

@@ -549,7 +549,7 @@ export function FinanceiroView({
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: "2px solid var(--border-subtle)" }}>
-                        {["Comprador", "Parcela nº", "Vencimento", "Dias em atraso", "Valor"].map((h) => (
+                        {["Comprador", "Parcela nº", "Vencimento", "Dias em atraso", "Valor", "Corrigido"].map((h) => (
                           <th key={h} style={{ textAlign: "left", padding: "10px 20px", fontWeight: 600, color: "var(--fg-tertiary)", fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
@@ -569,6 +569,9 @@ export function FinanceiroView({
                               </span>
                             </td>
                             <td style={{ padding: "10px 20px", fontWeight: 700, color: "#dc2626", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(p.valor)}</td>
+                            <td style={{ padding: "10px 20px", fontWeight: 700, color: "#7f1d1d", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", fontStyle: "italic" }} title="2% multa + 1% juros ao mês">
+                              {fmtBRL(p.valor * (1.02 + 0.01 * (dias / 30)))}
+                            </td>
                           </tr>
                         );
                       })}

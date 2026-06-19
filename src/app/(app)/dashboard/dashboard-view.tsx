@@ -9,6 +9,11 @@ interface KPIs {
   orcamento: number; gastoTotal: number; receita: number; parcelasAtrasadas: number;
   parcelasAtrasadasValor: number;
 }
+interface MoM {
+  receitaMes: number; receitaMesAnterior: number;
+  gastoMes: number; gastoMesAnterior: number;
+  mesNome: string;
+}
 interface NotaPendente { id: string; fornecedor: string | null; valor: number; emitidaEm: string | null; obra: { id: string; nome: string }; }
 interface ParcelaVencendo { id: string; valor: number; vencimento: string | null; venda: { id: string; nomeComprador: string }; }
 interface ObraEstouro { id: string; nome: string; orcamento: number; gasto: number; }
@@ -52,9 +57,10 @@ function Donut({ pct, size = 120 }: { pct: number; size?: number }) {
   );
 }
 
-export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVencendo, obrasComEstouro, obrasFinanceiro, funcAtivosRaw, gastosPorCategoria }: {
+export function DashboardView({ nomeUsuario, kpis, mom, notasPendentes, parcelasVencendo, obrasComEstouro, obrasFinanceiro, funcAtivosRaw, gastosPorCategoria }: {
   nomeUsuario: string;
   kpis: KPIs;
+  mom: MoM;
   notasPendentes: NotaPendente[];
   parcelasVencendo: ParcelaVencendo[];
   obrasComEstouro: ObraEstouro[];
@@ -142,6 +148,36 @@ export function DashboardView({ nomeUsuario, kpis, notasPendentes, parcelasVence
             </div>
           ))}
         </div>
+
+        {/* MoM comparativo */}
+        {(() => {
+          const pctReceita = mom.receitaMesAnterior > 0 ? ((mom.receitaMes - mom.receitaMesAnterior) / mom.receitaMesAnterior) * 100 : null;
+          const pctGastoMom = mom.gastoMesAnterior > 0 ? ((mom.gastoMes - mom.gastoMesAnterior) / mom.gastoMesAnterior) * 100 : null;
+          const resultadoMes = mom.receitaMes - mom.gastoMes;
+          function Delta({ pct, invert = false }: { pct: number | null; invert?: boolean }) {
+            if (pct === null) return <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>sem histórico</span>;
+            const positive = invert ? pct < 0 : pct > 0;
+            const color = positive ? "var(--success-700)" : pct === 0 ? "var(--fg-muted)" : "var(--danger-500)";
+            return <span style={{ fontSize: 12.5, color, fontWeight: 600 }}>{pct > 0 ? "▲" : pct < 0 ? "▼" : "="} {Math.abs(pct).toFixed(1)}% vs mês anterior</span>;
+          }
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+              {[
+                { label: `Receita — ${mom.mesNome}`, value: fmtBRLshort(mom.receitaMes), delta: <Delta pct={pctReceita} />, color: "var(--success-700)" },
+                { label: `Gastos — ${mom.mesNome}`, value: fmtBRLshort(mom.gastoMes), delta: <Delta pct={pctGastoMom} invert />, color: mom.gastoMes > mom.receitaMes ? "var(--danger-500)" : "var(--fg-primary)" },
+                { label: `Resultado — ${mom.mesNome}`, value: fmtBRLshort(Math.abs(resultadoMes)), delta: <span style={{ fontSize: 12.5, color: resultadoMes >= 0 ? "var(--success-700)" : "var(--danger-500)", fontWeight: 600 }}>{resultadoMes >= 0 ? "Superávit" : "Déficit"}</span>, color: resultadoMes >= 0 ? "var(--success-700)" : "var(--danger-500)" },
+              ].map((k) => (
+                <div key={k.label} style={{ ...cardStyle, borderTop: `3px solid ${k.color}` }}>
+                  <div style={{ padding: "14px 20px" }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>{k.label}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 400, color: k.color, letterSpacing: "-0.02em", marginBottom: 4 }}>{k.value}</div>
+                    {k.delta}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Two-column main */}
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20, alignItems: "start" }}>

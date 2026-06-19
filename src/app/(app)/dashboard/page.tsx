@@ -68,6 +68,32 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  // Comparativo mensal (MoM)
+  const inicioMesAtual = new Date(today.getFullYear(), today.getMonth(), 1);
+  const inicioMesAnterior = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const fimMesAnterior = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+
+  const [
+    recMesAtualAgg, recMesAnteriorAgg,
+    notasMesAtualAgg, notasMesAnteriorAgg,
+    pagsMesAtualAgg, pagsMesAnteriorAgg,
+  ] = await Promise.all([
+    prisma.parcela.aggregate({ where: { venda: { empresaId: eid }, status: "paga", pagoEm: { gte: inicioMesAtual } }, _sum: { valor: true } }),
+    prisma.parcela.aggregate({ where: { venda: { empresaId: eid }, status: "paga", pagoEm: { gte: inicioMesAnterior, lte: fimMesAnterior } }, _sum: { valor: true } }),
+    prisma.notaFiscal.aggregate({ where: { empresaId: eid, status: "confirmada", emitidaEm: { gte: inicioMesAtual } }, _sum: { valor: true } }),
+    prisma.notaFiscal.aggregate({ where: { empresaId: eid, status: "confirmada", emitidaEm: { gte: inicioMesAnterior, lte: fimMesAnterior } }, _sum: { valor: true } }),
+    prisma.pagamentoFuncionario.aggregate({ where: { empresaId: eid, pagoEm: { gte: inicioMesAtual } }, _sum: { valor: true } }),
+    prisma.pagamentoFuncionario.aggregate({ where: { empresaId: eid, pagoEm: { gte: inicioMesAnterior, lte: fimMesAnterior } }, _sum: { valor: true } }),
+  ]);
+
+  const mom = {
+    receitaMes: Number(recMesAtualAgg._sum.valor ?? 0),
+    receitaMesAnterior: Number(recMesAnteriorAgg._sum.valor ?? 0),
+    gastoMes: Number(notasMesAtualAgg._sum.valor ?? 0) + Number(pagsMesAtualAgg._sum.valor ?? 0),
+    gastoMesAnterior: Number(notasMesAnteriorAgg._sum.valor ?? 0) + Number(pagsMesAnteriorAgg._sum.valor ?? 0),
+    mesNome: inicioMesAtual.toLocaleDateString("pt-BR", { month: "long" }),
+  };
+
   const orcamento = Number(orcamentoAggregate._sum.orcamento ?? 0);
   const gastoTotal = Number(gastoNotasAggregate._sum.valor ?? 0) + Number(gastoPagsAggregate._sum.valor ?? 0);
   const receita = Number(receitaAggregate._sum.valor ?? 0);
@@ -91,6 +117,7 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       nomeUsuario={session.nome}
+      mom={mom}
       kpis={{ obrasAtivas, obrasTotal, funcAtivos, orcamento, gastoTotal, receita, parcelasAtrasadas, parcelasAtrasadasValor }}
       notasPendentes={notasPendentes.map((n: typeof notasPendentes[0]) => ({ id: n.id, fornecedor: n.fornecedor, valor: Number(n.valor), emitidaEm: n.emitidaEm?.toISOString() ?? null, obra: n.obra }))}
       parcelasVencendo={parcelasVencendo.map((p: typeof parcelasVencendo[0]) => ({ id: p.id, valor: Number(p.valor), vencimento: p.vencimento?.toISOString() ?? null, venda: p.venda }))}
