@@ -90,7 +90,16 @@ export async function setSession(session: Session): Promise<void> {
 
 export async function clearSession(): Promise<void> {
   const jar = await cookies();
-  jar.delete(COOKIE);
+  // O prefixo __Host- exige Secure + Path=/ + sem Domain também na exclusão;
+  // jar.delete() não reenvia esses atributos e o navegador recusa apagar o cookie.
+  // Por isso reescrevemos o cookie vazio com maxAge 0 mantendo os mesmos atributos.
+  jar.set(COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+    secure: process.env.NODE_ENV === "production",
+  });
 }
 
 // ── Helper usado em Server Actions ───────────────────────────────────────────
