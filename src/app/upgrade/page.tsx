@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession, clearSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { assinarAction } from "./actions";
 
 async function sairAction() {
   "use server";
@@ -53,22 +54,35 @@ export default async function UpgradePage() {
         {/* Planos */}
         {planos.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-            {planos.map((p) => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>{p.nome}</div>
-                  {p.limiteObras !== null && (
-                    <div style={{ fontSize: 13, color: "#64748b" }}>
-                      {p.limiteObras === 0 ? "Sem obras" : `Até ${p.limiteObras} obra${p.limiteObras > 1 ? "s" : ""}`}
+            {planos.map((p) => {
+              const assinar = assinarAction.bind(null, p.id);
+              return (
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>{p.nome}</div>
+                    {p.limiteObras !== null && (
+                      <div style={{ fontSize: 13, color: "#64748b" }}>
+                        {p.limiteObras === 0 ? "Sem obras" : `Até ${p.limiteObras} obra${p.limiteObras > 1 ? "s" : ""}`}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
+                      R$ {Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                      <span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8" }}>/mês</span>
                     </div>
-                  )}
+                    <form action={assinar}>
+                      <button
+                        type="submit"
+                        style={{ padding: "8px 18px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Assinar
+                      </button>
+                    </form>
+                  </div>
                 </div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-                  R$ {Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
-                  <span style={{ fontSize: 12, fontWeight: 400, color: "#94a3b8" }}>/mês</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : null}
 

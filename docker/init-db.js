@@ -121,6 +121,17 @@ if (!obrasEnderecoInfo.find(c => c.name === 'cep')) {
   console.log('[prumo] Migração aplicada: obras.cep adicionado.');
 }
 
+// Migration: assinaturas.stripeCustomerId/stripeSubscriptionId (Stripe — v3.0)
+const assinaturasInfo = db.prepare("PRAGMA table_info('assinaturas')").all();
+if (!assinaturasInfo.find(c => c.name === 'stripeCustomerId')) {
+  db.exec('ALTER TABLE "assinaturas" ADD COLUMN "stripeCustomerId" TEXT;');
+  console.log('[prumo] Migração aplicada: assinaturas.stripeCustomerId adicionado.');
+}
+if (!assinaturasInfo.find(c => c.name === 'stripeSubscriptionId')) {
+  db.exec('ALTER TABLE "assinaturas" ADD COLUMN "stripeSubscriptionId" TEXT;');
+  console.log('[prumo] Migração aplicada: assinaturas.stripeSubscriptionId adicionado.');
+}
+
 // Migration: usuarios.bloqueado (Super Admin — v0.9)
 const usuariosInfo = db.prepare("PRAGMA table_info('usuarios')").all();
 if (!usuariosInfo.find(c => c.name === 'bloqueado')) {

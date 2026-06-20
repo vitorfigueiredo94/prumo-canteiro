@@ -32,11 +32,13 @@ model Assinatura {
   empresaId       String   @unique
   plano           Plano    @relation(fields: [planoId], references: [id])
   planoId         String
-  status          String   @default("trial")
-  desde           DateTime @default(now())
-  proximaCobranca DateTime?
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  status               String   @default("trial")
+  desde                DateTime @default(now())
+  proximaCobranca      DateTime?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  criadoEm            DateTime @default(now())
+  atualizadoEm        DateTime @updatedAt
 
   @@map("assinaturas")
 }

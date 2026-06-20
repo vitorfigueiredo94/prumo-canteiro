@@ -12,6 +12,7 @@ const TRIAL: PlanoInfo = {
   recursos: Object.values(RECURSO),
   status: "trial",
   isTrial: true,
+  trialExpirado: false,
 };
 
 const BASICO: PlanoInfo = {
@@ -21,6 +22,7 @@ const BASICO: PlanoInfo = {
   recursos: [],
   status: "ativo",
   isTrial: false,
+  trialExpirado: false,
 };
 
 const PROFISSIONAL: PlanoInfo = {
@@ -30,6 +32,7 @@ const PROFISSIONAL: PlanoInfo = {
   recursos: ["vendas", "fluxo_caixa", "diario", "relatorios"],
   status: "ativo",
   isTrial: false,
+  trialExpirado: false,
 };
 
 const CANCELADO: PlanoInfo = {
@@ -39,6 +42,7 @@ const CANCELADO: PlanoInfo = {
   recursos: [],
   status: "cancelado",
   isTrial: false,
+  trialExpirado: false,
 };
 
 describe("temRecurso — Trial (acesso total)", () => {

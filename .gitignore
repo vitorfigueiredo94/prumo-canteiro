@@ -58,3 +58,6 @@ public/uploads/
 docker/ssl/
 *.key
 *.crt
+
+# Claude Code local
+.claude/
