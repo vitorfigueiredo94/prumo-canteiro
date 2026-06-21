@@ -36,7 +36,7 @@ export default async function UpgradePage({
       select: { nome: true },
     }),
     prisma.plano.findMany({
-      where: { destaque: true },
+      where: { preco: { gt: 0 } },
       orderBy: { preco: "asc" },
     }),
     getPlanoEmpresa(session.empresaId),
@@ -82,9 +82,12 @@ export default async function UpgradePage({
             {planos.map((p) => {
               const assinar = assinarAction.bind(null, p.id);
               return (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: "1px solid #e2e8f0", borderRadius: 10, background: "#f8fafc" }}>
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", border: `1px solid ${p.destaque ? "#d4a24c" : "#e2e8f0"}`, borderRadius: 10, background: p.destaque ? "#fffbf3" : "#f8fafc" }}>
                   <div style={{ textAlign: "left" }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a" }}>{p.nome}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
+                      {p.nome}
+                      {p.destaque && <span style={{ fontSize: 9.5, fontWeight: 800, color: "#9a6a12", background: "#f5d99a", padding: "2px 7px", borderRadius: 20, letterSpacing: "0.04em" }}>MAIS VENDIDO</span>}
+                    </div>
                     {p.limiteObras !== null && (
                       <div style={{ fontSize: 13, color: "#64748b" }}>
                         {p.limiteObras === 0 ? "Sem obras" : `Até ${p.limiteObras} obra${p.limiteObras > 1 ? "s" : ""}`}
