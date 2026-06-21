@@ -1,11 +1,10 @@
 "use server";
 
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-05-27.dahlia" });
+import { getStripe } from "@/lib/stripe";
 
 export async function assinarAction(planoId: string) {
   const session = await getSession();
@@ -50,6 +49,6 @@ export async function assinarAction(planoId: string) {
     checkoutParams.customer_email = undefined;
   }
 
-  const checkoutSession = await stripe.checkout.sessions.create(checkoutParams);
+  const checkoutSession = await getStripe().checkout.sessions.create(checkoutParams);
   redirect(checkoutSession.url!);
 }

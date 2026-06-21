@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { getStripe } from "@/lib/stripe";
 import { notificarAdmin, notificarGestor } from "@/lib/notificar-admin";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-05-27.dahlia" });
 
 function agora(): string {
   return new Date().toLocaleString("pt-BR", {
@@ -19,11 +18,15 @@ function agora(): string {
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature") ?? "";
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret || !process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: "Stripe não configurado" }, { status: 503 });
+  }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
   } catch {
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 400 });
   }
