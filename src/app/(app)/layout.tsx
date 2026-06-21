@@ -59,7 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           background: "var(--bg-surface)",
         }}>
           <ThemeToggle />
-          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} telefoneGestor={telefoneGestor} logoEmpresa={logoEmpresa} />
+          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} telefoneGestor={telefoneGestor} logoEmpresa={logoEmpresa} planoNome={plano.planoNome} isTrial={plano.isTrial} />
         </div>
 
         <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>

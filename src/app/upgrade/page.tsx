@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSession, clearSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPlanoEmpresa } from "@/lib/plano";
 import { assinarAction } from "./actions";
 
 async function sairAction() {
@@ -15,7 +17,7 @@ export default async function UpgradePage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [empresa, planos] = await Promise.all([
+  const [empresa, planos, plano] = await Promise.all([
     prisma.empresa.findUnique({
       where: { id: session.empresaId },
       select: { nome: true },
@@ -24,8 +26,10 @@ export default async function UpgradePage() {
       where: { destaque: true },
       orderBy: { preco: "asc" },
     }),
+    getPlanoEmpresa(session.empresaId),
   ]);
 
+  const expirado = plano.trialExpirado;
   const suporteTel = process.env.WHATSAPP_SUPORTE ?? "5511999999999";
   const whatsappLink = `https://wa.me/${suporteTel}?text=${encodeURIComponent("Olá! Quero assinar o PrumoCanteiro.")}`;
 
@@ -42,13 +46,15 @@ export default async function UpgradePage() {
 
       {/* Card principal */}
       <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 4px 24px rgba(0,0,0,0.06)", maxWidth: 520, width: "100%", padding: "40px 36px", textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>⏰</div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>{expirado ? "⏰" : "🚀"}</div>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", margin: "0 0 10px" }}>
-          Seu período de teste encerrou
+          {expirado ? "Seu período de teste encerrou" : "Escolha seu plano"}
         </h1>
         <p style={{ fontSize: 15, color: "#64748b", lineHeight: 1.6, margin: "0 0 28px" }}>
           {empresa?.nome ? `Olá, ${empresa.nome}! ` : ""}
-          Seu teste gratuito de 14 dias chegou ao fim. Para continuar com suas obras, terrenos e dados, assine um de nossos planos.
+          {expirado
+            ? "Seu teste gratuito de 14 dias chegou ao fim. Para continuar com suas obras, terrenos e dados, assine um de nossos planos."
+            : "Assine para garantir o acesso completo às suas obras, terrenos e relatórios sem interrupções."}
         </p>
 
         {/* Planos */}
@@ -101,12 +107,19 @@ export default async function UpgradePage() {
         </p>
       </div>
 
-      {/* Sair */}
-      <form action={sairAction}>
-        <button type="submit" style={{ marginTop: 20, fontSize: 13, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-          Sair da conta
-        </button>
-      </form>
+      {/* Voltar / Sair */}
+      <div style={{ marginTop: 20, display: "flex", gap: 18, alignItems: "center" }}>
+        {!expirado && (
+          <Link href="/dashboard" style={{ fontSize: 13, color: "#64748b", textDecoration: "underline" }}>
+            ← Voltar ao sistema
+          </Link>
+        )}
+        <form action={sairAction}>
+          <button type="submit" style={{ fontSize: 13, color: "#94a3b8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+            Sair da conta
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

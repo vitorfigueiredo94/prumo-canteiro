@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { Shield, LogOut, Phone, Check, Pencil, ImagePlus, X } from "lucide-react";
+import { Shield, LogOut, Phone, Check, Pencil, ImagePlus, X, Rocket } from "lucide-react";
 import { logoutAction, salvarTelefoneGestor, salvarLogoEmpresa } from "@/app/(app)/actions";
 
 const AV_COLORS = ["#1e3a5f","#b45309","#6d28d9","#047857","#b91c1c","#0369a1"];
@@ -22,9 +22,10 @@ function fmtFone(v: string) {
   return v;
 }
 
-export function UserMenu({ nome, email, superAdmin, telefoneGestor, logoEmpresa }: {
+export function UserMenu({ nome, email, superAdmin, telefoneGestor, logoEmpresa, planoNome, isTrial }: {
   nome: string; email: string; superAdmin: boolean;
   telefoneGestor: string | null; logoEmpresa: string | null;
+  planoNome: string; isTrial: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -265,6 +266,33 @@ export function UserMenu({ nome, email, superAdmin, telefoneGestor, logoEmpresa 
               Recebe cópia de cada cobrança disparada pelo sistema.
             </p>
           </div>
+
+          {/* Plano e assinatura */}
+          {!superAdmin && (
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                <Rocket size={11} /> Plano e assinatura
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 13, color: "var(--fg-primary)", fontWeight: 500 }}>
+                  {planoNome}
+                  {isTrial && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#2563eb", background: "rgba(37,99,235,0.12)", padding: "2px 7px", borderRadius: 20 }}>Teste</span>}
+                </span>
+              </div>
+              <Link
+                href="/upgrade"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  marginTop: 9, height: 34, borderRadius: 8,
+                  background: "#1e3a5f", color: "#fff", fontSize: 13, fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                <Rocket size={13} /> {isTrial ? "Assinar agora" : "Mudar de plano"}
+              </Link>
+            </div>
+          )}
 
           {/* Actions */}
           <div style={{ padding: "6px" }}>
