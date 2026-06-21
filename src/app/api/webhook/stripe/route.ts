@@ -27,20 +27,27 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
   try {
     event = getStripe().webhooks.constructEvent(body, sig, webhookSecret);
-  } catch {
+  } catch (err) {
+    console.error("[stripe-webhook] assinatura inválida (STRIPE_WEBHOOK_SECRET não bate?):", err);
     return NextResponse.json({ error: "Assinatura inválida" }, { status: 400 });
   }
+
+  console.log(`[stripe-webhook] evento recebido: ${event.type} (id=${event.id})`);
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const empresaId = session.client_reference_id ?? session.metadata?.empresaId;
     const planoId = session.metadata?.planoId;
-    if (!empresaId) return NextResponse.json({ ok: true });
+    console.log(`[stripe-webhook] checkout.completed → empresaId=${empresaId ?? "(vazio)"} planoId=${planoId ?? "(vazio)"}`);
+    if (!empresaId) {
+      console.log("[stripe-webhook] sem empresaId no metadata → ignorando (provavelmente checkout de outro produto)");
+      return NextResponse.json({ ok: true });
+    }
 
     const proximaCobranca = new Date();
     proximaCobranca.setMonth(proximaCobranca.getMonth() + 1);
 
-    await prisma.assinatura.updateMany({
+    const res = await prisma.assinatura.updateMany({
       where: { empresaId },
       data: {
         status: "ativo",
@@ -50,6 +57,7 @@ export async function POST(req: NextRequest) {
         ...(planoId ? { planoId } : {}),
       },
     });
+    console.log(`[stripe-webhook] assinatura atualizada para ativo: ${res.count} registro(s) (empresaId=${empresaId})`);
 
     const empresa = await prisma.empresa.findUnique({
       where: { id: empresaId },
