@@ -28,7 +28,20 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_SUPORTE: ${WHATSAPP_SUPORTE:-}
       CRON_SECRET: ${CRON_SECRET:-}
+      # Stripe (assinaturas)
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Notificações ao superadmin
+      ADMIN_WHATSAPP_PHONE: ${ADMIN_WHATSAPP_PHONE:-}
+      ADMIN_NOTIFICATION_EMAIL: ${ADMIN_NOTIFICATION_EMAIL:-}
+      # E-mail (SMTP / Zoho)
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       NODE_ENV: production
     volumes:
       - db_data:/app/data
