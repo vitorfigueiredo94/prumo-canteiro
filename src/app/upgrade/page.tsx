@@ -13,9 +13,22 @@ async function sairAction() {
 
 export const metadata = { title: "Upgrade — PrumoCanteiro" };
 
-export default async function UpgradePage() {
+const ERRO_MSG: Record<string, string> = {
+  config: "Pagamento online ainda não está configurado. Fale com o suporte pelo WhatsApp abaixo.",
+  checkout: "Não conseguimos abrir o pagamento agora. Tente de novo em instantes ou fale com o suporte.",
+  plano: "Plano não encontrado. Recarregue a página e tente novamente.",
+};
+
+export default async function UpgradePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ erro?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const { erro } = await searchParams;
+  const erroMsg = erro ? ERRO_MSG[erro] ?? null : null;
 
   const [empresa, planos, plano] = await Promise.all([
     prisma.empresa.findUnique({
@@ -56,6 +69,12 @@ export default async function UpgradePage() {
             ? "Seu teste gratuito de 14 dias chegou ao fim. Para continuar com suas obras, terrenos e dados, assine um de nossos planos."
             : "Assine para garantir o acesso completo às suas obras, terrenos e relatórios sem interrupções."}
         </p>
+
+        {erroMsg && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", borderRadius: 10, padding: "12px 16px", fontSize: 13.5, marginBottom: 22, textAlign: "left", lineHeight: 1.5 }}>
+            ⚠️ {erroMsg}
+          </div>
+        )}
 
         {/* Planos */}
         {planos.length > 0 ? (
