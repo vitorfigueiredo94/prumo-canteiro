@@ -943,9 +943,9 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Data / hora</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Data</span>
                 <input
-                  type="datetime-local"
+                  type="date"
                   value={notifData}
                   onChange={(e) => setNotifData(e.target.value)}
                   style={{ height: 40, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }}
@@ -982,7 +982,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
                   const endLine = endParts.length > 0 ? endParts.join(", ") : "Endereço não informado";
                   const mapsLink = endParts.length > 0 ? `https://maps.google.com/?q=${encodeURIComponent(endParts.join(", "))}` : null;
                   const dataFmt = notifData
-                    ? new Date(notifData).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })
+                    ? new Date(`${notifData}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })
                     : "A confirmar";
                   const linhas = [
                     `🏗️ *Designação de obra — ${obra.nome}*`, ``,
