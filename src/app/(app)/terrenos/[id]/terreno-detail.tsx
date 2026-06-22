@@ -6,6 +6,7 @@ import { MapPinned, Pencil, Building2, ChevronRight, FolderOpen, CheckSquare, Us
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
 import { TerrenoForm } from "../terreno-form";
+import { MapaTerreno } from "./mapa-terreno";
 import { editarTerreno } from "../actions";
 import { STATUS_TERRENO, STATUS_OBRA } from "@/lib/status";
 import { fmtBRL, fmtDate, fmtArea } from "@/lib/format";
@@ -50,6 +51,8 @@ interface Terreno {
   status: string;
   aquisicao: string | null;
   valorCompra: number | null;
+  lat: number | null;
+  lng: number | null;
   obras: Obra[];
   vendas: Venda[];
 }
@@ -615,6 +618,14 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Localização no mapa */}
+            <div>
+              <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 10 }}>
+                Localização
+              </div>
+              <MapaTerreno terrenoId={terreno.id} nome={terreno.nome} status={terreno.status} />
             </div>
           </div>
         )}
