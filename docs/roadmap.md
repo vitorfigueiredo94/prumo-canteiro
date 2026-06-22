@@ -1,6 +1,6 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 3.0
+> **Versão:** 3.1
 > **Atualizado em:** 22/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
 > **Commits pós-tag (v2.x):** contratos · logo · RBAC/LGPD · audit v1/v2 · import Excel · hotfix build · notif WA/email · checklist edit · alertas · relatório + portal · materiais obra · orçamento · boletim · relatório v2 · alertas painel · `548ed61` (inadimplência+projeção+KPIs v2.8) · `122af55` (juros inadimplência + MoM dashboard + PWA manifest + equipe multi-usuário, v2.9) · `968f3d0` (mapa pins coloridos por status)
@@ -75,6 +75,8 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Status: planejamento → execução → concluída → cancelada
 - [x] Stepper de fases + aba Checklist + donut SVG
 - [x] **Alocar funcionário (v3.0)** — botão "+ Alocar" na aba Equipe abre form (select de funcionários ativos ainda não alocados + função opcional); `alocarNaObra()` + `desalocarFuncionario()` (lixeira) em `obras/actions.ts`
+- [x] **Quadro Kanban de tarefas (v3.1)** — aba "Quadro": cards de tarefas (A fazer → Em execução → Concluído) com drag-and-drop nativo, add/remover, categoria colorida, custo, e botão "📲 Avisar" (abre `wa.me` com a tarefa, escolhe o contato). Modelo `TarefaObra` (`tarefas_obra`) + API `GET/POST /api/v1/obras/[id]/tarefas` e `PATCH/DELETE .../[tid]`, guardada por empresaId
+- [x] **Kanban de portfólio (v3.1)** — `/obras` com toggle **Lista/Quadro**: colunas por status (Planejamento → Em andamento → Parada → Concluída); arrasta a obra entre colunas → `mudarStatusObra()` (update otimista)
 - [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone → monta a mensagem (endereço + link Google Maps + data/hora + tarefa + responsável) e abre **`wa.me`** no WhatsApp do gestor (1 toque). Funciona para qualquer número, sem depender da Cloud API. O endpoint `POST /api/v1/obras/[id]/notificar-funcionario` (Cloud API) fica preservado para quando a conta WhatsApp for verificada (envio automático).
   - ⚠️ Cloud API dá erro `#131030` ("número não está na lista de permissão") enquanto a conta está em modo de teste/não verificada — por isso o `wa.me` é o caminho prático.
 
@@ -308,6 +310,8 @@ ALTER TABLE "obras"       ADD COLUMN "cidade"   TEXT;
 ALTER TABLE "obras"       ADD COLUMN "cep"      TEXT;
 ALTER TABLE "assinaturas" ADD COLUMN "stripeCustomerId"     TEXT;
 ALTER TABLE "assinaturas" ADD COLUMN "stripeSubscriptionId" TEXT;
+-- v3.1: nova tabela (em docker/migrate.sql)
+CREATE TABLE IF NOT EXISTS "tarefas_obra" ( id, empresaId, obraId, titulo, categoria, status, responsavel, custo, ordem, ... );
 ```
 
 > `lat`/`lng` em `terrenos` permanecem no schema mas **não são mais usados** (localização migrou para Google Maps por texto na v3.0).
@@ -352,6 +356,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 19/06/2026 | v2.9 | **Juros de inadimplência, MoM no dashboard, PWA manifest, equipe multi-usuário** (`122af55`); pins de mapa coloridos por status (`968f3d0`) |
 | 19–22/06/2026 | **v3.0** | **CEP em terrenos + endereço/cidade/CEP em obras** · **Notificar funcionário por WhatsApp** (endereço + Maps + tarefa) · **Trial 14 dias** (cron expira + avisos -3d/-1d) → redireciona para **/upgrade** · **Tela de upgrade** (lista de planos + acesso pelo menu de perfil) · **Assinatura por contato de e-mail** (substituiu o checkout Stripe na UI) · **Stripe scaffolding** preservado (lazy init, webhook) · **fix logout** (cookie `__Host-` não era apagado) · **fix docker-compose** (repassar Stripe/email/notif ao container) · **Localização 100% Google Maps** (cartão "Abrir no Google Maps" + Embed API opcional) — remove Leaflet/Nominatim |
 | 22/06/2026 | v3.0.1 | **Alocar funcionário na obra** (botão "+ Alocar" na aba Equipe + remover) · **Notificar funcionário migrou para `wa.me`** (Cloud API bloqueava com `#131030` em conta não verificada) · **fix botão Relatório** (cor branca fixa → tokens do tema; estava invisível no tema claro) |
+| 22/06/2026 | **v3.1** | **Kanban** — aba "Quadro" de tarefas por obra (drag-and-drop A fazer/Em execução/Concluído, categoria, custo, "Avisar" via `wa.me`; modelo `TarefaObra`) + **portfólio** `/obras` com toggle Lista/Quadro (arrasta obra entre status) |
 
 ---
 
