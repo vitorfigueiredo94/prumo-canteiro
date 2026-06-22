@@ -28,6 +28,13 @@ const COLUNAS: { key: string; label: string; cor: string }[] = [
   { key: "concluido",   label: "Concluído",    cor: "#16a34a" },
 ];
 
+// Etapas comuns de obra — sugestões de um clique
+const SUGESTOES = [
+  "Fundação", "Alvenaria", "Estrutura", "Reboco", "Piso", "Revestimento",
+  "Hidráulica", "Elétrica", "Iluminação", "Forro", "Esquadrias", "Pintura",
+  "Telhado", "Impermeabilização", "Acabamento", "Limpeza final",
+];
+
 // cor estável por categoria (hash simples)
 const CAT_CORES = ["#1e3a5f", "#b45309", "#6d28d9", "#047857", "#b91c1c", "#0369a1", "#be185d"];
 function catCor(cat: string) {
@@ -50,10 +57,10 @@ export function QuadroTab({ obra }: { obra: ObraLite }) {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  async function adicionar(status: string) {
-    const titulo = (novoTitulo[status] ?? "").trim();
+  async function adicionar(status: string, tituloArg?: string) {
+    const titulo = (tituloArg ?? novoTitulo[status] ?? "").trim();
     if (!titulo) return;
-    setNovoTitulo((p) => ({ ...p, [status]: "" }));
+    if (!tituloArg) setNovoTitulo((p) => ({ ...p, [status]: "" }));
     const res = await fetch(`/api/v1/obras/${obra.id}/tarefas`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,6 +101,9 @@ export function QuadroTab({ obra }: { obra: ObraLite }) {
   if (tarefas === null) {
     return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando quadro…</p>;
   }
+
+  const usados = new Set(tarefas.map((t) => t.titulo.trim().toLowerCase()));
+  const sugestoesDisp = SUGESTOES.filter((s) => !usados.has(s.toLowerCase()));
 
   return (
     <div>
@@ -169,6 +179,26 @@ export function QuadroTab({ obra }: { obra: ObraLite }) {
                   />
                   <button onClick={() => adicionar(col.key)} disabled={!(novoTitulo[col.key] ?? "").trim()} style={{ width: 34, height: 34, border: "none", borderRadius: "var(--radius-md)", background: "#1e3a5f", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: (novoTitulo[col.key] ?? "").trim() ? 1 : 0.5 }}><Plus size={16} /></button>
                 </div>
+
+                {/* Sugestões padrão (só na coluna "A fazer") */}
+                {col.key === "a_fazer" && sugestoesDisp.length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 10.5, color: "var(--fg-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600, marginBottom: 6 }}>Etapas comuns — toque para adicionar</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {sugestoesDisp.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => adicionar("a_fazer", s)}
+                          style={{ padding: "4px 10px", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-full)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 3 }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--navy-600)"; (e.currentTarget as HTMLElement).style.color = "var(--navy-700)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLElement).style.color = "var(--fg-secondary)"; }}
+                        >
+                          + {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
