@@ -120,6 +120,44 @@ export async function excluirNota(notaId: string, obraId: string): Promise<void>
   revalidatePath("/notas");
 }
 
+// ── Alocação de funcionário na obra ──────────────────────────────────────────
+
+export async function alocarNaObra(obraId: string, formData: FormData): Promise<{ error?: string } | null> {
+  const empresaId = await getEmpresaId();
+  const funcionarioId = String(formData.get("funcionarioId") ?? "");
+  const cargo = (String(formData.get("cargo") ?? "").trim()) || null;
+  if (!funcionarioId) return { error: "Selecione um funcionário." };
+
+  // Garante que obra e funcionário são da empresa
+  const [obra, func] = await Promise.all([
+    prisma.obra.findFirst({ where: { id: obraId, empresaId }, select: { id: true } }),
+    prisma.funcionario.findFirst({ where: { id: funcionarioId, empresaId }, select: { id: true } }),
+  ]);
+  if (!obra || !func) return { error: "Obra ou funcionário não encontrado." };
+
+  // Evita duplicar alocação ativa do mesmo funcionário na mesma obra
+  const jaAlocado = await prisma.alocacaoFuncionario.findFirst({ where: { obraId, funcionarioId } });
+  if (jaAlocado) return { error: "Funcionário já está alocado nesta obra." };
+
+  await prisma.alocacaoFuncionario.create({
+    data: { obraId, funcionarioId, cargo, inicio: new Date() },
+  });
+  revalidatePath(`/obras/${obraId}`);
+  return null;
+}
+
+export async function desalocarFuncionario(alocacaoId: string, obraId: string): Promise<void> {
+  const empresaId = await getEmpresaId();
+  // Confirma que a alocação pertence a uma obra da empresa antes de apagar
+  const aloc = await prisma.alocacaoFuncionario.findFirst({
+    where: { id: alocacaoId, obra: { empresaId } },
+    select: { id: true },
+  });
+  if (!aloc) return;
+  await prisma.alocacaoFuncionario.delete({ where: { id: alocacaoId } });
+  revalidatePath(`/obras/${obraId}`);
+}
+
 const NotaSchemaInline = z.object({
   obraId: z.string().min(1),
   categoria: z.enum(["material", "mao_obra", "servicos", "equipamentos", "outros"]),

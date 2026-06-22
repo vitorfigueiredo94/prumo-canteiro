@@ -40,6 +40,12 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
     }),
   ]);
 
+  const funcionarios = await prisma.funcionario.findMany({
+    where: { empresaId: eid, status: "ativo" },
+    select: { id: true, nome: true, cargo: true },
+    orderBy: { nome: "asc" },
+  });
+
   if (!obra) notFound();
 
   const receitaAtribuidaAgg = obra.terreno?.id
@@ -77,5 +83,5 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
     })),
   };
 
-  return <ObraDetail obra={serialized as any} terrenos={terrenos} receitaAtribuida={receitaAtribuida} />;
+  return <ObraDetail obra={serialized as any} terrenos={terrenos} funcionarios={funcionarios} receitaAtribuida={receitaAtribuida} />;
 }

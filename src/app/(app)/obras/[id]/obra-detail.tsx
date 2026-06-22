@@ -15,7 +15,7 @@ import { OrcamentoTab } from "./orcamento-tab";
 import { BoletimTab } from "./boletim-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
-import { editarObra, confirmarNota, excluirNota, criarNotaParaObra } from "../actions";
+import { editarObra, confirmarNota, excluirNota, criarNotaParaObra, alocarNaObra, desalocarFuncionario } from "../actions";
 import { criarEntrada, excluirEntrada, editarEntrada } from "../../diario/actions";
 import { STATUS_OBRA, STATUS_NF, CATEGORIA_NF } from "@/lib/status";
 import { fmtBRL, fmtDate } from "@/lib/format";
@@ -353,11 +353,15 @@ const KPI = ({ label, value, sub, danger, green }: { label: string; value: strin
 );
 
 // ─── main component ────────────────────────────────────────────────────────────
-export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obra; terrenos: Terreno[]; receitaAtribuida?: number }) {
+export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida = 0 }: { obra: Obra; terrenos: Terreno[]; funcionarios?: { id: string; nome: string; cargo: string | null }[]; receitaAtribuida?: number }) {
   const [tab, setTab] = useState("financeiro");
   const [showEdit, setShowEdit] = useState(false);
   const [showNotaForm, setShowNotaForm] = useState(false);
   const [showDiarioForm, setShowDiarioForm] = useState(false);
+  const [showAlocForm, setShowAlocForm] = useState(false);
+  const [alocFunc, setAlocFunc] = useState("");
+  const [alocCargo, setAlocCargo] = useState("");
+  const [alocErr, setAlocErr] = useState<string | null>(null);
   const [diarioEntries, setDiarioEntries] = useState(obra.diario);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [editingDiarioId, setEditingDiarioId] = useState<string | null>(null);
@@ -424,6 +428,28 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
     });
   };
 
+  // funcionários que ainda não estão alocados nesta obra
+  const alocadosIds = new Set(obra.alocacoes.map((a) => a.funcionario.id));
+  const funcDisponiveis = funcionarios.filter((f) => !alocadosIds.has(f.id));
+
+  const handleAlocar = () => {
+    setAlocErr(null);
+    if (!alocFunc) { setAlocErr("Selecione um funcionário."); return; }
+    const fd = new FormData();
+    fd.set("funcionarioId", alocFunc);
+    fd.set("cargo", alocCargo);
+    startTransition(async () => {
+      const r = await alocarNaObra(obra.id, fd);
+      if (r?.error) { setAlocErr(r.error); return; }
+      setShowAlocForm(false); setAlocFunc(""); setAlocCargo("");
+    });
+  };
+
+  const handleDesalocar = (alocacaoId: string) => {
+    if (!confirm("Remover este funcionário da obra?")) return;
+    startTransition(() => desalocarFuncionario(alocacaoId, obra.id));
+  };
+
   return (
     <>
       {/* Topbar */}
@@ -438,7 +464,7 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
             <button
               onClick={() => window.open(`/api/relatorio/obra/${obra.id}`, "_blank")}
-              style={{ height: 40, padding: "0 18px", background: "transparent", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
+              style={{ height: 40, padding: "0 18px", background: "transparent", color: "var(--fg-secondary)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}
             >
               📄 Relatório
             </button>
@@ -683,7 +709,38 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
             {/* Left: Equipe alocada */}
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 22px" }}>
-              <p style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Equipe alocada</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Equipe alocada</p>
+                <button onClick={() => { setShowAlocForm((v) => !v); setAlocErr(null); }} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--navy-700)", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Plus size={14} /> Alocar
+                </button>
+              </div>
+
+              {showAlocForm && (
+                <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "14px 16px", marginBottom: 16, background: "var(--ink-50)" }}>
+                  {funcDisponiveis.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 13.5, color: "var(--fg-tertiary)" }}>
+                      Todos os funcionários ativos já estão alocados. <Link href="/funcionarios" style={{ color: "var(--navy-700)", fontWeight: 600 }}>Cadastrar novo →</Link>
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <select value={alocFunc} onChange={(e) => setAlocFunc(e.target.value)} style={{ height: 38, padding: "0 10px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }}>
+                        <option value="">Selecione o funcionário…</option>
+                        {funcDisponiveis.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nome}{f.cargo ? ` — ${f.cargo}` : ""}</option>
+                        ))}
+                      </select>
+                      <input value={alocCargo} onChange={(e) => setAlocCargo(e.target.value)} placeholder="Função nesta obra (opcional)" style={{ height: 38, padding: "0 10px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none" }} />
+                      {alocErr && <p style={{ margin: 0, fontSize: 12.5, color: "#dc2626" }}>{alocErr}</p>}
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button onClick={() => { setShowAlocForm(false); setAlocErr(null); }} style={{ height: 34, padding: "0 14px", background: "transparent", color: "var(--fg-secondary)", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, cursor: "pointer" }}>Cancelar</button>
+                        <button onClick={handleAlocar} disabled={isPending} style={{ height: 34, padding: "0 16px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.7 : 1 }}>{isPending ? "Alocando…" : "Alocar"}</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {obra.alocacoes.length === 0 ? (
                 <p style={{ fontSize: 14, color: "var(--fg-tertiary)", padding: "20px 0" }}>Nenhum funcionário alocado ainda.</p>
               ) : (
@@ -710,6 +767,9 @@ export function ObraDetail({ obra, terrenos, receitaAtribuida = 0 }: { obra: Obr
                         <Link href={`/funcionarios/${a.funcionario.id}`} style={{ height: 32, padding: "0 12px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none" }}>
                           Pagar
                         </Link>
+                        <button onClick={() => handleDesalocar(a.id)} title="Remover da obra" style={{ width: 32, height: 32, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
                   ))}
