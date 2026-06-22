@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2, GripVertical, Pencil, Check, X, CalendarDays } from "lucide-react";
 import { fmtBRL } from "@/lib/format";
 
@@ -9,11 +10,18 @@ interface Tarefa {
   titulo: string;
   categoria: string | null;
   status: string;
+  fase: string | null;
   responsavel: string | null;
   custo: number | null;
   prazo: string | null;
   ordem: number;
 }
+
+const FASES: { key: string; label: string }[] = [
+  { key: "inicio",   label: "Início" },
+  { key: "execucao", label: "Execução" },
+  { key: "entrega",  label: "Entrega" },
+];
 
 interface ObraLite {
   id: string;
@@ -47,18 +55,20 @@ function catCor(cat: string) {
 }
 
 export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcionarios?: FuncLite[] }) {
+  const router = useRouter();
   const [tarefas, setTarefas] = useState<Tarefa[] | null>(null);
   const [novoTitulo, setNovoTitulo] = useState<Record<string, string>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ titulo: string; categoria: string; responsavel: string; prazo: string; custo: string }>({ titulo: "", categoria: "", responsavel: "", prazo: "", custo: "" });
+  const [editForm, setEditForm] = useState<{ titulo: string; categoria: string; fase: string; responsavel: string; prazo: string; custo: string }>({ titulo: "", categoria: "", fase: "", responsavel: "", prazo: "", custo: "" });
 
   function abrirEdicao(t: Tarefa) {
     setEditId(t.id);
     setEditForm({
       titulo: t.titulo,
       categoria: t.categoria ?? "",
+      fase: t.fase ?? "",
       responsavel: t.responsavel ?? "",
       prazo: t.prazo ? t.prazo.slice(0, 10) : "",
       custo: t.custo != null ? String(t.custo) : "",
@@ -69,6 +79,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
     const payload = {
       titulo: editForm.titulo.trim() || undefined,
       categoria: editForm.categoria.trim(),
+      fase: editForm.fase || null,
       responsavel: editForm.responsavel.trim(),
       prazo: editForm.prazo || null,
       custo: editForm.custo,
@@ -102,6 +113,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
     });
     const json = await res.json();
     if (json.tarefa) setTarefas((prev) => [...(prev ?? []), json.tarefa]);
+    router.refresh();
   }
 
   async function mover(id: string, status: string) {
@@ -111,11 +123,13 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    router.refresh(); // atualiza a barra de Execução física no topo
   }
 
   async function remover(id: string) {
     setTarefas((prev) => (prev ?? []).filter((t) => t.id !== id));
     await fetch(`/api/v1/obras/${obra.id}/tarefas/${id}`, { method: "DELETE" });
+    router.refresh();
   }
 
   function avisarWhatsApp(t: Tarefa) {
@@ -139,10 +153,49 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
   const usados = new Set(tarefas.map((t) => t.titulo.trim().toLowerCase()));
   const sugestoesDisp = SUGESTOES.filter((s) => !usados.has(s.toLowerCase()));
 
+  // Progresso geral (= execução física) e por fase
+  const total = tarefas.length;
+  const concl = tarefas.filter((t) => t.status === "concluido").length;
+  const pctGeral = total > 0 ? Math.round((concl / total) * 100) : 0;
+
+  const fasePct = (faseKey: string) => {
+    const ts = tarefas.filter((t) => t.fase === faseKey);
+    if (ts.length === 0) return null;
+    return Math.round((ts.filter((t) => t.status === "concluido").length / ts.length) * 100);
+  };
+
   return (
     <div>
+      {/* Resumo: execução física (das tarefas) + fases do ciclo de vida */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px", marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg-secondary)" }}>Execução física <span style={{ fontWeight: 400, color: "var(--fg-muted)" }}>(calculada pelas tarefas concluídas)</span></span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "#16a34a" : "var(--navy-700)" }}>{concl}/{total} · {pctGeral}%</span>
+        </div>
+        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "#22c55e" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {FASES.map((f) => {
+            const pct = fasePct(f.key);
+            const qt = tarefas.filter((t) => t.fase === f.key).length;
+            return (
+              <div key={f.key} style={{ background: "var(--ink-50)", borderRadius: "var(--radius-md)", padding: "8px 12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--fg-secondary)" }}>{f.label}</span>
+                  <span style={{ fontSize: 11.5, color: "var(--fg-muted)" }}>{pct == null ? "—" : `${pct}%`}{qt > 0 ? ` · ${qt}` : ""}</span>
+                </div>
+                <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct ?? 0}%`, height: "100%", background: (pct ?? 0) === 100 ? "#22c55e" : "var(--gold-400)", borderRadius: "var(--radius-full)" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <p style={{ margin: "0 0 16px", fontSize: 13.5, color: "var(--fg-tertiary)" }}>
-        Arraste as tarefas entre as colunas conforme a obra avança. {tarefas.length} tarefa(s).
+        Arraste as tarefas entre as colunas conforme a obra avança. Mover para <strong>Concluído</strong> aumenta a execução física. {tarefas.length} tarefa(s).
       </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, alignItems: "start" }}>
         {COLUNAS.map((col) => {
@@ -177,6 +230,10 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                       <div key={t.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--navy-600)", borderRadius: "var(--radius-md)", padding: "12px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 8 }}>
                         <input value={editForm.titulo} onChange={(e) => setEditForm((f) => ({ ...f, titulo: e.target.value }))} placeholder="Título" style={{ ...inp, fontWeight: 600 }} />
                         <input value={editForm.categoria} onChange={(e) => setEditForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Etapa/categoria (ex: Piso)" style={inp} />
+                        <select value={editForm.fase} onChange={(e) => setEditForm((f) => ({ ...f, fase: e.target.value }))} style={inp} title="Fase do ciclo de vida">
+                          <option value="">Fase: nenhuma</option>
+                          {FASES.map((f) => <option key={f.key} value={f.key}>Fase: {f.label}</option>)}
+                        </select>
                         {funcionarios.length > 0 ? (
                           <select value={editForm.responsavel} onChange={(e) => setEditForm((f) => ({ ...f, responsavel: e.target.value }))} style={inp}>
                             <option value="">Responsável…</option>
@@ -200,7 +257,8 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                   const prazoFmt = t.prazo ? new Date(t.prazo).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
                   const atrasada = t.prazo != null && t.status !== "concluido" && new Date(t.prazo) < new Date(new Date().toDateString());
 
-                  const temMeta = t.responsavel || prazoFmt || (t.custo != null && t.custo > 0);
+                  const faseLabel = FASES.find((f) => f.key === t.fase)?.label;
+                  const temMeta = faseLabel || t.responsavel || prazoFmt || (t.custo != null && t.custo > 0);
                   const iconBtn: React.CSSProperties = { width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, flexShrink: 0 };
                   return (
                     <div
@@ -223,6 +281,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                           </div>
                           {temMeta && (
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, flexWrap: "wrap", paddingLeft: t.categoria ? 13 : 0 }}>
+                              {faseLabel && <span style={{ fontSize: 10, fontWeight: 700, color: "#9a6a12", background: "#f5e6c8", padding: "1px 6px", borderRadius: 20 }}>{faseLabel}</span>}
                               {t.responsavel && <span style={{ fontSize: 11, color: "var(--fg-tertiary)" }}>👷 {t.responsavel}</span>}
                               {prazoFmt && <span style={{ fontSize: 11, color: atrasada ? "#dc2626" : "var(--fg-tertiary)", fontWeight: atrasada ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 2 }}><CalendarDays size={10} />{prazoFmt}</span>}
                               {t.custo != null && t.custo > 0 && <span style={{ fontSize: 11, color: "var(--fg-tertiary)" }}>{fmtBRL(t.custo)}</span>}

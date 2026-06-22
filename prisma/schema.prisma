@@ -149,6 +149,7 @@ model TarefaObra {
   titulo       String
   categoria    String?
   status       String   @default("a_fazer") // a_fazer | em_execucao | concluido
+  fase         String?  // inicio | execucao | entrega (ciclo de vida da obra)
   responsavel  String?
   custo        Decimal?
   prazo        DateTime?

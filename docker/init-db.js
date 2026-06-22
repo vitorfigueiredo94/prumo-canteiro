@@ -158,15 +158,19 @@ if (!empresasInfo.find(c => c.name === 'logoEmpresa')) {
   console.log('[prumo] Migração aplicada: empresas.logoEmpresa adicionado.');
 }
 
-// Migration: tarefas_obra.prazo (Kanban — v3.1)
+// Migration: tarefas_obra.prazo / fase (Kanban — v3.1 / v3.2)
 try {
   const tarefasInfo = db.prepare("PRAGMA table_info('tarefas_obra')").all();
   if (tarefasInfo.length > 0 && !tarefasInfo.find(c => c.name === 'prazo')) {
     db.exec('ALTER TABLE "tarefas_obra" ADD COLUMN "prazo" DATETIME;');
     console.log('[prumo] Migração aplicada: tarefas_obra.prazo adicionado.');
   }
+  if (tarefasInfo.length > 0 && !tarefasInfo.find(c => c.name === 'fase')) {
+    db.exec('ALTER TABLE "tarefas_obra" ADD COLUMN "fase" TEXT;');
+    console.log('[prumo] Migração aplicada: tarefas_obra.fase adicionado.');
+  }
 } catch (e) {
-  console.warn('[prumo] Migração tarefas_obra.prazo ignorada:', e.message);
+  console.warn('[prumo] Migração tarefas_obra (prazo/fase) ignorada:', e.message);
 }
 
 // Migration: vendas.contratoAssinadoEm (assinatura digital)

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recomputeProgresso } from "@/lib/obra-progresso";
+
+const FASES = ["inicio", "execucao", "entrega"];
 
 // Lista as tarefas (cards do Kanban) de uma obra
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,6 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const custo = body.custo != null && body.custo !== "" ? Number(body.custo) : null;
 
   const prazo = body.prazo ? new Date(`${String(body.prazo).slice(0, 10)}T12:00:00`) : null;
+  const fase = FASES.includes(body.fase) ? body.fase : null;
 
   const tarefa = await prisma.tarefaObra.create({
     data: {
@@ -48,10 +52,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       responsavel: body.responsavel ? String(body.responsavel).trim() : null,
       custo: custo != null && !Number.isNaN(custo) ? custo : null,
       prazo: prazo && !Number.isNaN(prazo.getTime()) ? prazo : null,
+      fase,
       status,
       ordem: typeof body.ordem === "number" ? body.ordem : 0,
     },
   });
 
+  await recomputeProgresso(obraId);
   return NextResponse.json({ tarefa: { ...tarefa, custo: tarefa.custo != null ? Number(tarefa.custo) : null } });
 }

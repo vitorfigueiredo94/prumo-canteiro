@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recomputeProgresso } from "@/lib/obra-progresso";
 
 // Atualiza uma tarefa (usado no drag: status/ordem; e edição de campos)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; tid: string }> }) {
@@ -33,8 +34,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.prazo = null;
     }
   }
+  if ("fase" in body) data.fase = ["inicio", "execucao", "entrega"].includes(body.fase) ? body.fase : null;
 
   const atual = await prisma.tarefaObra.update({ where: { id: tid }, data });
+  if ("status" in data) await recomputeProgresso(obraId);
   return NextResponse.json({ tarefa: { ...atual, custo: atual.custo != null ? Number(atual.custo) : null } });
 }
 
@@ -45,5 +48,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id: obraId, tid } = await params;
 
   const r = await prisma.tarefaObra.deleteMany({ where: { id: tid, obraId, empresaId: session.empresaId } });
+  if (r.count > 0) await recomputeProgresso(obraId);
   return NextResponse.json({ ok: r.count > 0 });
 }

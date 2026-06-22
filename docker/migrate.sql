@@ -250,6 +250,7 @@ CREATE TABLE IF NOT EXISTS "tarefas_obra" (
   "titulo"       TEXT     NOT NULL,
   "categoria"    TEXT,
   "status"       TEXT     NOT NULL DEFAULT 'a_fazer',
+  "fase"         TEXT,
   "responsavel"  TEXT,
   "custo"        DECIMAL,
   "prazo"        DATETIME,
