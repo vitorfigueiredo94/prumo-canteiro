@@ -75,7 +75,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] Status: planejamento → execução → concluída → cancelada
 - [x] Stepper de fases + aba Checklist + donut SVG
 - [x] **Alocar funcionário (v3.0)** — botão "+ Alocar" na aba Equipe abre form (select de funcionários ativos ainda não alocados + função opcional); `alocarNaObra()` + `desalocarFuncionario()` (lixeira) em `obras/actions.ts`
-- [x] **Quadro Kanban de tarefas (v3.1)** — aba "Quadro": cards de tarefas (A fazer → Em execução → Concluído) com drag-and-drop nativo, add/remover, categoria colorida, custo, e botão "📲 Avisar" (abre `wa.me` com a tarefa, escolhe o contato). Modelo `TarefaObra` (`tarefas_obra`) + API `GET/POST /api/v1/obras/[id]/tarefas` e `PATCH/DELETE .../[tid]`, guardada por empresaId
+- [x] **Quadro Kanban de tarefas (v3.1)** — aba "Quadro": cards de tarefas (A fazer → Em execução → Concluído) com drag-and-drop nativo, add/remover, **sugestões padrão** de etapas (chips: piso, iluminação, forro, alvenaria…), **edição do card** (lápis) com título, categoria, **responsável (select dos funcionários)**, **prazo** (marca "atrasada" em vermelho) e custo, e botão "📲 Avisar" (abre `wa.me` com a tarefa, escolhe o contato). Modelo `TarefaObra` (`tarefas_obra`, com `prazo`) + API `GET/POST /api/v1/obras/[id]/tarefas` e `PATCH/DELETE .../[tid]`, guardada por empresaId
 - [x] **Kanban de portfólio (v3.1)** — `/obras` com toggle **Lista/Quadro**: colunas por status (Planejamento → Em andamento → Parada → Concluída); arrasta a obra entre colunas → `mudarStatusObra()` (update otimista)
 - [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone → monta a mensagem (endereço + link Google Maps + data/hora + tarefa + responsável) e abre **`wa.me`** no WhatsApp do gestor (1 toque). Funciona para qualquer número, sem depender da Cloud API. O endpoint `POST /api/v1/obras/[id]/notificar-funcionario` (Cloud API) fica preservado para quando a conta WhatsApp for verificada (envio automático).
   - ⚠️ Cloud API dá erro `#131030` ("número não está na lista de permissão") enquanto a conta está em modo de teste/não verificada — por isso o `wa.me` é o caminho prático.
@@ -311,7 +311,8 @@ ALTER TABLE "obras"       ADD COLUMN "cep"      TEXT;
 ALTER TABLE "assinaturas" ADD COLUMN "stripeCustomerId"     TEXT;
 ALTER TABLE "assinaturas" ADD COLUMN "stripeSubscriptionId" TEXT;
 -- v3.1: nova tabela (em docker/migrate.sql)
-CREATE TABLE IF NOT EXISTS "tarefas_obra" ( id, empresaId, obraId, titulo, categoria, status, responsavel, custo, ordem, ... );
+CREATE TABLE IF NOT EXISTS "tarefas_obra" ( id, empresaId, obraId, titulo, categoria, status, responsavel, custo, prazo, ordem, ... );
+ALTER TABLE "tarefas_obra" ADD COLUMN "prazo" DATETIME;  -- via init-db.js (tabela já existente)
 ```
 
 > `lat`/`lng` em `terrenos` permanecem no schema mas **não são mais usados** (localização migrou para Google Maps por texto na v3.0).
