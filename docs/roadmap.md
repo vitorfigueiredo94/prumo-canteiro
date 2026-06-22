@@ -74,7 +74,9 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] CRUD obras vinculadas a terrenos (com **endereço, cidade e CEP** próprios — v3.0)
 - [x] Status: planejamento → execução → concluída → cancelada
 - [x] Stepper de fases + aba Checklist + donut SVG
-- [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone, na obra detail; envia endereço + link Google Maps + data/hora + tarefa; `POST /api/v1/obras/[id]/notificar-funcionario`
+- [x] **Alocar funcionário (v3.0)** — botão "+ Alocar" na aba Equipe abre form (select de funcionários ativos ainda não alocados + função opcional); `alocarNaObra()` + `desalocarFuncionario()` (lixeira) em `obras/actions.ts`
+- [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone → monta a mensagem (endereço + link Google Maps + data/hora + tarefa + responsável) e abre **`wa.me`** no WhatsApp do gestor (1 toque). Funciona para qualquer número, sem depender da Cloud API. O endpoint `POST /api/v1/obras/[id]/notificar-funcionario` (Cloud API) fica preservado para quando a conta WhatsApp for verificada (envio automático).
+  - ⚠️ Cloud API dá erro `#131030` ("número não está na lista de permissão") enquanto a conta está em modo de teste/não verificada — por isso o `wa.me` é o caminho prático.
 
 ### Funcionários (`/funcionarios`)
 - [x] CRUD + alocação por obra + registro de pagamentos
@@ -349,6 +351,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 19/06/2026 | v2.8 | **Inadimplência + Projeção de caixa + KPIs executivos** no dashboard |
 | 19/06/2026 | v2.9 | **Juros de inadimplência, MoM no dashboard, PWA manifest, equipe multi-usuário** (`122af55`); pins de mapa coloridos por status (`968f3d0`) |
 | 19–22/06/2026 | **v3.0** | **CEP em terrenos + endereço/cidade/CEP em obras** · **Notificar funcionário por WhatsApp** (endereço + Maps + tarefa) · **Trial 14 dias** (cron expira + avisos -3d/-1d) → redireciona para **/upgrade** · **Tela de upgrade** (lista de planos + acesso pelo menu de perfil) · **Assinatura por contato de e-mail** (substituiu o checkout Stripe na UI) · **Stripe scaffolding** preservado (lazy init, webhook) · **fix logout** (cookie `__Host-` não era apagado) · **fix docker-compose** (repassar Stripe/email/notif ao container) · **Localização 100% Google Maps** (cartão "Abrir no Google Maps" + Embed API opcional) — remove Leaflet/Nominatim |
+| 22/06/2026 | v3.0.1 | **Alocar funcionário na obra** (botão "+ Alocar" na aba Equipe + remover) · **Notificar funcionário migrou para `wa.me`** (Cloud API bloqueava com `#131030` em conta não verificada) · **fix botão Relatório** (cor branca fixa → tokens do tema; estava invisível no tema claro) |
 
 ---
 
