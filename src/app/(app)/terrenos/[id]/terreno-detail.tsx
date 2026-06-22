@@ -625,7 +625,7 @@ export function TerrenoDetail({ terreno }: { terreno: Terreno }) {
               <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 10 }}>
                 Localização
               </div>
-              <MapaTerreno terrenoId={terreno.id} nome={terreno.nome} status={terreno.status} />
+              <MapaTerreno endereco={terreno.endereco} cidade={terreno.cidade} cep={terreno.cep} nome={terreno.nome} />
             </div>
           </div>
         )}
