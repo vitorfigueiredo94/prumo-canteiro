@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, MapPin, UserRound, Calendar, Edit2, TrendingUp, Receipt, Users,
   BookOpen, AlertTriangle, CheckSquare, FolderOpen, Package, Wrench, Truck,
-  HardHat, MoreHorizontal, Plus, Trash2, Pencil, BarChart2, ClipboardList, ClipboardCheck,
+  HardHat, MoreHorizontal, Plus, Trash2, Pencil, BarChart2, ClipboardList, ClipboardCheck, KanbanSquare,
 } from "lucide-react";
 import { DocumentosTab } from "@/components/ui/documentos-tab";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { CronogramaTab } from "./cronograma-tab";
 import { MateriaisTab } from "./materiais-tab";
 import { OrcamentoTab } from "./orcamento-tab";
 import { BoletimTab } from "./boletim-tab";
+import { QuadroTab } from "./quadro-tab";
 import { ObraForm } from "../obra-form";
 import { NotaForm } from "../../notas/nota-form";
 import { editarObra, confirmarNota, excluirNota, criarNotaParaObra, alocarNaObra, desalocarFuncionario } from "../actions";
@@ -380,6 +381,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
     { k: "orcamento",   l: "Orçamento",   Icon: ClipboardList },
     { k: "boletim",     l: "Boletim",     Icon: ClipboardCheck },
     { k: "cronograma",  l: "Cronograma",  Icon: BarChart2 },
+    { k: "quadro",      l: "Quadro",      Icon: KanbanSquare },
     { k: "checklist",   l: "Checklist",   Icon: CheckSquare },
     { k: "notas",  l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
     { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
@@ -903,6 +905,11 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
             obraPrazo={obra.prazo}
             cronogramaJsonInit={obra.cronogramaJson}
           />
+        )}
+
+        {/* ── QUADRO (Kanban de tarefas) ── */}
+        {tab === "quadro" && (
+          <QuadroTab obra={{ id: obra.id, nome: obra.nome, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep }} />
         )}
 
         {/* ── CHECKLIST ── */}

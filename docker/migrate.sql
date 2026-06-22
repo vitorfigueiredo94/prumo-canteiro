@@ -241,3 +241,20 @@ CREATE TABLE IF NOT EXISTS "medicao_linhas" (
 );
 CREATE INDEX IF NOT EXISTS "medicao_linhas_medicaoId_idx" ON "medicao_linhas"("medicaoId");
 CREATE INDEX IF NOT EXISTS "medicao_linhas_servicoId_idx" ON "medicao_linhas"("servicoId");
+
+-- Migration: Quadro Kanban de tarefas por obra (v3.1)
+CREATE TABLE IF NOT EXISTS "tarefas_obra" (
+  "id"           TEXT     NOT NULL PRIMARY KEY,
+  "empresaId"    TEXT     NOT NULL,
+  "obraId"       TEXT     NOT NULL,
+  "titulo"       TEXT     NOT NULL,
+  "categoria"    TEXT,
+  "status"       TEXT     NOT NULL DEFAULT 'a_fazer',
+  "responsavel"  TEXT,
+  "custo"        DECIMAL,
+  "ordem"        INTEGER  NOT NULL DEFAULT 0,
+  "criadoEm"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "tarefas_obra_obraId_idx"    ON "tarefas_obra"("obraId");
+CREATE INDEX IF NOT EXISTS "tarefas_obra_empresaId_idx" ON "tarefas_obra"("empresaId");

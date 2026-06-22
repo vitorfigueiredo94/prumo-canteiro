@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import Link from "next/link";
-import { Plus, MapPin, Search } from "lucide-react";
+import { Plus, MapPin, Search, List, KanbanSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ObraForm } from "./obra-form";
-import { criarObra } from "./actions";
+import { criarObra, mudarStatusObra } from "./actions";
 import { STATUS_OBRA } from "@/lib/status";
 import { fmtBRLshort } from "@/lib/format";
+
+const KANBAN_COLS = ["planejamento", "em_andamento", "parada", "concluida"] as const;
 
 interface NotaLite { id: string; status: string; valor: number; }
 interface PagLite { id: string; valor: number; }
@@ -44,10 +46,25 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
   const [filtro, setFiltro] = useState("todas");
   const [busca, setBusca] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [vista, setVista] = useState<"lista" | "quadro">("lista");
+  const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  const stOf = useCallback((o: Obra) => statusOverride[o.id] ?? o.status, [statusOverride]);
+
+  const buscaOk = (o: Obra) =>
+    !busca.trim() || o.nome.toLowerCase().includes(busca.toLowerCase()) || (o.terreno?.nome ?? "").toLowerCase().includes(busca.toLowerCase());
 
   const filtered = obras
-    .filter((o) => filtro === "todas" || o.status === filtro)
-    .filter((o) => !busca.trim() || o.nome.toLowerCase().includes(busca.toLowerCase()) || (o.terreno?.nome ?? "").toLowerCase().includes(busca.toLowerCase()));
+    .filter((o) => filtro === "todas" || stOf(o) === filtro)
+    .filter(buscaOk);
+
+  function moverObra(id: string, status: string) {
+    setStatusOverride((p) => ({ ...p, [id]: status }));
+    startTransition(() => { mudarStatusObra(id, status); });
+  }
 
   const closeNew = useCallback(() => setShowNew(false), []);
 
@@ -78,15 +95,81 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
             );
           })}
         </div>
-        <div style={{ position: "relative" }}>
-          <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--fg-muted)", pointerEvents: "none" }} />
-          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar obra…" style={{ height: 38, padding: "0 12px 0 34px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, width: 260, outline: "none" }} onFocus={(e) => { e.target.style.borderColor = "var(--border-focus)"; e.target.style.boxShadow = "var(--shadow-focus)"; }} onBlur={(e) => { e.target.style.borderColor = "var(--border-default)"; e.target.style.boxShadow = "none"; }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Toggle Lista / Quadro */}
+          <div style={{ display: "flex", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+            {([["lista", List, "Lista"], ["quadro", KanbanSquare, "Quadro"]] as const).map(([k, Icon, lbl]) => {
+              const on = vista === k;
+              return (
+                <button key={k} onClick={() => setVista(k)} title={lbl} style={{ height: 38, padding: "0 12px", border: "none", background: on ? "var(--navy-700)" : "var(--bg-surface)", color: on ? "#fff" : "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon size={15} /> {lbl}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ position: "relative" }}>
+            <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--fg-muted)", pointerEvents: "none" }} />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar obra…" style={{ height: 38, padding: "0 12px 0 34px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 14, width: 260, outline: "none" }} onFocus={(e) => { e.target.style.borderColor = "var(--border-focus)"; e.target.style.boxShadow = "var(--shadow-focus)"; }} onBlur={(e) => { e.target.style.borderColor = "var(--border-default)"; e.target.style.boxShadow = "none"; }} />
+          </div>
         </div>
       </div>
 
       {/* Cards */}
       <div style={{ padding: "24px 32px" }}>
-        {filtered.length === 0 ? (
+        {vista === "quadro" ? (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${KANBAN_COLS.length}, 1fr)`, gap: 16, alignItems: "start" }}>
+            {KANBAN_COLS.map((colKey) => {
+              const st = STATUS_OBRA[colKey as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
+              const cards = obras.filter((o) => stOf(o) === colKey).filter(buscaOk);
+              return (
+                <div
+                  key={colKey}
+                  onDragOver={(e) => { e.preventDefault(); setDragOverCol(colKey); }}
+                  onDragLeave={() => setDragOverCol((c) => (c === colKey ? null : c))}
+                  onDrop={() => { if (dragId) moverObra(dragId, colKey); setDragId(null); setDragOverCol(null); }}
+                  style={{ background: dragOverCol === colKey ? "var(--ink-100)" : "var(--ink-50)", border: `1px solid ${dragOverCol === colKey ? st.color : "var(--border-subtle)"}`, borderRadius: "var(--radius-lg)", padding: 12, minHeight: 220, transition: "background 120ms" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, padding: "0 4px" }}>
+                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: st.color }} />
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--fg-secondary)" }}>{st.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--fg-muted)", background: "var(--bg-surface)", borderRadius: 20, padding: "1px 8px" }}>{cards.length}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {cards.map((o) => {
+                      const { realizado, pct, estouro } = computeFinanceiro(o.notas, o.pagamentos, o.orcamento);
+                      return (
+                        <div
+                          key={o.id}
+                          draggable
+                          onDragStart={() => setDragId(o.id)}
+                          onDragEnd={() => { setDragId(null); setDragOverCol(null); }}
+                          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "12px 14px", cursor: "grab", boxShadow: "var(--shadow-xs)", opacity: dragId === o.id ? 0.5 : 1 }}
+                        >
+                          <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)", marginBottom: 3 }}>{o.nome}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--fg-tertiary)", marginBottom: 10 }}>
+                            <MapPin size={12} />{o.terreno ? o.terreno.nome : "Sem terreno"}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--fg-tertiary)", marginBottom: 4 }}>
+                            <span>Execução {o.progresso}%</span>
+                            <span style={{ color: estouro ? "var(--danger-500)" : "var(--fg-tertiary)" }}>Orç. {pct}%</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: "var(--radius-full)", background: "var(--ink-100)", overflow: "hidden", marginBottom: 10 }}>
+                            <div style={{ width: `${Math.min(o.progresso, 100)}%`, height: "100%", background: "#d4a24c", borderRadius: "var(--radius-full)" }} />
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--fg-primary)" }}>{fmtBRLshort(realizado)}</span>
+                            <Link href={`/obras/${o.id}`} style={{ fontSize: 12, fontWeight: 600, color: "var(--navy-700)", textDecoration: "none" }}>Abrir →</Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {cards.length === 0 && <p style={{ fontSize: 12.5, color: "var(--fg-muted)", textAlign: "center", padding: "16px 0" }}>—</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 24px" }}>
             <p style={{ color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhuma obra encontrada.</p>
           </div>

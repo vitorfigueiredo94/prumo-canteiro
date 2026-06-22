@@ -133,11 +133,31 @@ model Obra {
   pagamentos   PagamentoFuncionario[]
   documentos   Documento[]
   diario       DiarioObra[]
+  tarefas      TarefaObra[]
   criadoEm    DateTime               @default(now())
   atualizadoEm DateTime               @updatedAt
 
   @@index([empresaId])
   @@map("obras")
+}
+
+model TarefaObra {
+  id           String   @id @default(cuid())
+  empresaId    String
+  obra         Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  obraId       String
+  titulo       String
+  categoria    String?
+  status       String   @default("a_fazer") // a_fazer | em_execucao | concluido
+  responsavel  String?
+  custo        Decimal?
+  ordem        Int      @default(0)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([obraId])
+  @@index([empresaId])
+  @@map("tarefas_obra")
 }
 
 // ─────────────────────────── Funcionários ─────────────────────────

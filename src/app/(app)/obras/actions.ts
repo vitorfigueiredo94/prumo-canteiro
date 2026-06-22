@@ -120,6 +120,19 @@ export async function excluirNota(notaId: string, obraId: string): Promise<void>
   revalidatePath("/notas");
 }
 
+// ── Kanban de portfólio: mudar status da obra (drag) ─────────────────────────
+
+export async function mudarStatusObra(id: string, status: string): Promise<{ error?: string } | null> {
+  const empresaId = await getEmpresaId();
+  const validos = ["planejamento", "em_andamento", "parada", "concluida"];
+  if (!validos.includes(status)) return { error: "Status inválido." };
+  const r = await prisma.obra.updateMany({ where: { id, empresaId }, data: { status } });
+  if (r.count === 0) return { error: "Obra não encontrada." };
+  revalidatePath("/obras");
+  revalidatePath(`/obras/${id}`);
+  return null;
+}
+
 // ── Alocação de funcionário na obra ──────────────────────────────────────────
 
 export async function alocarNaObra(obraId: string, formData: FormData): Promise<{ error?: string } | null> {
