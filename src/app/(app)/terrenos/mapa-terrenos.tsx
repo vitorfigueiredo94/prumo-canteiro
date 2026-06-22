@@ -38,7 +38,8 @@ export function MapaTerrenos({ terrenos }: { terrenos: TerrenoMapa[] }) {
 
   const sel = terrenos.find((t) => t.id === selId) ?? terrenos[0];
   const query = queryDe(sel);
-  const embedSrc = `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+  const embedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY;
+  const embedSrc = `https://www.google.com/maps/embed/v1/place?key=${embedKey}&q=${encodeURIComponent(query)}`;
   const linkSrc = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   return (
@@ -72,28 +73,43 @@ export function MapaTerrenos({ terrenos }: { terrenos: TerrenoMapa[] }) {
 
       {/* Mapa do Google do terreno selecionado */}
       <div>
-        <iframe
-          title={`Mapa — ${sel.nome}`}
-          src={embedSrc}
-          width="100%"
-          height={520}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          style={{ border: 0, borderRadius: "var(--radius-lg)", display: "block", background: "var(--ink-50)" }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 12, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "var(--fg-secondary)" }}>
-            <strong>{sel.nome}</strong> — {query}
-          </span>
+        {embedKey ? (
+          <iframe
+            title={`Mapa — ${sel.nome}`}
+            src={embedSrc}
+            width="100%"
+            height={520}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            style={{ border: 0, borderRadius: "var(--radius-lg)", display: "block", background: "var(--ink-50)" }}
+          />
+        ) : (
           <a
             href={linkSrc}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--navy-700)", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, height: 520, padding: "24px", background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", textDecoration: "none", textAlign: "center" }}
           >
-            🗺️ Abrir no Google Maps →
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#e7f0ea", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>📍</div>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "var(--navy-700)" }}>{sel.nome}</div>
+              <div style={{ fontSize: 14, color: "var(--fg-tertiary)", marginTop: 4 }}>{query}</div>
+            </div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 42, padding: "0 22px", background: "var(--navy-700)", color: "#fff", borderRadius: "var(--radius-md)", fontSize: 14, fontWeight: 700 }}>
+              🗺️ Abrir no Google Maps →
+            </span>
           </a>
-        </div>
+        )}
+        {embedKey && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "var(--fg-secondary)" }}>
+              <strong>{sel.nome}</strong> — {query}
+            </span>
+            <a href={linkSrc} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--navy-700)", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+              🗺️ Abrir no Google Maps →
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
