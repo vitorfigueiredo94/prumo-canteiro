@@ -939,7 +939,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
         <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border-default)", width: "100%", maxWidth: 480, padding: 24, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "var(--fg-primary)" }}>📲 Notificar via WhatsApp</p>
-            <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--fg-tertiary)" }}>Enviando para <strong>{notificarAloc.funcionario.nome}</strong> ({notificarAloc.funcionario.telefone})</p>
+            <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--fg-tertiary)" }}>Abre seu WhatsApp com a mensagem pronta para <strong>{notificarAloc.funcionario.nome}</strong> ({notificarAloc.funcionario.telefone}) — é só tocar em enviar.</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -974,27 +974,32 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
                 Fechar
               </button>
               <button
-                disabled={!notifTarefa.trim() || notifSending}
-                onClick={async () => {
-                  setNotifSending(true);
-                  setNotifResult(null);
-                  try {
-                    const res = await fetch(`/api/v1/obras/${obra.id}/notificar-funcionario`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ funcionarioId: notificarAloc.funcionario.id, tarefa: notifTarefa, data: notifData || undefined }),
-                    });
-                    const json = await res.json();
-                    setNotifResult({ ok: json.ok ?? res.ok, msg: json.ok ? `✅ WhatsApp enviado para ${json.funcionario}!` : `❌ ${json.erro ?? "Falha ao enviar. Verifique o número cadastrado."}` });
-                  } catch {
-                    setNotifResult({ ok: false, msg: "❌ Erro de conexão." });
-                  } finally {
-                    setNotifSending(false);
-                  }
+                disabled={!notifTarefa.trim()}
+                onClick={() => {
+                  const tel = (notificarAloc.funcionario.telefone ?? "").replace(/\D/g, "");
+                  const to = tel.startsWith("55") ? tel : `55${tel}`;
+                  const endParts = [obra.endereco, obra.cep, obra.cidade].filter(Boolean);
+                  const endLine = endParts.length > 0 ? endParts.join(", ") : "Endereço não informado";
+                  const mapsLink = endParts.length > 0 ? `https://maps.google.com/?q=${encodeURIComponent(endParts.join(", "))}` : null;
+                  const dataFmt = notifData
+                    ? new Date(notifData).toLocaleString("pt-BR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" })
+                    : "A confirmar";
+                  const linhas = [
+                    `🏗️ *Designação de obra — ${obra.nome}*`, ``,
+                    `Olá, ${notificarAloc.funcionario.nome}! Você foi designado(a) para a seguinte obra:`, ``,
+                    `📍 *Endereço:* ${endLine}`,
+                    mapsLink ? `🗺️ *Google Maps:* ${mapsLink}` : null, ``,
+                    `📅 *Data/hora:* ${dataFmt}`, ``,
+                    `📋 *O que fazer:*`, notifTarefa.trim(),
+                    obra.responsavel ? `\n👷 *Responsável:* ${obra.responsavel}` : null,
+                  ].filter((l) => l !== null);
+                  const url = `https://wa.me/${to}?text=${encodeURIComponent(linhas.join("\n"))}`;
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setNotificarAloc(null);
                 }}
-                style={{ height: 38, padding: "0 20px", background: "#25d366", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: !notifTarefa.trim() || notifSending ? "not-allowed" : "pointer", opacity: !notifTarefa.trim() || notifSending ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: 7 }}
+                style={{ height: 38, padding: "0 20px", background: "#25d366", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: !notifTarefa.trim() ? "not-allowed" : "pointer", opacity: !notifTarefa.trim() ? 0.6 : 1, display: "inline-flex", alignItems: "center", gap: 7 }}
               >
-                {notifSending ? "Enviando…" : "Enviar WhatsApp"}
+                Abrir no WhatsApp →
               </button>
             </div>
           </div>
