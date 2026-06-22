@@ -985,7 +985,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
                       body: JSON.stringify({ funcionarioId: notificarAloc.funcionario.id, tarefa: notifTarefa, data: notifData || undefined }),
                     });
                     const json = await res.json();
-                    setNotifResult({ ok: json.ok ?? res.ok, msg: json.ok ? `✅ WhatsApp enviado para ${json.funcionario}!` : `❌ Falha ao enviar. Verifique o número cadastrado.` });
+                    setNotifResult({ ok: json.ok ?? res.ok, msg: json.ok ? `✅ WhatsApp enviado para ${json.funcionario}!` : `❌ ${json.erro ?? "Falha ao enviar. Verifique o número cadastrado."}` });
                   } catch {
                     setNotifResult({ ok: false, msg: "❌ Erro de conexão." });
                   } finally {

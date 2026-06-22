@@ -4,10 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-async function enviarWhatsApp(telefone: string, mensagem: string): Promise<{ ok: boolean }> {
+async function enviarWhatsApp(telefone: string, mensagem: string): Promise<{ ok: boolean; erro?: string }> {
   const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  if (!accessToken || !phoneNumberId) return { ok: false };
+  if (!accessToken || !phoneNumberId) {
+    return { ok: false, erro: "WhatsApp não configurado no servidor (WHATSAPP_ACCESS_TOKEN/PHONE_NUMBER_ID)." };
+  }
 
   const payload = {
     messaging_product: "whatsapp",
@@ -25,9 +27,27 @@ async function enviarWhatsApp(telefone: string, mensagem: string): Promise<{ ok:
         signal: AbortSignal.timeout(10_000),
       }
     );
-    return { ok: res.ok };
-  } catch {
-    return { ok: false };
+    if (res.ok) return { ok: true };
+
+    // Captura o motivo real da Meta para diagnóstico
+    const data = await res.json().catch(() => null);
+    const metaErr = data?.error;
+    const code = metaErr?.code;
+    console.error("[notificar-funcionario] Meta API falhou:", JSON.stringify(metaErr ?? data));
+
+    // Mensagens amigáveis para os erros mais comuns
+    let erro = metaErr?.message ?? `HTTP ${res.status}`;
+    if (code === 131047 || code === 131051) {
+      erro = "O funcionário precisa ter enviado uma mensagem para o número da empresa nas últimas 24h, OU é necessário um modelo (template) aprovado para mensagens proativas no WhatsApp.";
+    } else if (code === 131030) {
+      erro = "Número não autorizado: em modo de teste, o número precisa estar cadastrado como destinatário no painel da Meta.";
+    } else if (code === 100 || code === 33) {
+      erro = "Número inválido ou não é um WhatsApp válido. Confira o telefone do funcionário.";
+    }
+    return { ok: false, erro };
+  } catch (e) {
+    console.error("[notificar-funcionario] erro de rede:", e);
+    return { ok: false, erro: "Falha de conexão com o WhatsApp. Tente novamente." };
   }
 }
 
@@ -87,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     `_Mensagem automática — PrumoCanteiro_`,
   ].filter((l) => l !== null).join("\n");
 
-  const { ok } = await enviarWhatsApp(tel, mensagem);
+  const { ok, erro } = await enviarWhatsApp(tel, mensagem);
 
-  return NextResponse.json({ ok, funcionario: funcionario.nome });
+  return NextResponse.json({ ok, erro, funcionario: funcionario.nome });
 }
