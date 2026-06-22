@@ -1,9 +1,10 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 2.8
-> **Atualizado em:** 19/06/2026
+> **Versão:** 3.0
+> **Atualizado em:** 22/06/2026
 > **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
-> **Commits pós-tag:** `7288a9f` (contratos) · `e98a1d6` (logo) · `3ca7ccb` (RBAC/LGPD) · `0268d28` (audit v1) · `325f1dd` (audit v2) · `abacc86` (import Excel) · `9006108` (hotfix build) · `3c6504c` (notif WA) · `8b38953` (notif email) · `421eb09` (checklist edit) · `706e453` (alertas) · `e54d5f9` (relatório + portal) · `8aef1d1` (materiais obra) · `499179e` (orçamento v2.7-A) · `26add5c` (boletim v2.7-B) · `7527855` (relatório v2 v2.7-C) · `e9e82c6` (alertas painel v2.7-D) · `548ed61` (inadimplência+projeção+KPIs v2.8)
+> **Commits pós-tag (v2.x):** contratos · logo · RBAC/LGPD · audit v1/v2 · import Excel · hotfix build · notif WA/email · checklist edit · alertas · relatório + portal · materiais obra · orçamento · boletim · relatório v2 · alertas painel · `548ed61` (inadimplência+projeção+KPIs v2.8) · `122af55` (juros inadimplência + MoM dashboard + PWA manifest + equipe multi-usuário, v2.9) · `968f3d0` (mapa pins coloridos por status)
+> **Commits v3.0 (esta leva):** `08f6741` (CEP terrenos + endereço/cidade/cep obras) · `1056922` (notificar funcionário WhatsApp) · `091f96b` (cron expirar trial 14d) · `2c14719` (tela upgrade) · `c1b4dcb`/`a124c5e` (Stripe scaffolding) · `95df6dd` (fix logout cookie `__Host-`) · `d0d4c51` (Plano & assinatura no menu) · `dfd36c8` (Stripe lazy init) · `2da9021` (docker env Stripe/email) · `37b9120` (upgrade por e-mail) · `45c7e1b`/`3cf3d5d`/`5fb9a9d` (localização via Google Maps)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
 
 ---
@@ -63,15 +64,17 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] **Logo da empresa** — upload PNG/JPG/SVG no UserMenu (base64 no DB, até 400 KB)
 
 ### Terrenos (`/terrenos`)
-- [x] CRUD terrenos (localização, área, valor, status)
+- [x] CRUD terrenos (localização, área, valor, status, **CEP**)
 - [x] Tabs: Visão geral / Documentos / Checklist / Comprador
 - [x] **Aba Comprador:** ficha completa com score interno, métricas, histórico e análise do contrato
-- [x] **Mapa de terrenos** — toggle Lista/Mapa; Leaflet + OpenStreetMap; geocoding via Nominatim (server-side, cacheia `lat/lng` no DB); pins coloridos por status com popup; `GET /api/v1/terrenos/mapa`
+- [x] **Localização via Google Maps (v3.0)** — mini-mapa por terreno na aba Visão geral + mapa geral (toggle Lista/Mapa com lista + seleção). Usa o endereço em texto: sem Nominatim, sem geocoding, sem `lat/lng`. Por padrão exibe um **cartão "Abrir no Google Maps"** (abre em nova aba — `output=embed` foi bloqueado pelo Google); se `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY` estiver setada, mostra o mapa embutido (Embed API oficial, gratuita).
+  - ⚠️ O mapa Leaflet + Nominatim (v2.3) foi **substituído** — endpoints `/api/v1/terrenos/mapa` e `/api/v1/terrenos/[id]/mapa` removidos.
 
 ### Obras (`/obras`)
-- [x] CRUD obras vinculadas a terrenos
+- [x] CRUD obras vinculadas a terrenos (com **endereço, cidade e CEP** próprios — v3.0)
 - [x] Status: planejamento → execução → concluída → cancelada
 - [x] Stepper de fases + aba Checklist + donut SVG
+- [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone, na obra detail; envia endereço + link Google Maps + data/hora + tarefa; `POST /api/v1/obras/[id]/notificar-funcionario`
 
 ### Funcionários (`/funcionarios`)
 - [x] CRUD + alocação por obra + registro de pagamentos
@@ -216,7 +219,21 @@ EMAIL_HOST=smtp.zoho.com
 EMAIL_PORT=587
 EMAIL_USER=notificacoes@prumocanteiro.com.br
 EMAIL_PASS=zoho_app_password
+
+# Upgrade / contato (v3.0)
+WHATSAPP_SUPORTE=5511999999999                 # WhatsApp de suporte (link na /upgrade)
+CONTATO_EMAIL=vitorfigueiredo_94@hotmail.com    # E-mail de contato de assinatura (default já é esse)
+NEXT_PUBLIC_APP_URL=https://prumocanteiro.com.br
+
+# Mapa embutido (opcional) — sem isso, mostra cartão "Abrir no Google Maps"
+NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY=             # Maps Embed API (gratuita), opcional
+
+# Stripe (scaffolding — só se for reativar o checkout automático)
+STRIPE_SECRET_KEY=                             # sk_test_... ou sk_live_...
+STRIPE_WEBHOOK_SECRET=                         # whsec_... do webhook do prumocanteiro
 ```
+
+> ⚠️ **`docker-compose.yml` repassa só as variáveis listadas no bloco `environment:`** — toda var nova do `.env` precisa ser adicionada lá também, senão não chega no container (foi a causa do "Stripe não configurado" mesmo com a chave no `.env`).
 
 **Fluxo de cobrança:**
 
@@ -228,6 +245,30 @@ EMAIL_PASS=zoho_app_password
 
 - Notificação ao gestor: cópia para `empresa.telefoneGestor` após cada disparo
 - "Cobrar todos em atraso" (/compradores): deduplicação 24h (diferente do cron)
+
+---
+
+## Planos, Trial e Upgrade — v3.0
+
+### Expiração de trial (14 dias)
+- Cron `GET /api/cron/trial-expirado` (protegido por `x-cron-secret` + `timingSafeEqual`):
+  - Trials com `desde <= hoje-14d` → status `trial_expirado`; notifica superadmin + gestor
+  - Avisos de WhatsApp ao gestor faltando **3 dias** e **1 dia** para expirar
+- `src/lib/plano.ts`: `PlanoInfo.trialExpirado: boolean`; status `trial_expirado` → `limiteObras: 0`, `temRecurso()` retorna false
+- `src/app/(app)/layout.tsx`: `if (plano.trialExpirado && !superAdmin) redirect("/upgrade")` (superadmin nunca é redirecionado)
+
+### Tela de Upgrade (`/upgrade`)
+- Lista os planos cadastrados (`preco > 0`) com selo "Mais vendido" (campo `destaque`)
+- **CTA atual = contato por e-mail** (`vitorfigueiredo_94@hotmail.com`, configurável via `CONTATO_EMAIL`): abre `mailto:` com assunto/corpo pré-preenchidos (empresa + e-mail da conta). WhatsApp como secundário.
+- Título adapta: "Seu período de teste encerrou" (forçado) vs "Escolha seu plano" (voluntário, com "← Voltar ao sistema")
+- Acesso voluntário pelo **menu de perfil** → seção "🚀 Plano e assinatura" (mostra plano atual + badge "Teste" no trial)
+- Ativação manual: superadmin em `/superadmin/clientes` → "Ativar" muda para `ativo` e dispara WhatsApp de confirmação ao gestor
+
+### Stripe (scaffolding — NÃO é o fluxo ativo)
+- Integração de checkout/assinatura **presente mas desativada na UI** em favor do contato por e-mail (o webhook exigia acertar `STRIPE_WEBHOOK_SECRET` e a conta Stripe é compartilhada com o JurisMonitor → ambos os webhooks recebem todos os eventos).
+- Arquivos preservados para retomar: `src/lib/stripe.ts` (`getStripe()` lazy), `src/app/upgrade/actions.ts` (`assinarAction`), `src/app/api/webhook/stripe/route.ts` (checkout.session.completed / customer.subscription.deleted / invoice.payment_failed).
+- `Assinatura` ganhou `stripeCustomerId` + `stripeSubscriptionId`. Status: `trial` | `ativo` | `inadimplente` | `cancelado` | `trial_expirado`.
+- Para reativar: setar `STRIPE_SECRET_KEY` (`sk_...`) + `STRIPE_WEBHOOK_SECRET` (`whsec_...`) no `.env` e religar os botões "Assinar".
 
 ---
 
@@ -258,7 +299,16 @@ ALTER TABLE "chamados_assistencia" ADD COLUMN "dataVistoria" DATETIME;
 ALTER TABLE "obras" ADD COLUMN "cronogramaJson" TEXT;
 ALTER TABLE "terrenos" ADD COLUMN "lat" REAL;
 ALTER TABLE "terrenos" ADD COLUMN "lng" REAL;
+-- v3.0
+ALTER TABLE "terrenos"    ADD COLUMN "cep"      TEXT;
+ALTER TABLE "obras"       ADD COLUMN "endereco" TEXT;
+ALTER TABLE "obras"       ADD COLUMN "cidade"   TEXT;
+ALTER TABLE "obras"       ADD COLUMN "cep"      TEXT;
+ALTER TABLE "assinaturas" ADD COLUMN "stripeCustomerId"     TEXT;
+ALTER TABLE "assinaturas" ADD COLUMN "stripeSubscriptionId" TEXT;
 ```
+
+> `lat`/`lng` em `terrenos` permanecem no schema mas **não são mais usados** (localização migrou para Google Maps por texto na v3.0).
 
 Novas **tabelas** → `docker/migrate.sql` (CREATE TABLE IF NOT EXISTS).
 Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
@@ -296,6 +346,9 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 18/06/2026 | v2.3 | **Mapa de terrenos** — Leaflet + OpenStreetMap, geocoding Nominatim server-side com cache `lat/lng` no DB, pins por status |
 | 18/06/2026 | v2.4 | **Notif. WhatsApp ao cliente** — dispara ao avançar fase do checklist (obra→terreno→venda→comprador); **Editar entrada do diário** — pencil inline, textarea, save otimista |
 | 18/06/2026 | v2.5 | **Aba Materiais por obra** — lançar insumos/compras com qtde, unidade, valor unit, fornecedor, data; KPIs (total gasto, itens, item mais caro); tabela com total e DELETE; API REST guard por empresaId |
+| 19/06/2026 | v2.8 | **Inadimplência + Projeção de caixa + KPIs executivos** no dashboard |
+| 19/06/2026 | v2.9 | **Juros de inadimplência, MoM no dashboard, PWA manifest, equipe multi-usuário** (`122af55`); pins de mapa coloridos por status (`968f3d0`) |
+| 19–22/06/2026 | **v3.0** | **CEP em terrenos + endereço/cidade/CEP em obras** · **Notificar funcionário por WhatsApp** (endereço + Maps + tarefa) · **Trial 14 dias** (cron expira + avisos -3d/-1d) → redireciona para **/upgrade** · **Tela de upgrade** (lista de planos + acesso pelo menu de perfil) · **Assinatura por contato de e-mail** (substituiu o checkout Stripe na UI) · **Stripe scaffolding** preservado (lazy init, webhook) · **fix logout** (cookie `__Host-` não era apagado) · **fix docker-compose** (repassar Stripe/email/notif ao container) · **Localização 100% Google Maps** (cartão "Abrir no Google Maps" + Embed API opcional) — remove Leaflet/Nominatim |
 
 ---
 
@@ -448,9 +501,11 @@ security_audit_logs: id, empresaId, userId, action, resourceType, resourceId,
 
 ## Pendências / Backlog
 
-- [ ] **Terrenos: mapa** — integração Leaflet/Mapbox
+- [x] **Terrenos: mapa** — Google Maps (cartão + Embed API opcional) na v3.0
+- [ ] **Stripe — reativar checkout automático** (resolver `STRIPE_WEBHOOK_SECRET` e a coexistência com o webhook do JurisMonitor na mesma conta); hoje a assinatura é por contato de e-mail
+- [ ] **Maps Embed API key** — opcional, pra mostrar o mapa embutido em vez do cartão
 - [ ] **Next.js 16** — major version, avaliar breaking changes antes de produção
-- [ ] **Testes automatizados** — ainda sem suite
+- [ ] **Testes automatizados** — Vitest já em uso; ampliar cobertura
 
 ---
 
