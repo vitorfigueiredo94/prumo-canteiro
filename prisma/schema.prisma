@@ -151,6 +151,7 @@ model TarefaObra {
   status       String   @default("a_fazer") // a_fazer | em_execucao | concluido
   responsavel  String?
   custo        Decimal?
+  prazo        DateTime?
   ordem        Int      @default(0)
   criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt

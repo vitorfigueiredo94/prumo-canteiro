@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Pencil, Check, X, CalendarDays } from "lucide-react";
 import { fmtBRL } from "@/lib/format";
 
 interface Tarefa {
@@ -11,6 +11,7 @@ interface Tarefa {
   status: string;
   responsavel: string | null;
   custo: number | null;
+  prazo: string | null;
   ordem: number;
 }
 
@@ -21,6 +22,8 @@ interface ObraLite {
   cidade: string | null;
   cep: string | null;
 }
+
+interface FuncLite { id: string; nome: string; cargo: string | null; }
 
 const COLUNAS: { key: string; label: string; cor: string }[] = [
   { key: "a_fazer",     label: "A fazer",      cor: "#64748b" },
@@ -43,11 +46,42 @@ function catCor(cat: string) {
   return CAT_CORES[h % CAT_CORES.length];
 }
 
-export function QuadroTab({ obra }: { obra: ObraLite }) {
+export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcionarios?: FuncLite[] }) {
   const [tarefas, setTarefas] = useState<Tarefa[] | null>(null);
   const [novoTitulo, setNovoTitulo] = useState<Record<string, string>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ titulo: string; categoria: string; responsavel: string; prazo: string; custo: string }>({ titulo: "", categoria: "", responsavel: "", prazo: "", custo: "" });
+
+  function abrirEdicao(t: Tarefa) {
+    setEditId(t.id);
+    setEditForm({
+      titulo: t.titulo,
+      categoria: t.categoria ?? "",
+      responsavel: t.responsavel ?? "",
+      prazo: t.prazo ? t.prazo.slice(0, 10) : "",
+      custo: t.custo != null ? String(t.custo) : "",
+    });
+  }
+
+  async function salvarEdicao(id: string) {
+    const payload = {
+      titulo: editForm.titulo.trim() || undefined,
+      categoria: editForm.categoria.trim(),
+      responsavel: editForm.responsavel.trim(),
+      prazo: editForm.prazo || null,
+      custo: editForm.custo,
+    };
+    const res = await fetch(`/api/v1/obras/${obra.id}/tarefas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (json.tarefa) setTarefas((prev) => (prev ?? []).map((t) => (t.id === id ? json.tarefa : t)));
+    setEditId(null);
+  }
 
   const carregar = useCallback(async () => {
     const res = await fetch(`/api/v1/obras/${obra.id}/tarefas`);
@@ -136,37 +170,70 @@ export function QuadroTab({ obra }: { obra: ObraLite }) {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {cards.map((t) => (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={() => setDragId(t.id)}
-                    onDragEnd={() => { setDragId(null); setDragOver(null); }}
-                    style={{
-                      background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)",
-                      padding: "10px 12px", cursor: "grab", boxShadow: "var(--shadow-xs)",
-                      opacity: dragId === t.id ? 0.5 : 1,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <GripVertical size={14} style={{ color: "var(--fg-muted)", marginTop: 2, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {t.categoria && (
-                          <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#fff", background: catCor(t.categoria), padding: "1px 7px", borderRadius: 20, marginBottom: 5 }}>{t.categoria}</span>
+                {cards.map((t) => {
+                  if (editId === t.id) {
+                    const inp: React.CSSProperties = { height: 32, padding: "0 8px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 12.5, outline: "none", width: "100%" };
+                    return (
+                      <div key={t.id} style={{ background: "var(--bg-surface)", border: "1px solid var(--navy-600)", borderRadius: "var(--radius-md)", padding: "12px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: 8 }}>
+                        <input value={editForm.titulo} onChange={(e) => setEditForm((f) => ({ ...f, titulo: e.target.value }))} placeholder="Título" style={{ ...inp, fontWeight: 600 }} />
+                        <input value={editForm.categoria} onChange={(e) => setEditForm((f) => ({ ...f, categoria: e.target.value }))} placeholder="Etapa/categoria (ex: Piso)" style={inp} />
+                        {funcionarios.length > 0 ? (
+                          <select value={editForm.responsavel} onChange={(e) => setEditForm((f) => ({ ...f, responsavel: e.target.value }))} style={inp}>
+                            <option value="">Responsável…</option>
+                            {funcionarios.map((fn) => <option key={fn.id} value={fn.nome}>{fn.nome}</option>)}
+                          </select>
+                        ) : (
+                          <input value={editForm.responsavel} onChange={(e) => setEditForm((f) => ({ ...f, responsavel: e.target.value }))} placeholder="Responsável" style={inp} />
                         )}
-                        <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg-primary)", lineHeight: 1.35 }}>{t.titulo}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                          {t.responsavel && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>👷 {t.responsavel}</span>}
-                          {t.custo != null && t.custo > 0 && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>{fmtBRL(t.custo)}</span>}
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input type="date" value={editForm.prazo} onChange={(e) => setEditForm((f) => ({ ...f, prazo: e.target.value }))} style={inp} title="Prazo" />
+                          <input type="number" min={0} step="0.01" value={editForm.custo} onChange={(e) => setEditForm((f) => ({ ...f, custo: e.target.value }))} placeholder="Custo R$" style={inp} />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                          <button onClick={() => setEditId(null)} title="Cancelar" style={{ width: 30, height: 30, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><X size={14} /></button>
+                          <button onClick={() => salvarEdicao(t.id)} title="Salvar" style={{ width: 30, height: 30, border: "none", borderRadius: "var(--radius-md)", background: "#16a34a", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Check size={14} /></button>
                         </div>
                       </div>
+                    );
+                  }
+
+                  const prazoFmt = t.prazo ? new Date(t.prazo).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
+                  const atrasada = t.prazo != null && t.status !== "concluido" && new Date(t.prazo) < new Date(new Date().toDateString());
+
+                  return (
+                    <div
+                      key={t.id}
+                      draggable
+                      onDragStart={() => setDragId(t.id)}
+                      onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                      style={{
+                        background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)",
+                        padding: "10px 12px", cursor: "grab", boxShadow: "var(--shadow-xs)",
+                        opacity: dragId === t.id ? 0.5 : 1,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <GripVertical size={14} style={{ color: "var(--fg-muted)", marginTop: 2, flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {t.categoria && (
+                            <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#fff", background: catCor(t.categoria), padding: "1px 7px", borderRadius: 20, marginBottom: 5 }}>{t.categoria}</span>
+                          )}
+                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg-primary)", lineHeight: 1.35 }}>{t.titulo}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                            {t.responsavel && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>👷 {t.responsavel}</span>}
+                            {prazoFmt && <span style={{ fontSize: 11.5, color: atrasada ? "#dc2626" : "var(--fg-tertiary)", fontWeight: atrasada ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 3 }}><CalendarDays size={11} />{prazoFmt}{atrasada ? " (atrasada)" : ""}</span>}
+                            {t.custo != null && t.custo > 0 && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>{fmtBRL(t.custo)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 8 }}>
+                        <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" style={{ height: 26, padding: "0 9px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#25d366", cursor: "pointer", fontSize: 11.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>📲 Avisar</button>
+                        <button onClick={() => abrirEdicao(t)} title="Editar" style={{ width: 26, height: 26, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Pencil size={12} /></button>
+                        <button onClick={() => remover(t.id)} title="Remover" style={{ width: 26, height: 26, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Trash2 size={12} /></button>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 8 }}>
-                      <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" style={{ height: 26, padding: "0 9px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#25d366", cursor: "pointer", fontSize: 11.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>📲 Avisar</button>
-                      <button onClick={() => remover(t.id)} title="Remover" style={{ width: 26, height: 26, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Trash2 size={12} /></button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Adicionar tarefa */}
                 <div style={{ display: "flex", gap: 6, marginTop: 2 }}>

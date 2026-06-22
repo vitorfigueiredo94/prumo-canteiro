@@ -909,7 +909,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
 
         {/* ── QUADRO (Kanban de tarefas) ── */}
         {tab === "quadro" && (
-          <QuadroTab obra={{ id: obra.id, nome: obra.nome, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep }} />
+          <QuadroTab obra={{ id: obra.id, nome: obra.nome, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep }} funcionarios={funcionarios} />
         )}
 
         {/* ── CHECKLIST ── */}

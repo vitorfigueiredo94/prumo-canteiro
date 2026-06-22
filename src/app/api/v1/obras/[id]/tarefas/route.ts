@@ -37,6 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const status = ["a_fazer", "em_execucao", "concluido"].includes(body.status) ? body.status : "a_fazer";
   const custo = body.custo != null && body.custo !== "" ? Number(body.custo) : null;
 
+  const prazo = body.prazo ? new Date(`${String(body.prazo).slice(0, 10)}T12:00:00`) : null;
+
   const tarefa = await prisma.tarefaObra.create({
     data: {
       empresaId: session.empresaId,
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       categoria: body.categoria ? String(body.categoria).trim() : null,
       responsavel: body.responsavel ? String(body.responsavel).trim() : null,
       custo: custo != null && !Number.isNaN(custo) ? custo : null,
+      prazo: prazo && !Number.isNaN(prazo.getTime()) ? prazo : null,
       status,
       ordem: typeof body.ordem === "number" ? body.ordem : 0,
     },

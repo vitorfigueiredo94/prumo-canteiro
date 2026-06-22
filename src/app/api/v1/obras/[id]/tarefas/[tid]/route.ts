@@ -25,6 +25,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const c = body.custo != null && body.custo !== "" ? Number(body.custo) : null;
     data.custo = c != null && !Number.isNaN(c) ? c : null;
   }
+  if ("prazo" in body) {
+    if (body.prazo) {
+      const p = new Date(`${String(body.prazo).slice(0, 10)}T12:00:00`);
+      data.prazo = !Number.isNaN(p.getTime()) ? p : null;
+    } else {
+      data.prazo = null;
+    }
+  }
 
   const atual = await prisma.tarefaObra.update({ where: { id: tid }, data });
   return NextResponse.json({ tarefa: { ...atual, custo: atual.custo != null ? Number(atual.custo) : null } });

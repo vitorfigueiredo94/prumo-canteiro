@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS "tarefas_obra" (
   "status"       TEXT     NOT NULL DEFAULT 'a_fazer',
   "responsavel"  TEXT,
   "custo"        DECIMAL,
+  "prazo"        DATETIME,
   "ordem"        INTEGER  NOT NULL DEFAULT 0,
   "criadoEm"     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "atualizadoEm" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
