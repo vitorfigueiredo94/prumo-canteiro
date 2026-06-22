@@ -157,7 +157,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
               style={{
                 background: dragOver === col.key ? "var(--ink-100)" : "var(--ink-50)",
                 border: `1px solid ${dragOver === col.key ? col.cor : "var(--border-subtle)"}`,
-                borderRadius: "var(--radius-lg)", padding: 12, minHeight: 200, transition: "background 120ms",
+                borderRadius: "var(--radius-lg)", padding: 12, minHeight: 110, transition: "background 120ms",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, padding: "0 4px" }}>
@@ -169,7 +169,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                 {totalCol > 0 && <span style={{ fontSize: 11.5, color: "var(--fg-muted)" }}>{fmtBRL(totalCol)}</span>}
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {cards.map((t) => {
                   if (editId === t.id) {
                     const inp: React.CSSProperties = { height: 32, padding: "0 8px", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 12.5, outline: "none", width: "100%" };
@@ -200,6 +200,8 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                   const prazoFmt = t.prazo ? new Date(t.prazo).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : null;
                   const atrasada = t.prazo != null && t.status !== "concluido" && new Date(t.prazo) < new Date(new Date().toDateString());
 
+                  const temMeta = t.responsavel || prazoFmt || (t.custo != null && t.custo > 0);
+                  const iconBtn: React.CSSProperties = { width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, flexShrink: 0 };
                   return (
                     <div
                       key={t.id}
@@ -208,28 +210,28 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                       onDragEnd={() => { setDragId(null); setDragOver(null); }}
                       style={{
                         background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)",
-                        padding: "10px 12px", cursor: "grab", boxShadow: "var(--shadow-xs)",
+                        padding: "7px 8px 7px 4px", cursor: "grab", boxShadow: "var(--shadow-xs)",
                         opacity: dragId === t.id ? 0.5 : 1,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                        <GripVertical size={14} style={{ color: "var(--fg-muted)", marginTop: 2, flexShrink: 0 }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <GripVertical size={14} style={{ color: "var(--fg-muted)", flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          {t.categoria && (
-                            <span style={{ display: "inline-block", fontSize: 10, fontWeight: 700, color: "#fff", background: catCor(t.categoria), padding: "1px 7px", borderRadius: 20, marginBottom: 5 }}>{t.categoria}</span>
-                          )}
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg-primary)", lineHeight: 1.35 }}>{t.titulo}</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                            {t.responsavel && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>👷 {t.responsavel}</span>}
-                            {prazoFmt && <span style={{ fontSize: 11.5, color: atrasada ? "#dc2626" : "var(--fg-tertiary)", fontWeight: atrasada ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 3 }}><CalendarDays size={11} />{prazoFmt}{atrasada ? " (atrasada)" : ""}</span>}
-                            {t.custo != null && t.custo > 0 && <span style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>{fmtBRL(t.custo)}</span>}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            {t.categoria && <span style={{ width: 7, height: 7, borderRadius: "50%", background: catCor(t.categoria), flexShrink: 0 }} title={t.categoria} />}
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-primary)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.titulo}</span>
                           </div>
+                          {temMeta && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, flexWrap: "wrap", paddingLeft: t.categoria ? 13 : 0 }}>
+                              {t.responsavel && <span style={{ fontSize: 11, color: "var(--fg-tertiary)" }}>👷 {t.responsavel}</span>}
+                              {prazoFmt && <span style={{ fontSize: 11, color: atrasada ? "#dc2626" : "var(--fg-tertiary)", fontWeight: atrasada ? 700 : 400, display: "inline-flex", alignItems: "center", gap: 2 }}><CalendarDays size={10} />{prazoFmt}</span>}
+                              {t.custo != null && t.custo > 0 && <span style={{ fontSize: 11, color: "var(--fg-tertiary)" }}>{fmtBRL(t.custo)}</span>}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, marginTop: 8 }}>
-                        <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" style={{ height: 26, padding: "0 9px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#25d366", cursor: "pointer", fontSize: 11.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>📲 Avisar</button>
-                        <button onClick={() => abrirEdicao(t)} title="Editar" style={{ width: 26, height: 26, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Pencil size={12} /></button>
-                        <button onClick={() => remover(t.id)} title="Remover" style={{ width: 26, height: 26, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Trash2 size={12} /></button>
+                        <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" style={{ ...iconBtn, color: "#25d366" }}>📲</button>
+                        <button onClick={() => abrirEdicao(t)} title="Editar" style={{ ...iconBtn, color: "var(--fg-muted)" }}><Pencil size={13} /></button>
+                        <button onClick={() => remover(t.id)} title="Remover" style={{ ...iconBtn, color: "#dc2626" }}><Trash2 size={13} /></button>
                       </div>
                     </div>
                   );
