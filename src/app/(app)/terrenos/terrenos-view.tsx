@@ -28,6 +28,7 @@ interface Terreno {
   numero: string | null;
   endereco: string | null;
   cidade: string;
+  cep: string | null;
   area: number;
   status: string;
   aquisicao: Date | null;
@@ -168,7 +169,7 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
       {/* Content */}
       <div style={{ padding: "24px 32px" }}>
         {vista === "mapa" ? (
-          <MapaTerrenos />
+          <MapaTerrenos terrenos={filtered} />
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 24px" }}>
             <p style={{ color: "var(--fg-tertiary)", fontSize: 15 }}>
