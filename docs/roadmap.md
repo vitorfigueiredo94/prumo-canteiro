@@ -1,8 +1,8 @@
 # PrumoCanteiro — Roadmap de Produto e Especificação Técnica
 
-> **Versão:** 3.3
+> **Versão:** 3.4 (mobile-first)
 > **Atualizado em:** 23/06/2026
-> **Tag de produção:** `v1.0.0-prod` (commit `1d4f7ff`) — deploy estável na VM
+> **Tag de produção:** `v1.1.0-prod` (commit `085babf`) — app responsivo no celular · tag anterior `v1.0.0-prod`
 > **Commits pós-tag (v2.x):** contratos · logo · RBAC/LGPD · audit v1/v2 · import Excel · hotfix build · notif WA/email · checklist edit · alertas · relatório + portal · materiais obra · orçamento · boletim · relatório v2 · alertas painel · `548ed61` (inadimplência+projeção+KPIs v2.8) · `122af55` (juros inadimplência + MoM dashboard + PWA manifest + equipe multi-usuário, v2.9) · `968f3d0` (mapa pins coloridos por status)
 > **Commits v3.0 (esta leva):** `08f6741` (CEP terrenos + endereço/cidade/cep obras) · `1056922` (notificar funcionário WhatsApp) · `091f96b` (cron expirar trial 14d) · `2c14719` (tela upgrade) · `c1b4dcb`/`a124c5e` (Stripe scaffolding) · `95df6dd` (fix logout cookie `__Host-`) · `d0d4c51` (Plano & assinatura no menu) · `dfd36c8` (Stripe lazy init) · `2da9021` (docker env Stripe/email) · `37b9120` (upgrade por e-mail) · `45c7e1b`/`3cf3d5d`/`5fb9a9d` (localização via Google Maps)
 > **Status:** Em produção ativo (`prumocanteiro.com.br`)
@@ -328,6 +328,24 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 
 ---
 
+## 📱 Mobile / Responsividade — v3.4
+
+Toda a UI ganhou responsividade **mobile-first** sem reescrever componentes: as props de layout migraram de `style` inline para `className` (**Tailwind v4**, já presente no projeto). O cosmético (cores via CSS vars, sombras, radius) continua inline. **Desktop (≥768px) renderiza idêntico** — cada classe `md:`/`lg:` reproduz o valor anterior.
+
+**Breakpoints:** `md` 768px (tabelas viram cartões, grids 2→1 col) · `lg` 1024px (Sidebar ↔ MobileNav).
+
+**Navegação mobile:**
+- **Menu hambúrguer** (`components/layout/mobile-menu.tsx`): botão ☰ no topbar (`lg:hidden`) abre gaveta lateral deslizante (`@keyframes cnt-slide-in`) com **todas as 14 seções** (espelha a Sidebar).
+- **Barra inferior** (`mobile-nav.tsx`): 5 atalhos rápidos (Início, Obras, Financeiro, Vendas, Equipe).
+
+**Telas responsivas:** Quadro (kanban empilha, toque ≥44px), Notas e Funcionários (tabela→cartões < md), Financeiro/Equipe (2→1 col), Cronograma/Gantt, Dashboard (KPIs 2 col), listas Obras/Terrenos/Vendas.
+
+**Carregamento:** `.cnt-skel` + `@keyframes cnt-shimmer` (skeleton no Quadro p/ 4G/5G de obra).
+
+**Cobrança no celular:** em `vendas/[id]/venda-detail.tsx` o botão de cobrar parcela abre o **WhatsApp do aparelho** (`wa.me` com mensagem pronta) no mobile, contornando a trava `#131030` da Cloud API; no desktop mantém o envio automático. Erros da Cloud API agora viram texto amigável (`parseWaError` em `lib/cobranca-service.ts`); a resposta crua segue gravada no `cobrancaLog`.
+
+---
+
 ## Histórico de Versões
 
 | Data | Versão / Tag | O que foi feito |
@@ -366,6 +384,7 @@ Nunca usar `prisma migrate` em produção — SQLite + Docker = PRAGMA only.
 | 22/06/2026 | **v3.1** | **Kanban** — aba "Quadro" de tarefas por obra (drag-and-drop A fazer/Em execução/Concluído, categoria, custo, "Avisar" via `wa.me`; modelo `TarefaObra`) + **portfólio** `/obras` com toggle Lista/Quadro (arrasta obra entre status); cards com responsável (select), prazo, edição e sugestões padrão; cards compactos |
 | 22/06/2026 | **v3.2** | **Fusão Checklist→Quadro (Parte 1)** — Execução física da obra calculada pelas tarefas concluídas; `fase` (Início/Execução/Entrega) no card; resumo execução física + % por fase no topo do Quadro |
 | 23/06/2026 | **v3.3** | **Fusão (Parte 2)** — aba Checklist removida; importar checklist→cards; avisar cliente por fase (`wa.me`); Gantt usa fases do Quadro |
+| 23/06/2026 | **v3.4** ← TAG `v1.1.0-prod` | **App mobile-first** — responsividade de todas as telas (abas da obra, dashboard, listas, financeiro; tabelas→cartões < 768px; alvos de toque ≥44px; skeleton no Quadro) · **menu hambúrguer** (gaveta lateral com todas as seções) + barra inferior com 5 atalhos · **cobrança via `wa.me`** no celular (contorna `#131030`) · erro da Cloud API agora amigável (`parseWaError`). Camada de estilo `style`→`className` (Tailwind v4); desktop intacto |
 
 ---
 
