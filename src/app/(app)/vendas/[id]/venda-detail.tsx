@@ -47,8 +47,15 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
   const handleEstornar = (p: Parcela) => startTransition(() => estornarParcela(p.id, v.id));
   const handleCobrar = (p: Parcela) => startTransition(async () => {
     const result = await cobrarParcelaWhatsApp(p.id);
-    setCobrancaMsg({ id: p.id, ok: result.ok, msg: result.ok ? "WhatsApp enviado!" : result.reason ?? "Erro ao enviar" });
-    setTimeout(() => setCobrancaMsg(null), 4000);
+    const motivos: Record<string, string> = {
+      sem_telefone: "O comprador não tem telefone cadastrado.",
+      whatsapp_nao_configurado: "Envio por WhatsApp ainda não configurado (cobrança registrada).",
+    };
+    const msg = result.ok
+      ? "WhatsApp enviado!"
+      : result.reason ? (motivos[result.reason] ?? result.reason) : "Erro ao enviar";
+    setCobrancaMsg({ id: p.id, ok: result.ok, msg });
+    setTimeout(() => setCobrancaMsg(null), 6000);
   });
   const handleAssinar = () => startTransition(async () => {
     const r = await registrarAssinaturaContrato(v.id);

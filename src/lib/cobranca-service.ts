@@ -64,6 +64,26 @@ async function enviarWhatsApp(
   }
 }
 
+/** Converte a resposta crua da Cloud API num texto curto e legível para o usuário. */
+function parseWaError(resposta: string): string {
+  try {
+    const j = JSON.parse(resposta);
+    const code: number | undefined = j?.error?.code;
+    const mapa: Record<number, string> = {
+      131030: "O número do cliente não está na lista de permitidos do WhatsApp. Enquanto o app estiver em modo de teste, só dá para enviar a números cadastrados no painel da Meta.",
+      131047: "A janela de 24h expirou — mensagens proativas exigem um modelo (template) aprovado pela Meta.",
+      131026: "O número informado não recebe mensagens no WhatsApp.",
+      190: "O token do WhatsApp expirou ou é inválido. Gere um novo token na Meta.",
+      100: "Configuração do WhatsApp inválida (token ou número). Verifique as credenciais.",
+    };
+    if (code && mapa[code]) return mapa[code];
+    if (typeof j?.error?.message === "string") return `WhatsApp: ${j.error.message}`;
+  } catch {
+    // resposta não era JSON (ex.: timeout) — cai no genérico abaixo
+  }
+  return "Não foi possível enviar pelo WhatsApp. Tente novamente em instantes.";
+}
+
 export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca) {
   const telefone = parcela.venda.telefoneComprador?.replace(/\D/g, "");
   if (!telefone) {
@@ -116,7 +136,8 @@ export async function dispararCobranca(parcela: ParcelaInfo, tipo: TipoCobranca)
     // notificação do gestor é best-effort — não bloqueia a cobrança
   }
 
-  return { ok, reason: ok ? undefined : resposta };
+  // resposta crua fica gravada no cobrancaLog; ao usuário devolvemos texto amigável
+  return { ok, reason: ok ? undefined : parseWaError(resposta) };
 }
 
 async function logCobranca(
