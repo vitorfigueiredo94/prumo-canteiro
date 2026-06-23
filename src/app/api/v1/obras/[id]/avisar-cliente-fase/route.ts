@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { notificarCliente, msgFaseObra } from "@/lib/notificar-admin";
+
+const FASE_LABELS: Record<string, string> = {
+  inicio: "Início da obra",
+  execucao: "Execução da obra",
+  entrega: "Entrega da obra",
+};
+
+// Avisa o comprador (via WhatsApp) que a obra avançou de fase — mesmo aviso que
+// o checklist disparava, agora acionado pelo Quadro.
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id: obraId } = await params;
+
+  const body = await req.json().catch(() => ({}));
+  const label = FASE_LABELS[body.fase];
+  if (!label) return NextResponse.json({ error: "Fase inválida" }, { status: 400 });
+
+  const obra = await prisma.obra.findFirst({
+    where: { id: obraId, empresaId: session.empresaId },
+    select: { nome: true, terrenoId: true, empresa: { select: { nome: true } } },
+  });
+  if (!obra) return NextResponse.json({ error: "Obra não encontrada" }, { status: 404 });
+  if (!obra.terrenoId) {
+    return NextResponse.json({ ok: false, erro: "Obra sem terreno/venda vinculada — não há cliente para avisar." });
+  }
+
+  const venda = await prisma.venda.findFirst({
+    where: { terrenoId: obra.terrenoId, empresaId: session.empresaId },
+    select: { nomeComprador: true, telefoneComprador: true },
+    orderBy: { criadoEm: "desc" },
+  });
+  if (!venda?.telefoneComprador) {
+    return NextResponse.json({ ok: false, erro: "Comprador sem telefone cadastrado." });
+  }
+
+  const msg = msgFaseObra(obra.nome, venda.nomeComprador, label, obra.empresa.nome);
+
+  // Tenta a Cloud API (funciona quando a conta WhatsApp estiver verificada) — best-effort
+  void notificarCliente(venda.telefoneComprador, msg).catch(() => null);
+
+  // E retorna um link wa.me para o gestor enviar pelo próprio WhatsApp (funciona já)
+  const tel = venda.telefoneComprador.replace(/\D/g, "");
+  const to = tel.startsWith("55") ? tel : `55${tel}`;
+  const waUrl = `https://wa.me/${to}?text=${encodeURIComponent(msg)}`;
+
+  return NextResponse.json({ ok: true, cliente: venda.nomeComprador, waUrl });
+}

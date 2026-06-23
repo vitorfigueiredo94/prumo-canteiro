@@ -64,7 +64,7 @@ export function CronogramaTab({
   const [saving, setSaving] = useState(false);
 
   const loadFases = useCallback(async () => {
-    const res = await fetch(`/api/v1/checklist/obra/${obraId}`);
+    const res = await fetch(`/api/v1/obras/${obraId}/tarefas/fases`);
     if (!res.ok) return;
     const data = await res.json();
     const checklists: Array<{ fase: string; porcentagem: number; total: number; concluidos: number }> =

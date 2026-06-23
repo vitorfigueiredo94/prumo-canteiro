@@ -382,7 +382,6 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
     { k: "boletim",     l: "Boletim",     Icon: ClipboardCheck },
     { k: "cronograma",  l: "Cronograma",  Icon: BarChart2 },
     { k: "quadro",      l: "Quadro",      Icon: KanbanSquare },
-    { k: "checklist",   l: "Checklist",   Icon: CheckSquare },
     { k: "notas",  l: obra.notas.length > 0 ? `Notas fiscais (${obra.notas.length})` : "Notas fiscais", Icon: Receipt },
     { k: "equipe", l: obra.alocacoes.length > 0 ? `Equipe (${obra.alocacoes.length})` : "Equipe", Icon: Users },
     { k: "diario", l: diarioEntries.length > 0 ? `Diário (${diarioEntries.length})` : "Diário", Icon: BookOpen },
@@ -912,8 +911,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
           <QuadroTab obra={{ id: obra.id, nome: obra.nome, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep }} funcionarios={funcionarios} />
         )}
 
-        {/* ── CHECKLIST ── */}
-        {tab === "checklist" && <ChecklistTab obraId={obra.id} />}
+        {/* Checklist substituído pelo Quadro (v3.2) — o motor permanece disponível via API */}
 
         {/* ── MATERIAIS ── */}
         {tab === "materiais" && <MateriaisTab obraId={obra.id} />}

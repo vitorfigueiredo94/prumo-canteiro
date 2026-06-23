@@ -132,6 +132,24 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
     router.refresh();
   }
 
+  async function importarChecklist() {
+    const res = await fetch(`/api/v1/obras/${obra.id}/tarefas/importar-checklist`, { method: "POST" });
+    const json = await res.json();
+    if (json.importadas > 0) { await carregar(); router.refresh(); }
+    else alert("Nenhum item de checklist para importar.");
+  }
+
+  async function avisarCliente(fase: string) {
+    const res = await fetch(`/api/v1/obras/${obra.id}/avisar-cliente-fase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fase }),
+    });
+    const json = await res.json();
+    if (json.ok && json.waUrl) window.open(json.waUrl, "_blank", "noopener,noreferrer");
+    else alert(json.erro ?? "Não foi possível avisar o cliente.");
+  }
+
   function avisarWhatsApp(t: Tarefa) {
     const endParts = [obra.endereco, obra.cep, obra.cidade].filter(Boolean);
     const mapsLink = endParts.length > 0 ? `https://maps.google.com/?q=${encodeURIComponent(endParts.join(", "))}` : null;
@@ -188,11 +206,27 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                 <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
                   <div style={{ width: `${pct ?? 0}%`, height: "100%", background: (pct ?? 0) === 100 ? "#22c55e" : "var(--gold-400)", borderRadius: "var(--radius-full)" }} />
                 </div>
+                {qt > 0 && (
+                  <button onClick={() => avisarCliente(f.key)} title="Avisar o cliente sobre esta fase" style={{ marginTop: 7, width: "100%", height: 26, border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#15803d", cursor: "pointer", fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    📲 Avisar cliente
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+
+      {total === 0 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "var(--gold-50)", border: "1px solid var(--gold-200)", borderRadius: "var(--radius-md)", padding: "12px 16px", marginBottom: 16 }}>
+          <span style={{ fontSize: 13.5, color: "var(--fg-secondary)" }}>
+            Já tem um checklist nesta obra? Traga os itens para o quadro de uma vez.
+          </span>
+          <button onClick={importarChecklist} style={{ height: 34, padding: "0 16px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+            📥 Importar do checklist
+          </button>
+        </div>
+      )}
 
       <p style={{ margin: "0 0 16px", fontSize: 13.5, color: "var(--fg-tertiary)" }}>
         Arraste as tarefas entre as colunas conforme a obra avança. Mover para <strong>Concluído</strong> aumenta a execução física. {tarefas.length} tarefa(s).
