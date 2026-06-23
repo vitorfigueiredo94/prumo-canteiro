@@ -57,6 +57,18 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
     setCobrancaMsg({ id: p.id, ok: result.ok, msg });
     setTimeout(() => setCobrancaMsg(null), 6000);
   });
+  // No celular: abre o WhatsApp do aparelho com a mensagem pronta (sem Cloud API)
+  const handleCobrarZap = (p: Parcela) => {
+    const tel = (v.telefoneComprador ?? "").replace(/\D/g, "");
+    const to = tel ? (tel.startsWith("55") ? tel : `55${tel}`) : "";
+    const nome = v.nomeComprador.split(" ")[0];
+    const venc = fmtDate(p.vencimento);
+    const atrasada = p.status !== "paga" && p.vencimento != null && new Date(p.vencimento) < hoje;
+    const msg = atrasada
+      ? `⚠️ Olá, ${nome}! A parcela nº ${p.numero} (${fmtBRL(p.valor)}) venceu em ${venc} e ainda consta em aberto. Poderia regularizar? Qualquer dúvida, estou à disposição. 🏗️`
+      : `Olá, ${nome}! 👋 Passando para lembrar que a parcela nº ${p.numero} (${fmtBRL(p.valor)}) vence em ${venc}. Caso já tenha pago, desconsidere. 🏗️`;
+    window.open(`https://wa.me/${to}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
   const handleAssinar = () => startTransition(async () => {
     const r = await registrarAssinaturaContrato(v.id);
     if (r.ok) {
@@ -176,9 +188,16 @@ export function VendaDetail({ venda: v }: { venda: Venda }) {
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     {isAtrasada && (
-                      <button disabled={isPending} onClick={() => handleCobrar(p)} title="Enviar cobrança via WhatsApp" style={{ width: 32, height: 32, border: "1px solid rgba(37,157,82,0.4)", borderRadius: "var(--radius-md)", background: "#f0fdf4", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
-                        <MessageCircle size={14} />
-                      </button>
+                      <>
+                        {/* Celular: abre o WhatsApp do aparelho */}
+                        <button className="inline-flex md:hidden w-11 h-11" onClick={() => handleCobrarZap(p)} title="Cobrar pelo WhatsApp" style={{ border: "1px solid rgba(37,157,82,0.4)", borderRadius: "var(--radius-md)", background: "#f0fdf4", cursor: "pointer", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+                          <MessageCircle size={18} />
+                        </button>
+                        {/* Desktop: envio automático via Cloud API */}
+                        <button className="hidden md:inline-flex" disabled={isPending} onClick={() => handleCobrar(p)} title="Enviar cobrança via WhatsApp" style={{ width: 32, height: 32, border: "1px solid rgba(37,157,82,0.4)", borderRadius: "var(--radius-md)", background: "#f0fdf4", cursor: "pointer", alignItems: "center", justifyContent: "center", color: "#16a34a" }}>
+                          <MessageCircle size={14} />
+                        </button>
+                      </>
                     )}
                     {p.status !== "paga" && (
                       <button disabled={isPending} onClick={() => handlePagar(p)} title="Marcar como paga" style={{ width: 32, height: 32, border: "1px solid rgba(47,125,74,0.4)", borderRadius: "var(--radius-md)", background: "var(--success-50)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--success-500)" }}>
