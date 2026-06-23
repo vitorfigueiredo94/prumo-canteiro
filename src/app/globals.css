@@ -261,6 +261,7 @@
 @keyframes cnt-pop   { from { opacity: 0; transform: scale(0.98) translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes cnt-toast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes cnt-spin  { to { transform: rotate(360deg); } }
+@keyframes cnt-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ─────────────────────────────────────────────────────────────
    Estilos base
@@ -311,3 +312,13 @@ input[type="date"] { font-family: var(--font-sans); }
 .cnt-fade { animation: cnt-fade 180ms ease; }
 .cnt-pop  { animation: cnt-pop 220ms var(--ease-soft); }
 .cnt-spin { animation: cnt-spin 720ms linear infinite; }
+
+/* Placeholder de carregamento (skeleton) — usado em listas/quadros sob 4G/5G */
+.cnt-skel {
+  background: linear-gradient(90deg, var(--ink-100) 25%, var(--ink-200) 37%, var(--ink-100) 63%);
+  background-size: 400% 100%;
+  animation: cnt-shimmer 1.4s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cnt-skel { animation: none; }
+}

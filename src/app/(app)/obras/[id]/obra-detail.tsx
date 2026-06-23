@@ -79,7 +79,7 @@ function DiarioInlineForm({ obraId, onDone }: { obraId: string; onDone: () => vo
   return (
     <form action={formAction} style={{ padding: "16px 20px", background: "var(--ink-50)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)", marginBottom: 16 }}>
       <input type="hidden" name="obraId" value={obraId} />
-      <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12, marginBottom: 12 }}>
+      <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] gap-3 mb-3">
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <label style={{ fontSize: 13, fontWeight: 500, color: "var(--fg-secondary)" }}>Data</label>
           <input name="data" type="date" style={inp} defaultValue={new Date().toISOString().split("T")[0]} />
@@ -455,13 +455,13 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
   return (
     <>
       {/* Topbar */}
-      <div style={{ padding: "16px 32px 0", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
+      <div className="px-4 md:px-8 pt-4" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 10 }}>
           <div>
             <Link href="/obras" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--fg-tertiary)", textDecoration: "none", marginBottom: 4 }}>
               <ArrowLeft size={13} /> Obras
             </Link>
-            <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{obra.nome}</h1>
+            <h1 className="text-[26px] md:text-[32px]" style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.02em", lineHeight: 1.15 }}>{obra.nome}</h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
             <button
@@ -499,7 +499,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
       </div>
 
       {/* KPI cards */}
-      <div style={{ padding: "20px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div className="px-4 md:px-8 py-5" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 16, flexWrap: "wrap" }}>
         <KPI label="Orçamento" value={fmtBRL(obra.orcamento)} />
         <KPI label="Realizado" value={fmtBRL(realizado)} sub={`${pct}% do previsto`} />
         <KPI label={estouro ? "Estouro" : "Saldo disponível"} value={fmtBRL(Math.abs(saldo))} danger={estouro} green={!estouro} sub={estouro ? "acima do orçamento" : undefined} />
@@ -512,7 +512,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
       </div>
 
       {/* Tabs */}
-      <div style={{ padding: "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 0, overflowX: "auto" }}>
+      <div className="px-4 md:px-8" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)", display: "flex", gap: 0, overflowX: "auto" }}>
         {TABS.map(({ k, l, Icon }) => {
           const on = tab === k;
           return (
@@ -524,11 +524,11 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
       </div>
 
       {/* Content */}
-      <div style={{ padding: "28px 32px" }}>
+      <div className="px-4 py-5 md:p-7">
 
         {/* ── FINANCEIRO ── */}
         {tab === "financeiro" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Left: Previsto × Realizado */}
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "22px 24px" }}>
               <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "var(--fg-primary)" }}>Previsto × Realizado</p>
@@ -645,7 +645,45 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
               <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhuma NF vinculada a esta obra.</p>
             ) : (
               <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-                <div style={{ overflowX: "auto" }}>
+                {/* Mobile (< md): cartões empilhados — mesmos dados/ações da tabela */}
+                <div className="md:hidden" style={{ display: "flex", flexDirection: "column" }}>
+                  {[...obra.notas].sort((a, b) => (b.emitidaEm ?? "").localeCompare(a.emitidaEm ?? "")).map((n, i, arr) => {
+                    const st2 = STATUS_NF[n.status as keyof typeof STATUS_NF] ?? STATUS_NF.pendente;
+                    const meta = CAT_META[n.categoria] ?? CAT_META.outros;
+                    const isPendente = n.status === "pendente" || n.status === "em_revisao";
+                    return (
+                      <div key={n.id} style={{ padding: "14px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none", display: "flex", flexDirection: "column", gap: 9 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 14.5, fontWeight: 600, color: "var(--fg-primary)" }}>{n.fornecedor ?? "—"}</div>
+                            {n.descricao && <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{n.descricao}</div>}
+                          </div>
+                          <strong style={{ fontSize: 15, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{fmtBRL(n.valor)}</strong>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--fg-tertiary)" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <meta.Icon size={14} style={{ color: meta.color }} /> {meta.label}
+                          </span>
+                          {n.numero && <span style={{ fontVariantNumeric: "tabular-nums" }}>Nº {n.numero}</span>}
+                          {n.emitidaEm && <span>{fmtDate(n.emitidaEm)}</span>}
+                          <Badge label={st2.label} color={st2.color} bg={st2.bg} dot />
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {isPendente && (
+                            <button onClick={() => handleConfirmar(n.id)} disabled={isPending} style={{ flex: 1, height: 44, background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "var(--radius-md)", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                              ✓ Confirmar
+                            </button>
+                          )}
+                          <button onClick={() => handleExcluirNota(n.id)} disabled={isPending} style={{ width: 44, height: 44, border: `1px solid ${isPendente ? "rgba(181,54,60,0.3)" : "var(--border-default)"}`, borderRadius: "var(--radius-md)", background: isPendente ? "var(--danger-50)" : "transparent", color: isPendente ? "var(--danger-500)" : "var(--fg-muted)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Desktop (>= md): tabela rolável */}
+                <div className="hidden md:block" style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
@@ -708,7 +746,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
 
         {/* ── EQUIPE ── */}
         {tab === "equipe" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
             {/* Left: Equipe alocada */}
             <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 22px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>

@@ -165,7 +165,21 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
   }
 
   if (tarefas === null) {
-    return <p style={{ textAlign: "center", padding: "40px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Carregando quadro…</p>;
+    // Skeleton com a forma do board — feedback imediato em 4G/5G de obra
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 items-start" aria-busy="true" aria-label="Carregando quadro">
+        {COLUNAS.map((col) => (
+          <div key={col.key} style={{ background: "var(--ink-50)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: 12 }}>
+            <div className="cnt-skel" style={{ height: 16, width: "55%", borderRadius: 6, marginBottom: 12 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="cnt-skel" style={{ height: 46, borderRadius: "var(--radius-md)" }} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   }
 
   const usados = new Set(tarefas.map((t) => t.titulo.trim().toLowerCase()));
@@ -268,7 +282,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
       <p style={{ margin: "0 0 16px", fontSize: 13.5, color: "var(--fg-tertiary)" }}>
         Arraste as tarefas entre as colunas conforme a obra avança. Mover para <strong>Concluído</strong> aumenta a execução física. {tarefas.length} tarefa(s).
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, alignItems: "start" }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 items-start">
         {COLUNAS.map((col) => {
           const cards = tarefas.filter((t) => t.status === col.key);
           const totalCol = cards.reduce((s, c) => s + (c.custo ?? 0), 0);
@@ -330,7 +344,9 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
 
                   const faseLabel = FASES.find((f) => f.key === t.fase)?.label;
                   const temMeta = faseLabel || t.responsavel || prazoFmt || (t.custo != null && t.custo > 0);
-                  const iconBtn: React.CSSProperties = { width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, flexShrink: 0 };
+                  const iconBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 6, flexShrink: 0 };
+                  // alvo de toque ≥44px no celular (canteiro), compacto 24px no desktop
+                  const iconBtnCls = "w-11 h-11 md:w-6 md:h-6";
                   return (
                     <div
                       key={t.id}
@@ -359,9 +375,9 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                             </div>
                           )}
                         </div>
-                        <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" style={{ ...iconBtn, color: "#25d366" }}>📲</button>
-                        <button onClick={() => abrirEdicao(t)} title="Editar" style={{ ...iconBtn, color: "var(--fg-muted)" }}><Pencil size={13} /></button>
-                        <button onClick={() => remover(t.id)} title="Remover" style={{ ...iconBtn, color: "#dc2626" }}><Trash2 size={13} /></button>
+                        <button onClick={() => avisarWhatsApp(t)} title="Avisar no WhatsApp" className={iconBtnCls} style={{ ...iconBtn, color: "#25d366" }}>📲</button>
+                        <button onClick={() => abrirEdicao(t)} title="Editar" className={iconBtnCls} style={{ ...iconBtn, color: "var(--fg-muted)" }}><Pencil size={13} /></button>
+                        <button onClick={() => remover(t.id)} title="Remover" className={iconBtnCls} style={{ ...iconBtn, color: "#dc2626" }}><Trash2 size={13} /></button>
                       </div>
                     </div>
                   );
@@ -374,9 +390,10 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                     onChange={(e) => setNovoTitulo((p) => ({ ...p, [col.key]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === "Enter") adicionar(col.key); }}
                     placeholder="+ Nova tarefa…"
-                    style={{ flex: 1, height: 34, padding: "0 10px", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 13, outline: "none" }}
+                    className="h-11 md:h-[34px]"
+                    style={{ flex: 1, padding: "0 10px", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-primary)", fontFamily: "var(--font-sans)", fontSize: 13, outline: "none" }}
                   />
-                  <button onClick={() => adicionar(col.key)} disabled={!(novoTitulo[col.key] ?? "").trim()} style={{ width: 34, height: 34, border: "none", borderRadius: "var(--radius-md)", background: "#1e3a5f", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: (novoTitulo[col.key] ?? "").trim() ? 1 : 0.5 }}><Plus size={16} /></button>
+                  <button onClick={() => adicionar(col.key)} disabled={!(novoTitulo[col.key] ?? "").trim()} className="w-11 h-11 md:w-[34px] md:h-[34px]" style={{ border: "none", borderRadius: "var(--radius-md)", background: "#1e3a5f", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: (novoTitulo[col.key] ?? "").trim() ? 1 : 0.5 }}><Plus size={16} /></button>
                 </div>
 
                 {/* Sugestões padrão (só na coluna "A fazer") */}
@@ -388,6 +405,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
                         <button
                           key={s}
                           onClick={() => adicionar("a_fazer", s)}
+                          className="min-h-11 md:min-h-0"
                           style={{ padding: "4px 10px", border: "1px dashed var(--border-default)", borderRadius: "var(--radius-full)", background: "transparent", color: "var(--fg-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 3 }}
                           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--navy-600)"; (e.currentTarget as HTMLElement).style.color = "var(--navy-700)"; }}
                           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-default)"; (e.currentTarget as HTMLElement).style.color = "var(--fg-secondary)"; }}

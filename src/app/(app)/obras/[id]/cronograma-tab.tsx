@@ -157,7 +157,7 @@ export function CronogramaTab({
               return (
                 <div key={key} style={{ display: "flex", gap: 14, alignItems: "center" }}>
                   {/* Label */}
-                  <div style={{ width: 130, flexShrink: 0 }}>
+                  <div className="w-[96px] md:w-[130px]" style={{ flexShrink: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--fg-primary)", whiteSpace: "nowrap" as const }}>{label}</div>
                     {faseInfo && (
                       <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)" }}>{faseInfo.concluidos}/{faseInfo.total} itens · {completion}%</div>
@@ -202,8 +202,8 @@ export function CronogramaTab({
                     )}
                   </div>
 
-                  {/* Dates */}
-                  <div style={{ width: 150, flexShrink: 0, fontSize: 12, color: "var(--fg-tertiary)", textAlign: "right" as const }}>
+                  {/* Dates — ocultas no mobile (espaço p/ a barra); visíveis nos cards abaixo */}
+                  <div className="hidden md:block" style={{ width: 150, flexShrink: 0, fontSize: 12, color: "var(--fg-tertiary)", textAlign: "right" as const }}>
                     {fmtLabel(c?.inicio ?? null)} → {fmtLabel(c?.fim ?? null)}
                   </div>
                 </div>
