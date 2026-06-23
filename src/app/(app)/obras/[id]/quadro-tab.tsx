@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, GripVertical, Pencil, Check, X, CalendarDays } from "lucide-react";
 import { fmtBRL } from "@/lib/format";
@@ -182,36 +182,73 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
     return Math.round((ts.filter((t) => t.status === "concluido").length / ts.length) * 100);
   };
 
+  // Stepper do ciclo de vida (visual estilo "Checklist da obra")
+  const STEPPER = [
+    { key: "inicio",   label: "Início da obra" },
+    { key: "execucao", label: "Execução (meio)" },
+    { key: "entrega",  label: "Entrega (fim)" },
+  ];
+  const faseInfos = STEPPER.map((s) => ({ ...s, pct: fasePct(s.key), qt: tarefas.filter((t) => t.fase === s.key).length }));
+  let currentIdx = faseInfos.findIndex((f) => f.pct != null && f.pct < 100);
+  if (currentIdx === -1) {
+    const ultimaComTarefa = [...faseInfos].reverse().find((f) => f.pct != null);
+    currentIdx = ultimaComTarefa ? faseInfos.indexOf(ultimaComTarefa) : 0;
+  }
+  const faseAtual = faseInfos[currentIdx];
+
+  // Donut
+  const R = 36, C = 2 * Math.PI * R;
+
   return (
     <div>
-      {/* Resumo: execução física (das tarefas) + fases do ciclo de vida */}
-      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px", marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--fg-secondary)" }}>Execução física <span style={{ fontWeight: 400, color: "var(--fg-muted)" }}>(calculada pelas tarefas concluídas)</span></span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: pctGeral === 100 ? "#16a34a" : "var(--navy-700)" }}>{concl}/{total} · {pctGeral}%</span>
+      {/* Progresso da obra — donut + stepper do ciclo de vida (visual p/ o cliente) */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "20px 24px", marginBottom: 18 }}>
+        <p style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 600, color: "var(--fg-primary)" }}>Progresso da obra</p>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap" }}>
+          {/* Donut */}
+          <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }}>
+            <svg width="84" height="84" viewBox="0 0 84 84">
+              <circle cx="42" cy="42" r={R} fill="none" stroke="var(--ink-100)" strokeWidth="8" />
+              <circle cx="42" cy="42" r={R} fill="none" stroke={pctGeral === 100 ? "#22c55e" : "var(--navy-700)"} strokeWidth="8" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pctGeral / 100)} transform="rotate(-90 42 42)" style={{ transition: "stroke-dashoffset 500ms" }} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: "var(--fg-primary)" }}>{pctGeral}%</div>
+          </div>
+
+          {/* Fase atual */}
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 11, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 4 }}>Fase atual</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 20 }}>🔑</span>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "var(--fg-primary)" }}>{faseAtual.label}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "var(--fg-tertiary)" }}>{concl} de {total} itens concluídos · Ciclo de vida da obra</div>
+            {total > 0 && (
+              <button onClick={() => avisarCliente(faseAtual.key)} title="Avisar o cliente sobre a fase atual" style={{ marginTop: 10, height: 30, padding: "0 14px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#15803d", cursor: "pointer", fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                📲 Avisar cliente
+              </button>
+            )}
+          </div>
         </div>
-        <div style={{ height: 8, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden", marginBottom: 14 }}>
-          <div style={{ width: `${pctGeral}%`, height: "100%", background: pctGeral === 100 ? "#22c55e" : "var(--navy-700)", borderRadius: "var(--radius-full)", transition: "width 500ms" }} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {FASES.map((f) => {
-            const pct = fasePct(f.key);
-            const qt = tarefas.filter((t) => t.fase === f.key).length;
+
+        {/* Stepper */}
+        <div style={{ display: "flex", alignItems: "center", marginTop: 22 }}>
+          {faseInfos.map((f, i) => {
+            const done = f.pct === 100 && f.qt > 0;
+            const current = i === currentIdx && !done;
+            const prevDone = i > 0 && faseInfos[i - 1].pct === 100 && faseInfos[i - 1].qt > 0;
             return (
-              <div key={f.key} style={{ background: "var(--ink-50)", borderRadius: "var(--radius-md)", padding: "8px 12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--fg-secondary)" }}>{f.label}</span>
-                  <span style={{ fontSize: 11.5, color: "var(--fg-muted)" }}>{pct == null ? "—" : `${pct}%`}{qt > 0 ? ` · ${qt}` : ""}</span>
+              <Fragment key={f.key}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: done ? "#22c55e" : current ? "#d97706" : "#f1f5f9", color: done || current ? "#fff" : "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, border: !done && !current ? "2px solid #e5e7eb" : "none" }}>
+                    {done ? "✓" : current ? i + 1 : "○"}
+                  </div>
+                  <span style={{ fontSize: 11, color: done ? "#16a34a" : current ? "#d97706" : "#9ca3af", fontWeight: current ? 700 : 500, whiteSpace: "nowrap" }}>{f.label}</span>
                 </div>
-                <div style={{ height: 5, background: "var(--ink-100)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-                  <div style={{ width: `${pct ?? 0}%`, height: "100%", background: (pct ?? 0) === 100 ? "#22c55e" : "var(--gold-400)", borderRadius: "var(--radius-full)" }} />
-                </div>
-                {qt > 0 && (
-                  <button onClick={() => avisarCliente(f.key)} title="Avisar o cliente sobre esta fase" style={{ marginTop: 7, width: "100%", height: 26, border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#15803d", cursor: "pointer", fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                    📲 Avisar cliente
-                  </button>
+                {i < faseInfos.length - 1 && (
+                  <div style={{ flex: 1, height: 2, background: prevDone || done ? "#22c55e" : "#e5e7eb", marginBottom: 22, marginLeft: 4, marginRight: 4 }} />
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </div>
