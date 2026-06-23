@@ -133,6 +133,7 @@ interface Obra {
   id: string; nome: string; status: string; orcamento: number; progresso: number;
   inicio: string | null; prazo: string | null; responsavel: string | null;
   endereco: string | null; cidade: string | null; cep: string | null;
+  clienteNome: string | null; clienteTelefone: string | null;
   cronogramaJson: string | null;
   terreno: (Terreno & { numero: string | null }) | null;
   notas: Nota[]; pagamentos: Pagamento[]; alocacoes: Alocacao[]; diario: DiarioEntry[];
@@ -927,7 +928,7 @@ export function ObraDetail({ obra, terrenos, funcionarios = [], receitaAtribuida
           terrenos={terrenos}
           onClose={closeEdit}
           isEdit
-          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep, progresso: obra.progresso }}
+          initial={{ id: obra.id, nome: obra.nome, terrenoId: obra.terreno?.id ?? null, orcamento: obra.orcamento, status: obra.status, inicio: obra.inicio, prazo: obra.prazo, responsavel: obra.responsavel, endereco: obra.endereco, cidade: obra.cidade, cep: obra.cep, clienteNome: obra.clienteNome ?? null, clienteTelefone: obra.clienteTelefone ?? null, progresso: obra.progresso }}
         />
       )}
       {showNotaForm && (

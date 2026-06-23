@@ -12,7 +12,7 @@ interface ObraInitial {
   id: string; nome: string; terrenoId: string | null; orcamento: number;
   status: string; inicio: string | null; prazo: string | null;
   responsavel: string | null; endereco: string | null; cidade: string | null;
-  cep: string | null; progresso: number;
+  cep: string | null; clienteNome: string | null; clienteTelefone: string | null; progresso: number;
 }
 
 interface ObraFormProps {
@@ -121,6 +121,18 @@ export function ObraForm({ onClose, action, terrenos, initial, isEdit = false }:
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {lbl("Cidade")}
           <input name="cidade" defaultValue={initial?.cidade ?? ""} placeholder="São Paulo" style={fs} onFocus={fv} onBlur={fb} />
+        </div>
+
+        {/* Contato do dono/cliente da obra — usado no "Avisar cliente" do Quadro */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {lbl("Dono / cliente da obra")}
+            <input name="clienteNome" defaultValue={initial?.clienteNome ?? ""} placeholder="Ex.: João da Silva" style={fs} onFocus={fv} onBlur={fb} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {lbl("WhatsApp do cliente")}
+            <input name="clienteTelefone" defaultValue={initial?.clienteTelefone ?? ""} placeholder="(11) 99999-9999" style={fs} onFocus={fv} onBlur={fb} />
+          </div>
         </div>
 
         {state?.error && (

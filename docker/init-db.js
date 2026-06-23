@@ -173,6 +173,17 @@ try {
   console.warn('[prumo] Migração tarefas_obra (prazo/fase) ignorada:', e.message);
 }
 
+// Migration: obras.clienteNome/clienteTelefone (dono da obra — v3.3)
+const obrasClienteInfo = db.prepare("PRAGMA table_info('obras')").all();
+if (!obrasClienteInfo.find(c => c.name === 'clienteNome')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "clienteNome" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.clienteNome adicionado.');
+}
+if (!obrasClienteInfo.find(c => c.name === 'clienteTelefone')) {
+  db.exec('ALTER TABLE "obras" ADD COLUMN "clienteTelefone" TEXT;');
+  console.log('[prumo] Migração aplicada: obras.clienteTelefone adicionado.');
+}
+
 // Migration: vendas.contratoAssinadoEm (assinatura digital)
 const vendasInfo = db.prepare("PRAGMA table_info('vendas')").all();
 if (!vendasInfo.find(c => c.name === 'contratoAssinadoEm')) {

@@ -18,6 +18,8 @@ const ObraSchema = z.object({
   endereco: z.string().optional(),
   cidade: z.string().optional(),
   cep: z.string().optional(),
+  clienteNome: z.string().optional(),
+  clienteTelefone: z.string().optional(),
   progresso: z.coerce.number().min(0).max(100).default(0),
 });
 
@@ -36,10 +38,12 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
     endereco: formData.get("endereco") || undefined,
     cidade: formData.get("cidade") || undefined,
     cep: formData.get("cep") || undefined,
+    clienteNome: formData.get("clienteNome") || undefined,
+    clienteTelefone: formData.get("clienteTelefone") || undefined,
     progresso: formData.get("progresso") || 0,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, progresso } = parsed.data;
+  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, clienteNome, clienteTelefone, progresso } = parsed.data;
 
   // Verifica limite de obras do plano
   const [plano, totalObras] = await Promise.all([
@@ -60,6 +64,8 @@ export async function criarObra(_prev: ObraFormState, formData: FormData): Promi
       endereco: endereco || null,
       cidade: cidade || null,
       cep: cep || null,
+      clienteNome: clienteNome || null,
+      clienteTelefone: clienteTelefone || null,
       progresso,
     },
   });
@@ -81,10 +87,12 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
     endereco: formData.get("endereco") || undefined,
     cidade: formData.get("cidade") || undefined,
     cep: formData.get("cep") || undefined,
+    clienteNome: formData.get("clienteNome") || undefined,
+    clienteTelefone: formData.get("clienteTelefone") || undefined,
     progresso: formData.get("progresso") || 0,
   });
   if (!parsed.success) return { error: "Verifique os campos obrigatórios." };
-  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, progresso } = parsed.data;
+  const { nome, terrenoId, orcamento, status, inicio, prazo, responsavel, endereco, cidade, cep, clienteNome, clienteTelefone, progresso } = parsed.data;
   await prisma.obra.updateMany({
     where: { id, empresaId },
     data: {
@@ -96,6 +104,8 @@ export async function editarObra(id: string, _prev: ObraFormState, formData: For
       endereco: endereco || null,
       cidade: cidade || null,
       cep: cep || null,
+      clienteNome: clienteNome || null,
+      clienteTelefone: clienteTelefone || null,
     },
   });
   revalidatePath("/obras");

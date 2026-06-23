@@ -22,31 +22,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const obra = await prisma.obra.findFirst({
     where: { id: obraId, empresaId: session.empresaId },
-    select: { nome: true, terrenoId: true, empresa: { select: { nome: true } } },
+    select: { nome: true, terrenoId: true, clienteNome: true, clienteTelefone: true, empresa: { select: { nome: true } } },
   });
   if (!obra) return NextResponse.json({ error: "Obra não encontrada" }, { status: 404 });
-  if (!obra.terrenoId) {
-    return NextResponse.json({ ok: false, erro: "Obra sem terreno/venda vinculada — não há cliente para avisar." });
+
+  // 1º: contato do dono/cliente cadastrado direto na obra
+  let nomeCliente = obra.clienteNome?.trim() || "";
+  let telCliente = obra.clienteTelefone?.trim() || "";
+
+  // 2º (fallback): comprador da venda do terreno vinculado
+  if (!telCliente && obra.terrenoId) {
+    const venda = await prisma.venda.findFirst({
+      where: { terrenoId: obra.terrenoId, empresaId: session.empresaId },
+      select: { nomeComprador: true, telefoneComprador: true },
+      orderBy: { criadoEm: "desc" },
+    });
+    if (venda?.telefoneComprador) {
+      nomeCliente = nomeCliente || venda.nomeComprador;
+      telCliente = venda.telefoneComprador;
+    }
   }
 
-  const venda = await prisma.venda.findFirst({
-    where: { terrenoId: obra.terrenoId, empresaId: session.empresaId },
-    select: { nomeComprador: true, telefoneComprador: true },
-    orderBy: { criadoEm: "desc" },
-  });
-  if (!venda?.telefoneComprador) {
-    return NextResponse.json({ ok: false, erro: "Comprador sem telefone cadastrado." });
+  if (!telCliente) {
+    return NextResponse.json({ ok: false, erro: "Sem contato do cliente. Cadastre o WhatsApp do dono em Editar obra." });
   }
 
-  const msg = msgFaseObra(obra.nome, venda.nomeComprador, label, obra.empresa.nome);
+  const msg = msgFaseObra(obra.nome, nomeCliente || "cliente", label, obra.empresa.nome);
 
   // Tenta a Cloud API (funciona quando a conta WhatsApp estiver verificada) — best-effort
-  void notificarCliente(venda.telefoneComprador, msg).catch(() => null);
+  void notificarCliente(telCliente, msg).catch(() => null);
 
   // E retorna um link wa.me para o gestor enviar pelo próprio WhatsApp (funciona já)
-  const tel = venda.telefoneComprador.replace(/\D/g, "");
+  const tel = telCliente.replace(/\D/g, "");
   const to = tel.startsWith("55") ? tel : `55${tel}`;
   const waUrl = `https://wa.me/${to}?text=${encodeURIComponent(msg)}`;
 
-  return NextResponse.json({ ok: true, cliente: venda.nomeComprador, waUrl });
+  return NextResponse.json({ ok: true, cliente: nomeCliente, waUrl });
 }

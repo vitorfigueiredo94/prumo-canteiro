@@ -127,6 +127,8 @@ model Obra {
   endereco       String?
   cidade         String?
   cep            String?
+  clienteNome      String?
+  clienteTelefone  String?
   cronogramaJson String?
   alocacoes      AlocacaoFuncionario[]
   notas        NotaFiscal[]
