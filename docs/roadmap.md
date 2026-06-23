@@ -80,6 +80,7 @@ Cloudflare → Tunnel → Nginx:3001 (SSL) → Next.js:3000 (HTTP)
 - [x] **Quadro alimenta a obra (v3.2)** — fusão Checklist→Quadro (Parte 1): a **Execução física** da obra agora é **calculada pelas tarefas concluídas** (`recomputeProgresso()` em `lib/obra-progresso.ts`, chamado ao criar/mover/excluir; só sobrescreve se houver tarefas). Card tem **fase do ciclo de vida** (Início/Execução/Entrega) e o topo do Quadro mostra **execução física + % por fase**. KPI atualiza via `router.refresh()`.
 - [x] **Fusão concluída (v3.3, Parte 2)** — **aba Checklist removida**; **Importar do checklist** traz os itens como cards (mapeia OBRA_INICIO/MEIO/FIM → inicio/execucao/entrega); **Avisar cliente por fase** abre `wa.me` com a mensagem da fase (+ Cloud API best-effort); o **Cronograma (Gantt)** passa a ler o progresso por fase do Quadro (`GET /api/v1/obras/[id]/tarefas/fases`). O motor do checklist (API/dados) permanece para o relatório e compatibilidade.
 - [x] **Visual de progresso no Quadro (v3.3)** — topo do Quadro com **donut de execução física** + **"Fase atual" (🔑)** + **stepper Início → Execução → Entrega** (mesmo visual do antigo Checklist), tudo calculado pelas tarefas. Botão "Avisar cliente" sobre a fase atual.
+- [x] **Contato do dono/cliente na obra (v3.3)** — campos `clienteNome` + `clienteTelefone` (Editar obra). O "Avisar cliente" usa esse contato primeiro, com fallback para o comprador da venda do terreno vinculado.
 - [x] **Notificar funcionário via WhatsApp (v3.0)** — botão "📲 Notificar" por alocado com telefone → monta a mensagem (endereço + link Google Maps + data/hora + tarefa + responsável) e abre **`wa.me`** no WhatsApp do gestor (1 toque). Funciona para qualquer número, sem depender da Cloud API. O endpoint `POST /api/v1/obras/[id]/notificar-funcionario` (Cloud API) fica preservado para quando a conta WhatsApp for verificada (envio automático).
   - ⚠️ Cloud API dá erro `#131030` ("número não está na lista de permissão") enquanto a conta está em modo de teste/não verificada — por isso o `wa.me` é o caminho prático.
 
@@ -311,6 +312,8 @@ ALTER TABLE "terrenos"    ADD COLUMN "cep"      TEXT;
 ALTER TABLE "obras"       ADD COLUMN "endereco" TEXT;
 ALTER TABLE "obras"       ADD COLUMN "cidade"   TEXT;
 ALTER TABLE "obras"       ADD COLUMN "cep"      TEXT;
+ALTER TABLE "obras"       ADD COLUMN "clienteNome"     TEXT;  -- v3.3
+ALTER TABLE "obras"       ADD COLUMN "clienteTelefone" TEXT;  -- v3.3
 ALTER TABLE "assinaturas" ADD COLUMN "stripeCustomerId"     TEXT;
 ALTER TABLE "assinaturas" ADD COLUMN "stripeSubscriptionId" TEXT;
 -- v3.1: nova tabela (em docker/migrate.sql)
