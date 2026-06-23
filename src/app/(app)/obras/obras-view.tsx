@@ -71,7 +71,7 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
   return (
     <>
       {/* Header */}
-      <div style={{ padding: "22px 32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+      <div className="px-4 md:px-8 py-5" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em", lineHeight: 1.1 }}>Obras</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>
@@ -84,7 +84,7 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
       </div>
 
       {/* Filtros + busca */}
-      <div style={{ padding: "12px 32px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+      <div className="px-4 md:px-8 py-3" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {FILTROS.map((f) => {
             const on = filtro === f.k;
@@ -115,9 +115,10 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
       </div>
 
       {/* Cards */}
-      <div style={{ padding: "24px 32px" }}>
+      <div className="px-4 md:px-8 py-6">
         {vista === "quadro" ? (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${KANBAN_COLS.length}, 1fr)`, gap: 16, alignItems: "start" }}>
+          <div className="overflow-x-auto">
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${KANBAN_COLS.length}, minmax(220px, 1fr))`, gap: 16, alignItems: "start" }}>
             {KANBAN_COLS.map((colKey) => {
               const st = STATUS_OBRA[colKey as keyof typeof STATUS_OBRA] ?? STATUS_OBRA.planejamento;
               const cards = obras.filter((o) => stOf(o) === colKey).filter(buscaOk);
@@ -168,6 +169,7 @@ export function ObrasView({ obras, terrenos }: { obras: Obra[]; terrenos: Terren
                 </div>
               );
             })}
+          </div>
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 24px" }}>

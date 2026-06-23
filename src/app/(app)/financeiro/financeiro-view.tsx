@@ -183,7 +183,7 @@ export function FinanceiroView({
   return (
     <div>
       {/* Header */}
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+      <div className="px-4 md:px-8 py-5" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Financeiro</h1>
@@ -238,12 +238,12 @@ export function FinanceiroView({
         </div>
       </div>
 
-      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className="px-4 md:px-8 py-7" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
         {/* ── Tab: Por obra ── */}
         {tab === "obra" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 14 }}>
               {[
                 { label: "Orçamento total", value: fmtBRLshort(totalOrcamento), sub: "todas as obras", tone: "" },
                 { label: "Total realizado", value: fmtBRLshort(totalRealizado), sub: `${pctGasto}% do previsto`, tone: "" },
@@ -263,7 +263,7 @@ export function FinanceiroView({
               })}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 20, alignItems: "start" }}>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-5 items-start">
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div style={cardStyle}>
                   <div style={cardHead}><h3 style={cardTitle}>Investimento por categoria</h3></div>
@@ -464,7 +464,7 @@ export function FinanceiroView({
         {tab === "inadimplencia" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {/* KPI cards por faixa */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 14 }}>
               {/* Total */}
               <div style={{ ...cardStyle, borderLeft: `4px solid ${taxaInadimplencia > 10 ? "#dc2626" : "#d97706"}` }}>
                 <div style={{ padding: "16px 20px" }}>
@@ -590,7 +590,7 @@ export function FinanceiroView({
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {/* KPI cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+              <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 14 }}>
                 {[
                   { label: "Receita recebida", value: fmtBRLshort(totalPagas), sub: "parcelas pagas (total)", color: "var(--success-700)" },
                   { label: "Custos totais", value: fmtBRLshort(totalRealizado), sub: "NFs + folha de pagamento", color: "var(--danger-500)" },

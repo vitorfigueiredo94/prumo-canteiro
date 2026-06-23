@@ -121,16 +121,16 @@ export function DashboardView({ nomeUsuario, kpis, mom, notasPendentes, parcelas
   return (
     <div>
       {/* Header */}
-      <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>
+      <div className="px-4 md:px-8 py-6" style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+        <h1 className="text-[22px] md:text-[28px]" style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>
           {saudacao}, {nomeUsuario.split(" ")[0]}.
         </h1>
         <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>Aqui está a situação atual das suas obras e finanças.</p>
       </div>
 
-      <div style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className="px-4 md:px-8 py-6" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14 }}>
+        <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]" style={{ gap: 14 }}>
           {[
             { label: "Obras em andamento", value: String(kpis.obrasAtivas), sub: `${kpis.obrasTotal} obras no total`, color: undefined },
             { label: "Investido nas obras", value: fmtBRLshort(kpis.gastoTotal), sub: `de ${fmtBRLshort(kpis.orcamento)} orçados`, color: undefined },
@@ -161,7 +161,7 @@ export function DashboardView({ nomeUsuario, kpis, mom, notasPendentes, parcelas
             return <span style={{ fontSize: 12.5, color, fontWeight: 600 }}>{pct > 0 ? "▲" : pct < 0 ? "▼" : "="} {Math.abs(pct).toFixed(1)}% vs mês anterior</span>;
           }
           return (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 14 }}>
               {[
                 { label: `Receita — ${mom.mesNome}`, value: fmtBRLshort(mom.receitaMes), delta: <Delta pct={pctReceita} />, color: "var(--success-700)" },
                 { label: `Gastos — ${mom.mesNome}`, value: fmtBRLshort(mom.gastoMes), delta: <Delta pct={pctGastoMom} invert />, color: mom.gastoMes > mom.receitaMes ? "var(--danger-500)" : "var(--fg-primary)" },
@@ -180,7 +180,7 @@ export function DashboardView({ nomeUsuario, kpis, mom, notasPendentes, parcelas
         })()}
 
         {/* Two-column main */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 20, alignItems: "start" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5 items-start">
           {/* Left column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Obras em andamento */}

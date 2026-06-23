@@ -57,7 +57,7 @@ export function FuncionariosView({ funcionarios }: { funcionarios: Funcionario[]
   return (
     <>
       {/* Header */}
-      <div style={{ padding: "22px 32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+      <div className="px-4 md:px-8 py-5" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em", lineHeight: 1.1 }}>Funcionários</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>{ativos.length} ativo{ativos.length !== 1 ? "s" : ""}</p>
@@ -68,9 +68,9 @@ export function FuncionariosView({ funcionarios }: { funcionarios: Funcionario[]
       </div>
 
       {/* Content */}
-      <div style={{ padding: "24px 32px" }}>
+      <div className="px-4 md:px-8 py-6">
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]" style={{ gap: 16, marginBottom: 24 }}>
           {[
             { label: "Funcionários ativos", value: String(ativos.length), sub: `${funcionarios.length} no cadastro` },
             { label: "Folha mensal estimada", value: fmtBRLshort(folhaMensal), sub: "salários ativos" },
@@ -110,7 +110,41 @@ export function FuncionariosView({ funcionarios }: { funcionarios: Funcionario[]
           </div>
         ) : (
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xs)", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
+            {/* Mobile (< md): cartões empilhados */}
+            <div className="md:hidden" style={{ display: "flex", flexDirection: "column" }}>
+              {filtered.map((f, i, arr) => {
+                const st = STATUS_FUNCIONARIO[f.status as keyof typeof STATUS_FUNCIONARIO] ?? STATUS_FUNCIONARIO.ativo;
+                return (
+                  <div key={f.id} style={{ padding: "14px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: avatarBg(f.nome), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flexShrink: 0 }}>{avatarInitials(f.nome)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nome}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--fg-tertiary)" }}>{f.cargo ?? "—"}</div>
+                      </div>
+                      <Badge label={st.label} color={st.color} bg={st.bg} dot />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
+                      <span style={{ color: "var(--fg-tertiary)" }}>Custo mensal</span>
+                      <strong style={{ fontVariantNumeric: "tabular-nums" }}>{f.salario ? fmtBRL(f.salario) : "—"}</strong>
+                    </div>
+                    {f.alocacoes.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {f.alocacoes.map((a) => (
+                          <Link key={a.obra.id} href={`/obras/${a.obra.id}`} style={{ padding: "3px 10px", borderRadius: "var(--radius-full)", fontSize: 12.5, fontWeight: 600, background: "var(--navy-50)", color: "var(--navy-700)", textDecoration: "none", border: "1px solid var(--border-subtle)" }}>{a.obra.nome}</Link>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Link href={`/funcionarios/${f.id}`} style={{ flex: 1, height: 44, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 500, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, textDecoration: "none" }}><FileText size={14} /> Relatório</Link>
+                      <Link href={`/funcionarios/${f.id}`} style={{ flex: 1, height: 44, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "transparent", color: "var(--fg-secondary)", fontFamily: "var(--font-sans)", fontSize: 13.5, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>Pagar</Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop (>= md): tabela */}
+            <div className="hidden md:block" style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>

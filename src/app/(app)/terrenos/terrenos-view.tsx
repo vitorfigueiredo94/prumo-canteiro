@@ -76,8 +76,8 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
     <>
       {/* Page header */}
       <div
+        className="px-4 md:px-8 py-5"
         style={{
-          padding: "22px 32px",
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
@@ -141,7 +141,7 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
       </div>
 
       {/* Search */}
-      <div style={{ padding: "16px 32px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
+      <div className="px-4 md:px-8 py-4" style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
         <div style={{ position: "relative", maxWidth: 320 }}>
           <Search size={15} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--fg-muted)", pointerEvents: "none" }} />
           <input
@@ -167,7 +167,7 @@ export function TerrenosView({ terrenos }: TerrenosViewProps) {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "24px 32px" }}>
+      <div className="px-4 md:px-8 py-6">
         {vista === "mapa" ? (
           <MapaTerrenos terrenos={filtered} />
         ) : filtered.length === 0 ? (

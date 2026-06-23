@@ -56,7 +56,7 @@ export function NotasView({ notas, obras }: { notas: Nota[]; obras: ObraLite[] }
   return (
     <>
       {/* Header */}
-      <div style={{ padding: "22px 32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+      <div className="px-4 md:px-8 py-5" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em", lineHeight: 1.1 }}>Notas Fiscais</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>{notas.length} nota{notas.length !== 1 ? "s" : ""} no total</p>
@@ -67,9 +67,9 @@ export function NotasView({ notas, obras }: { notas: Nota[]; obras: ObraLite[] }
       </div>
 
       {/* Content */}
-      <div style={{ padding: "24px 32px" }}>
+      <div className="px-4 md:px-8 py-6">
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 16, marginBottom: 24 }}>
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px", boxShadow: "var(--shadow-xs)" }}>
             <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Notas confirmadas</div>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: "var(--fg-primary)", letterSpacing: "-0.02em", marginTop: 4 }}>{notas.filter((n) => n.status === "confirmada").length}</div>
@@ -116,7 +116,39 @@ export function NotasView({ notas, obras }: { notas: Nota[]; obras: ObraLite[] }
           <p style={{ textAlign: "center", padding: "60px 0", color: "var(--fg-tertiary)", fontSize: 15 }}>Nenhuma nota encontrada.</p>
         ) : (
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-xs)", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
+            {/* Mobile (< md): cartões empilhados */}
+            <div className="md:hidden" style={{ display: "flex", flexDirection: "column" }}>
+              {filtered.map((n, i, arr) => {
+                const st = STATUS_NF[n.status as keyof typeof STATUS_NF] ?? STATUS_NF.pendente;
+                const cat = CATEGORIA_NF[n.categoria as keyof typeof CATEGORIA_NF]?.label ?? n.categoria;
+                const canConfirm = n.status === "pendente" || n.status === "em_revisao";
+                const canCancel = n.status !== "cancelada";
+                return (
+                  <div key={n.id} style={{ padding: "14px 16px", borderBottom: i < arr.length - 1 ? "1px solid var(--border-subtle)" : "none", display: "flex", flexDirection: "column", gap: 9 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 600, color: "var(--fg-primary)", fontSize: 14.5 }}>{n.fornecedor ?? "—"}</p>
+                        {n.numero && <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>NF-e {n.numero}</p>}
+                      </div>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 500, color: "var(--fg-primary)", whiteSpace: "nowrap" }}>{fmtBRL(n.valor)}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: "var(--fg-tertiary)" }}>
+                      <Link href={`/obras/${n.obra.id}`} style={{ color: "var(--navy-700)", textDecoration: "none", fontWeight: 600 }}>{n.obra.nome}</Link>
+                      <span>{cat}</span>
+                      {n.emitidaEm && <span>{fmtDate(n.emitidaEm)}</span>}
+                      <Badge label={st.label} color={st.color} bg={st.bg} />
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button title="Ver/editar" onClick={() => setEditing(n)} style={{ flex: 1, height: 44, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", background: "var(--bg-surface)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, color: "var(--fg-secondary)", fontFamily: "var(--font-sans)", fontSize: 13.5 }}><Eye size={15} /> Detalhes</button>
+                      {canConfirm && <button title="Confirmar" disabled={isPending} onClick={() => handleConfirmar(n.id)} style={{ width: 44, height: 44, border: "1px solid rgba(47,125,74,0.4)", borderRadius: "var(--radius-md)", background: "var(--success-50)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--success-500)", flexShrink: 0 }}><Check size={16} /></button>}
+                      {canCancel && <button title="Cancelar" disabled={isPending} onClick={() => handleCancelar(n.id)} style={{ width: 44, height: 44, border: "1px solid rgba(181,54,60,0.3)", borderRadius: "var(--radius-md)", background: "var(--danger-50)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--danger-500)", flexShrink: 0 }}><X size={16} /></button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Desktop (>= md): tabela */}
+            <div className="hidden md:block" style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--font-sans)", fontSize: 14 }}>
                 <thead>
                   <tr>

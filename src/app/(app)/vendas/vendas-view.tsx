@@ -80,7 +80,7 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
   return (
     <>
       {/* Header */}
-      <div style={{ padding: "22px 32px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+      <div className="px-4 md:px-8 py-5" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
         <div>
           <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 500, color: "var(--fg-primary)", letterSpacing: "-0.015em" }}>Vendas</h1>
           <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--fg-tertiary)" }}>{vendas.length} {vendas.length === 1 ? "contrato" : "contratos"}</p>
@@ -99,9 +99,9 @@ export function VendasView({ vendas, terrenos }: { vendas: Venda[]; terrenos: Te
       </div>
 
       {/* Content */}
-      <div style={{ padding: "24px 32px" }}>
+      <div className="px-4 md:px-8 py-6">
         {/* KPI cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 md:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]" style={{ gap: 16, marginBottom: 24 }}>
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "16px 20px", boxShadow: "var(--shadow-xs)" }}>
             <div style={{ fontSize: 11.5, color: "var(--fg-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Em vendas</div>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 400, color: "var(--fg-primary)", letterSpacing: "-0.02em", marginTop: 4 }}>{fmtBRLshort(totalVendas)}</div>
