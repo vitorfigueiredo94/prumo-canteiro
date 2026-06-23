@@ -7,21 +7,16 @@ import {
   Building2,
   Users,
   Wallet,
-  ReceiptText,
   Handshake,
-  MapPinned,
-  BookOpen,
 } from "lucide-react";
 
+// Atalhos rápidos (acesso com o polegar). O menu completo fica no hambúrguer do topo.
 const NAV_ITEMS = [
   { href: "/dashboard",    short: "Início",  icon: LayoutDashboard },
   { href: "/obras",        short: "Obras",   icon: Building2 },
-  { href: "/funcionarios", short: "Equipe",  icon: Users },
   { href: "/financeiro",   short: "Financ.", icon: Wallet },
-  { href: "/notas",        short: "Notas",   icon: ReceiptText },
   { href: "/vendas",       short: "Vendas",  icon: Handshake },
-  { href: "/terrenos",     short: "Lotes",   icon: MapPinned },
-  { href: "/diario",       short: "Diário",  icon: BookOpen },
+  { href: "/funcionarios", short: "Equipe",  icon: Users },
 ];
 
 export function MobileNav() {
@@ -36,12 +31,12 @@ export function MobileNav() {
     <nav
       style={{
         display: "flex",
+        width: "100%",
         background: "var(--bg-surface)",
         borderTop: "1px solid var(--border-subtle)",
         paddingBottom: "env(safe-area-inset-bottom, 0)",
         flexShrink: 0,
         zIndex: 20,
-        overflowX: "auto",
       }}
     >
       {NAV_ITEMS.map(({ href, short, icon: Icon }) => {
@@ -55,16 +50,18 @@ export function MobileNav() {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              justifyContent: "center",
               gap: 3,
-              padding: "9px 1px 8px",
+              padding: "8px 1px",
+              minHeight: 56,
               minWidth: 0,
               color: active ? "var(--navy-700)" : "var(--fg-tertiary)",
               fontFamily: "var(--font-sans)",
               textDecoration: "none",
             }}
           >
-            <Icon size={20} />
-            <span style={{ fontSize: 9.5, fontWeight: active ? 700 : 500, whiteSpace: "nowrap" }}>
+            <Icon size={21} />
+            <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500, whiteSpace: "nowrap" }}>
               {short}
             </span>
           </Link>

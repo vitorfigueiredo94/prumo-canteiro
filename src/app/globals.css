@@ -262,6 +262,7 @@
 @keyframes cnt-toast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes cnt-spin  { to { transform: rotate(360deg); } }
 @keyframes cnt-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes cnt-slide-in { from { transform: translateX(-100%); } to { transform: none; } }
 
 /* ─────────────────────────────────────────────────────────────
    Estilos base

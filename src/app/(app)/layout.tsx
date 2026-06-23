@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { MobileMenu } from "@/components/layout/mobile-menu";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { getPlanoEmpresa } from "@/lib/plano";
@@ -49,17 +50,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* Barra de controles — fica acima do conteúdo de cada página */}
         <div style={{
           display: "flex",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           alignItems: "center",
           gap: 4,
-          padding: "0 20px",
+          padding: "0 12px 0 6px",
           height: 52,
           flexShrink: 0,
           borderBottom: "1px solid var(--border-subtle)",
           background: "var(--bg-surface)",
         }}>
-          <ThemeToggle />
-          <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} telefoneGestor={telefoneGestor} logoEmpresa={logoEmpresa} planoNome={plano.planoNome} isTrial={plano.isTrial} />
+          <MobileMenu />
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+            <ThemeToggle />
+            <UserMenu nome={session.nome} email={session.email} superAdmin={superAdmin} telefoneGestor={telefoneGestor} logoEmpresa={logoEmpresa} planoNome={plano.planoNome} isTrial={plano.isTrial} />
+          </div>
         </div>
 
         <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
