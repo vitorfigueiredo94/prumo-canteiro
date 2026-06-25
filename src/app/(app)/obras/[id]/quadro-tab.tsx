@@ -188,7 +188,9 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
   // Progresso geral (= execução física) e por fase
   const total = tarefas.length;
   const concl = tarefas.filter((t) => t.status === "concluido").length;
-  const pctGeral = total > 0 ? Math.round((concl / total) * 100) : 0;
+  const emExec = tarefas.filter((t) => t.status === "em_execucao").length;
+  // execução física: concluído = 100%, em execução = 50% (crédito parcial)
+  const pctGeral = total > 0 ? Math.round(((concl + emExec * 0.5) / total) * 100) : 0;
 
   const fasePct = (faseKey: string) => {
     const ts = tarefas.filter((t) => t.fase === faseKey);
@@ -236,7 +238,7 @@ export function QuadroTab({ obra, funcionarios = [] }: { obra: ObraLite; funcion
               <span style={{ fontSize: 20 }}>🔑</span>
               <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "var(--fg-primary)" }}>{faseAtual.label}</span>
             </div>
-            <div style={{ fontSize: 13, color: "var(--fg-tertiary)" }}>{concl} de {total} itens concluídos · Ciclo de vida da obra</div>
+            <div style={{ fontSize: 13, color: "var(--fg-tertiary)" }}>{concl} de {total} itens concluídos{emExec > 0 ? ` · ${emExec} em execução` : ""} · Ciclo de vida da obra</div>
             {total > 0 && (
               <button onClick={() => avisarCliente(faseAtual.key)} title="Avisar o cliente sobre a fase atual" style={{ marginTop: 10, height: 30, padding: "0 14px", border: "1px solid #25d366", borderRadius: "var(--radius-md)", background: "transparent", color: "#15803d", cursor: "pointer", fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}>
                 📲 Avisar cliente
